@@ -1,0 +1,6 @@
+rootProject.name = 'bio-sources'
+include ':bio-source-alliance-genes'
+project(':bio-source-alliance-genes').projectDir = new File(settingsDir, './alliance-genes')
+
+
+
