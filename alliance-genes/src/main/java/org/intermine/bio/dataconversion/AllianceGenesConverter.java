@@ -66,7 +66,7 @@ public class AllianceGenesConverter extends BioFileConverter
 
             String[] line = (String[]) lineIter.next();
             String primaryIdentifier = line[0].trim();
-            String name = line[1].trim();
+            String name = line[1];
             String origspecies = line[2].trim();
             String species = origspecies.replace("NCBITaxon:","");
             String chr = line[3].trim();
