@@ -65,6 +65,7 @@ public class AllianceGenesConverter extends BioFileConverter
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
+            System.out.println("size of line is " + line.length);
             String primaryIdentifier = line[0].trim();
             String name = line[1];
             String origspecies = line[2].trim();
