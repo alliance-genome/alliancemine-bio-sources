@@ -78,10 +78,15 @@ public class AllianceGenesConverter extends BioFileConverter
 
             System.out.println("Processing line.." + primaryIdentifier);
 
+           Item g  = genes.get(primaryIdentifier);
+           if (g != null){
+               System.out.println("Is a duplicate line.." + primaryIdentifier);
+               continue;
+           }
             // ~~~ MOD and Chromosome ~~~
             String organism = getOrganism(species);
-            String chromosome = getChromosome(chr, organism);
-            System.out.println("Processing Chromosome.." + chromosome + "    "+organism);
+            String chrId = getChromosome(chr, organism);
+            System.out.println("Processing Chromosome.." + chrId + "    "+organism);
 
             // ~~~ gene ~~~
             Item gene = createItem("Gene");
@@ -89,13 +94,14 @@ public class AllianceGenesConverter extends BioFileConverter
             if(StringUtils.isNotEmpty(name)) { gene.setAttribute("symbol", name); }
             if(StringUtils.isNotEmpty(soTerm)) { gene.setAttribute("featureType", soTerm);}
             gene.setReference("organism", organism);
-           // gene.setReference("chromosome", chromosome);
+            gene.setReference("chromosome", chrId);
 
             // ~~~ location ~~~
-//            if(!start.equals("null") || !end.equals("null")) {
-//                String locationRefId = getLocation(gene, chromosome, start, end, strand);
-//                gene.setReference("chromosomeLocation", locationRefId);
-//            }
+            if(!start.equals("null") || !end.equals("null")) {
+                System.out.println("going into not null...");
+                String locationRefId = getLocation(gene, chrId, start, end, strand);
+                gene.setReference("chromosomeLocation", locationRefId);
+            }
 
             genes.put(primaryIdentifier, gene);
 
@@ -140,21 +146,24 @@ public class AllianceGenesConverter extends BioFileConverter
 
     private String getChromosome(String chr, String org) throws Exception {
 
-        String unq = chr+":"+org;
-        String chrId  = chromosomes.get(unq);
         if (StringUtils.isEmpty(chr)) {
             return null;
         }
+
+        String unq = chr+":"+org;
+        String chrId  = chromosomes.get(unq);
+
         if(chrId == null) {
             Item chromosome = createItem("Chromosome");
             chromosome.setAttribute("primaryIdentifier", chr);
             chromosome.setReference("organism", org);
-            chromosomes.put(unq, chromosome.getIdentifier());
             try {
                 store(chromosome);
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
             }
+            chrId = chromosome.getIdentifier();
+            chromosomes.put(unq, chrId);
         }
         return chrId;
     }
