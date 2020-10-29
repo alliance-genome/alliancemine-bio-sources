@@ -61,20 +61,24 @@ public class AllianceGenesConverter extends BioFileConverter
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
-        //Id      Name    Species Chromosome      Start   End     Strand  SoTerm
+        //Id      Name  Description    Species Chromosome      Start   End     Strand  SoTerm
+        int count = 0;
+
         while (lineIter.hasNext()) {
 
+            if(count ==0) { continue;}
             String[] line = (String[]) lineIter.next();
             System.out.println("size of line is " + line.length);
             String primaryIdentifier = line[0].trim();
             String name = line[1];
-            String origspecies = line[2].trim();
+            String description = line[2].trim();
+            String origspecies = line[3].trim();
             String species = origspecies.replace("NCBITaxon:","");
-            String chr = line[3].trim();
-            String start = line[4].trim();
-            String end = line[5].trim();
-            String strand = line[6].trim();
-            String soTerm = line[7].trim();
+            String chr = line[4].trim();
+            String start = line[5].trim();
+            String end = line[6].trim();
+            String strand = line[7].trim();
+            String soTerm = line[8].trim();
 
             System.out.println("Processing line.." + primaryIdentifier);
 
@@ -93,6 +97,7 @@ public class AllianceGenesConverter extends BioFileConverter
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
             if(StringUtils.isNotEmpty(name)) { gene.setAttribute("symbol", name); }
             if(StringUtils.isNotEmpty(soTerm)) { gene.setAttribute("featureType", soTerm);}
+            if(StringUtils.isNotEmpty(description)) { gene.setAttribute("description", description);}
             gene.setReference("organism", organism);
             gene.setReference("chromosome", chrId);
 

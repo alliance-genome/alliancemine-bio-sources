@@ -201,6 +201,7 @@
     </class>
     <class name="GOEvidence" extends="OntologyEvidence" is-interface="true">
         <reference name="code" referenced-type="GOEvidenceCode"/>
+        <attribute name="withText" type="java.lang.String"/>
         <collection name="with" referenced-type="BioEntity"/>
         <collection name="publications" referenced-type="Publication"/>
     </class>
