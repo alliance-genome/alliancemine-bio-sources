@@ -26,9 +26,8 @@ import org.intermine.xml.full.Item;
  * 
  * @author
  */
-public class AllianceGenesConverter extends BioFileConverter
-{
-    // 
+public class AllianceGenesConverter extends BioFileConverter {
+
     private static final String DATASET_TITLE = "Alliance Gene data set";
     private static final String DATA_SOURCE_NAME = "AGR";
     private String licence;
@@ -44,7 +43,6 @@ public class AllianceGenesConverter extends BioFileConverter
     private Map<String, String> synonyms = new HashMap();
     private Map<String, Item> publications = new HashMap();
 
-
     /**
      * Construct a new AllianceGenesConverter.
      * @param database the database to read from
@@ -55,19 +53,18 @@ public class AllianceGenesConverter extends BioFileConverter
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
     }
 
-
     /**
      * {@inheritDoc}
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
+
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
-        //Id      Name  Description    Species Chromosome      Start   End     Strand  SoTerm
         int count = 0;
 
         while (lineIter.hasNext()) {
 
-            if(count ==0) { continue;}
             String[] line = (String[]) lineIter.next();
+            if(count == 0) { count++; continue;}
             System.out.println("size of line is " + line.length);
             String primaryIdentifier = line[0].trim();
             String name = line[1];
@@ -79,9 +76,7 @@ public class AllianceGenesConverter extends BioFileConverter
             String end = line[6].trim();
             String strand = line[7].trim();
             String soTerm = line[8].trim();
-
-            System.out.println("Processing line.." + primaryIdentifier);
-
+            //System.out.println("Processing line.." + primaryIdentifier);
            Item g  = genes.get(primaryIdentifier);
            if (g != null){
                System.out.println("Is a duplicate line.." + primaryIdentifier);
@@ -100,19 +95,14 @@ public class AllianceGenesConverter extends BioFileConverter
             if(StringUtils.isNotEmpty(description)) { gene.setAttribute("description", description);}
             gene.setReference("organism", organism);
             gene.setReference("chromosome", chrId);
-
             // ~~~ location ~~~
             if(!start.equals("null") || !end.equals("null")) {
-                System.out.println("going into not null...");
                 String locationRefId = getLocation(gene, chrId, start, end, strand);
                 gene.setReference("chromosomeLocation", locationRefId);
             }
-
             genes.put(primaryIdentifier, gene);
-
         }
         System.out.println("size of genes:  " + genes.size());
-
         storeGenes();
 
     }
@@ -185,7 +175,6 @@ public class AllianceGenesConverter extends BioFileConverter
             a = new Integer(end);
             b = new Integer(start);
         }
-
         Integer length = new Integer(b.intValue() - a.intValue());
         return length.toString();
     }
