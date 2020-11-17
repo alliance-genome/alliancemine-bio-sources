@@ -153,6 +153,9 @@
         <attribute name="code" type="java.lang.String"/>
     </class>
     <class name="ECOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="HPOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="PATOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="MPOTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="Exon" extends="SequenceFeature" is-interface="true">
         <reference name="gene" referenced-type="Gene" reverse-reference="exons"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="exons"/>
