@@ -61,14 +61,10 @@ public class AllianceDiseaseConverter extends BioFileConverter
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
-        //Id      Name    Species Chromosome      Start   End     Strand  SoTerm
         int count = 0;
         while (lineIter.hasNext()) {
-
             Item organism = null;
             String[] line = (String[]) lineIter.next();
-            System.out.println("Line count..." + count + "   "+ line.length);
-
             String origspecies = line[0].trim();
             String taxonId = origspecies.replace("NCBITaxon:","");
             if (count == 0) {
@@ -91,7 +87,6 @@ public class AllianceDiseaseConverter extends BioFileConverter
             String annotType = "manually curated";
             String qualifier = "";
             String annotationExtension = "";
-            System.out.println("Processing line.." + productId);
 
         }
 

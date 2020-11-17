@@ -58,9 +58,10 @@ public class AllianceGenesConverter extends BioFileConverter {
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
 
+        //Id      Name    Description     Species   Chromosome      Start   End     Strand  SoTerm
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-
+        System.out.println("Processing Genes...");
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
@@ -75,8 +76,8 @@ public class AllianceGenesConverter extends BioFileConverter {
             String start = line[5].trim();
             String end = line[6].trim();
             String strand = line[7].trim();
-            String soTerm = line[8].trim();
-            //System.out.println("Processing line.." + primaryIdentifier);
+            String feature_type = line[8].trim();
+
            Item g  = genes.get(primaryIdentifier);
            if (g != null){
                System.out.println("Is a duplicate line.." + primaryIdentifier);
@@ -85,22 +86,83 @@ public class AllianceGenesConverter extends BioFileConverter {
             // ~~~ MOD and Chromosome ~~~
             String organism = getOrganism(species);
             String chrId = getChromosome(chr, organism);
-            System.out.println("Processing Chromosome.." + chrId + "    "+organism);
+            System.out.println("feature_type" + feature_type);
 
-            // ~~~ gene ~~~
-            Item gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", primaryIdentifier);
-            if(StringUtils.isNotEmpty(name)) { gene.setAttribute("symbol", name); }
-            if(StringUtils.isNotEmpty(soTerm)) { gene.setAttribute("featureType", soTerm);}
-            if(StringUtils.isNotEmpty(description)) { gene.setAttribute("description", description);}
-            gene.setReference("organism", organism);
-            gene.setReference("chromosome", chrId);
+            Item item = null;
+            if (feature_type.equalsIgnoreCase("RNase_MRP_RNA_gene")) {
+                item = createItem("RNaseMRPRNAGene");
+            } else if (feature_type.equalsIgnoreCase("RNase_P_RNA_gene")) {
+                item = createItem("RNasePRNAGene");
+            } else if (feature_type.equalsIgnoreCase("SRP_RNA_gene")) {
+                item = createItem("SRPRNAGene");
+            } else if (feature_type.equalsIgnoreCase("antisense_lncRNA_gene")) {
+                item = createItem("AntisenseLncRNAGene");
+            } else if (feature_type.equalsIgnoreCase("bidirectional_promoter_lncRNA")) {
+                item = createItem("BidirectionalPromoterLncRNA");
+            } else if (feature_type.equalsIgnoreCase("biological_region")) {
+                item = createItem("BiologicalRegion");
+            } else if (feature_type.equalsIgnoreCase("blocked_reading_frame")) {
+                item = createItem("BlockedReadingFrame");
+            } else if (feature_type.equalsIgnoreCase("gene")) {
+                item = createItem("Gene");
+            } else if (feature_type.equalsIgnoreCase("gene_segment")) {
+                item = createItem("GeneSegment");
+            } else if (feature_type.equalsIgnoreCase("heritable_phenotypic_marker")) {
+                item = createItem("HeritablePhenotypicMarker");
+            } else if (feature_type.equalsIgnoreCase("lincRNA_gene")) {
+                item = createItem("LincRNAGene");
+            } else if (feature_type.equalsIgnoreCase("lncRNA_gene")) {
+                item = createItem("LncRNAGene");
+            } else if (feature_type.equalsIgnoreCase("miRNA_gene")) {
+                item = createItem("MiRNAGene");
+            } else if (feature_type.equalsIgnoreCase("ncRNA_gene")) {
+                item = createItem("NcRNAGene");
+            } else if (feature_type.equalsIgnoreCase("piRNA_gene")) {
+                item = createItem("PiRNAGene");
+            } else if (feature_type.equalsIgnoreCase("polymorphic_pseudogene")) {
+                item = createItem("PolymorphicPseudogene");
+            } else if (feature_type.equalsIgnoreCase("polypeptide")) {
+                item = createItem("Polypeptide");
+            } else if (feature_type.equalsIgnoreCase("protein_coding_gene")) {
+                item = createItem("ProteinCodingGene");
+            } else if (feature_type.equalsIgnoreCase("pseudogene")) {
+                item = createItem("Pseudogene");
+            } else if (feature_type.equalsIgnoreCase("pseudogenic_gene_segment")) {
+                item = createItem("PseudogenicGeneSegment");
+            } else if (feature_type.equalsIgnoreCase("rRNA_gene")) {
+                item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("ribozyme_gene")) {
+                item = createItem("RibozymeGene");
+            } else if (feature_type.equalsIgnoreCase("scRNA_gene")) {
+                item = createItem("ScRNAGene");
+            } else if (feature_type.equalsIgnoreCase("sense_intronic_ncRNA_gene")) {
+                item = createItem("SenseIntronicNcRNAGene");
+            } else if (feature_type.equalsIgnoreCase("sense_overlap_ncRNA_gene")) {
+                item = createItem("SenseOverlapNcRNAGene");
+            } else if (feature_type.equalsIgnoreCase("snRNA_gene")) {
+                item = createItem("SnRNAGene");
+            } else if (feature_type.equalsIgnoreCase("snoRNA_gene")) {
+                item = createItem("SnoRNAGene");
+            } else if (feature_type.equalsIgnoreCase("tRNA_gene")) {
+                item = createItem("TRNAGene");
+            } else if (feature_type.equalsIgnoreCase("telomerase_RNA_gene")) {
+                item = createItem("TelomeraseRNAGene");
+            } else if (feature_type.equalsIgnoreCase("transposable_element_gene")) {
+                item = createItem("TransposableElementGene");
+            }
+
+            item.setAttribute("primaryIdentifier", primaryIdentifier);
+            if(StringUtils.isNotEmpty(name)) { item.setAttribute("symbol", name); }
+            if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
+            if(StringUtils.isNotEmpty(description)) { item.setAttribute("description", description);}
+            item.setReference("organism", organism);
+            item.setReference("chromosome", chrId);
             // ~~~ location ~~~
             if(!start.equals("null") || !end.equals("null")) {
-                String locationRefId = getLocation(gene, chrId, start, end, strand);
-                gene.setReference("chromosomeLocation", locationRefId);
+                String locationRefId = getLocation(item, chrId, start, end, strand);
+                item.setReference("chromosomeLocation", locationRefId);
             }
-            genes.put(primaryIdentifier, gene);
+            genes.put(primaryIdentifier, item);
         }
         System.out.println("size of genes:  " + genes.size());
         storeGenes();
