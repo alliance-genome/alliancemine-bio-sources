@@ -9,3 +9,11 @@ include ':bio-source-hpo'
 project(':bio-source-hpo').projectDir = new File(settingsDir, './hpo')
 include ':bio-source-pato'
 project(':bio-source-pato').projectDir = new File(settingsDir, './pato')
+include ':bio-source-go-annotation'
+project(':bio-source-go-annotation').projectDir = new File(settingsDir, './go-annotation')
+include ':bio-source-alliance-orthologs'
+project(':bio-source-alliance-orthologs').projectDir = new File(settingsDir, './alliance-orthologs')
+include ':bio-source-alliance-alleles'
+project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
+include ':bio-source-alliance-expression'
+project(':bio-source-alliance-expression').projectDir = new File(settingsDir, './alliance-expression')

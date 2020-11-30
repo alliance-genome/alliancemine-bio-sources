@@ -250,8 +250,11 @@
     <class name="GeneGroup" extends="SequenceFeature" is-interface="true"/>
     <class name="Homologue" is-interface="true">
         <attribute name="source" type="java.lang.String"/>
-        <attribute name="type" type="java.lang.String"/>
-        <attribute name="bootstrapScore" type="java.lang.Integer"/>
+        <attribute name="algorithms" type="java.lang.String"/>
+        <attribute name="algorithmsMatch" type="java.lang.String"/>
+        <attribute name="algorithmsAttempted" type="java.lang.String"/>
+        <attribute name="isBestScore" type="java.lang.String"/>
+        <attribute name="isBestReverseScore" type="java.lang.String"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="homologues"/>
         <reference name="publication" referenced-type="Publication"/>
         <reference name="homologue" referenced-type="Gene"/>

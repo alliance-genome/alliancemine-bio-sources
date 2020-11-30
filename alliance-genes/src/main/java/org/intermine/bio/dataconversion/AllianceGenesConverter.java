@@ -19,7 +19,6 @@ import org.apache.commons.lang.StringUtils;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
-import org.intermine.metadata.Model;
 import org.intermine.xml.full.Item;
 
 /*
@@ -66,7 +65,6 @@ public class AllianceGenesConverter extends BioFileConverter {
 
             String[] line = (String[]) lineIter.next();
             if(count == 0) { count++; continue;}
-            System.out.println("size of line is " + line.length);
             String primaryIdentifier = line[0].trim();
             String name = line[1];
             String description = line[2].trim();
@@ -86,7 +84,6 @@ public class AllianceGenesConverter extends BioFileConverter {
             // ~~~ MOD and Chromosome ~~~
             String organism = getOrganism(species);
             String chrId = getChromosome(chr, organism);
-            System.out.println("feature_type" + feature_type);
 
             Item item = null;
             if (feature_type.equalsIgnoreCase("RNase_MRP_RNA_gene")) {
