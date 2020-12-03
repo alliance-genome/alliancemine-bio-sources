@@ -66,15 +66,18 @@ public class AllianceGenesConverter extends BioFileConverter {
             String[] line = (String[]) lineIter.next();
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
-            String name = line[1];
-            String description = line[2].trim();
-            String origspecies = line[3].trim();
+            System.out.println("primaryId is ..." + primaryIdentifier);
+            String secondaryIdentifier = line[1].trim();
+            String name = line[2].trim();
+            String description = line[3].trim();
+            String autoDescription = line[4].trim();
+            String origspecies = line[5].trim();
             String species = origspecies.replace("NCBITaxon:","");
-            String chr = line[4].trim();
-            String start = line[5].trim();
-            String end = line[6].trim();
-            String strand = line[7].trim();
-            String feature_type = line[8].trim();
+            String chr = line[6].trim();
+            String start = line[7].trim();
+            String end = line[8].trim();
+            String strand = line[9].trim();
+            String feature_type = line[10].trim();
 
            Item g  = genes.get(primaryIdentifier);
            if (g != null){
@@ -149,9 +152,11 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
 
             item.setAttribute("primaryIdentifier", primaryIdentifier);
+            item.setAttribute("secondaryIdentifier", secondaryIdentifier);
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("symbol", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
-            if(StringUtils.isNotEmpty(description)) { item.setAttribute("description", description);}
+            if(StringUtils.isNotEmpty(description)) { item.setAttribute("briefDescription", description);}
+            if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("description", autoDescription);}
             item.setReference("organism", organism);
             item.setReference("chromosome", chrId);
             // ~~~ location ~~~
