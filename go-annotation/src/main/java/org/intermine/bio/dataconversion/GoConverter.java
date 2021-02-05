@@ -646,7 +646,7 @@ public class GoConverter extends BioFileConverter
             for (int i = 0; i < array.length; i++) {
                 if (array[i].startsWith("PMID:")) {
                     pubMedId = array[i].substring(5);
-                }else if(array[i].startsWith("SGD_REF:")){
+                }else if(array[i].startsWith("SGD_REF:") || codes.startsWith("GO_REF:") || codes.startsWith("MGI_REF:")){
                     otherId = array[i].substring(8);
                 }
             }
@@ -655,7 +655,7 @@ public class GoConverter extends BioFileConverter
                 if (pubRefId == null) {
                     Item item = createItem("Publication");
                     item.setAttribute("pubMedId", pubMedId);
-                    item.setAttribute("pubXrefId", otherId);
+                    if(StringUtils.isNotEmpty(otherId) { item.setAttribute("pubXrefId", otherId); }
                     pubRefId = item.getIdentifier();
                     publications.put(pubMedId, pubRefId);
                     store(item);
@@ -665,7 +665,6 @@ public class GoConverter extends BioFileConverter
         }else {
             if (codes.startsWith("SGD_REF:") || codes.startsWith("GO_REF:") || codes.startsWith("MGI_REF:")) { //lists only SGD_REF
                 String pubMedId = codes.substring(8);
-                //if (StringUtil.allDigits(pubMedId)) {
                 pubRefId = publications.get(pubMedId);
                 if (pubRefId == null) {
                     Item item = createItem("Publication");
