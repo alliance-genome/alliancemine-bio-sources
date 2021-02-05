@@ -655,7 +655,7 @@ public class GoConverter extends BioFileConverter
                 if (pubRefId == null) {
                     Item item = createItem("Publication");
                     item.setAttribute("pubMedId", pubMedId);
-                    if(StringUtils.isNotEmpty(otherId) { item.setAttribute("pubXrefId", otherId); }
+                    if(StringUtils.isNotEmpty(otherId)) { item.setAttribute("pubXrefId", otherId); }
                     pubRefId = item.getIdentifier();
                     publications.put(pubMedId, pubRefId);
                     store(item);
