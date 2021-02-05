@@ -119,6 +119,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             String doId = line[6].trim();
             String relation_type = line[5].trim();
             String withText = line[8].trim();
+            String inferredFrom = line[9].trim();
             String strEvidence = line[11].trim();
             String annotType = "manually curated";
             //String evidence_type = res.getString("evidence_type");
@@ -130,9 +131,8 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             String qualifier = "";
             String annotationExtension = "";
 
-
             if (StringUtils.isNotEmpty(strEvidence)) {
-                storeEvidenceCode(strEvidence, annotType, withText);
+                storeEvidenceCode(strEvidence, inferredFrom, withText);
             } else {
                 throw new IllegalArgumentException("Evidence is a required column but not "
                         + "found for doterm " + doId + " and productId " + productId);
@@ -215,8 +215,8 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                 if (!publicationEvidence.isEmpty()) {
                     goevidence.setCollection("publications", publicationEvidence);
                 }
-                if (!StringUtils.isEmpty(evidence.annotType)) {
-                    goevidence.setAttribute("annotType", evidence.annotType);
+                if (!StringUtils.isEmpty(evidence.inferredFrom)) {
+                    goevidence.setAttribute("inferredFrom", evidence.inferredFrom);
                 }
                 // with objects
 				/*if (!StringUtils.isEmpty(evidence.withText)) {
@@ -407,10 +407,32 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         return doTermIdentifier;
     }
 
-    private void storeEvidenceCode(String code, String annotType, String withText) throws ObjectStoreException {
+    private void storeEvidenceCode(String code, String inferredFrom, String withText) throws ObjectStoreException {
+
+        /*String combinationcode = "";
+        if(withText.isEmpty() && inferredFrom.isEmpty()) {
+            combinationcode = code;
+        }else {
+            if(!withText.isEmpty()){
+                combinationcode = code+":"+withText;
+            }else if(!inferredFrom.isEmpty()) {
+                combinationcode = code + ":"+ inferredFrom;
+            }
+        }
+        if (evidenceCodes.get(combinationcode) == null) {
+            Item item = createItem("DiseaseEvidenceCode");
+            item.setAttribute("code", code);
+            if(StringUtils.isNotEmpty(withText)) item.setAttribute("withText", withText);
+            if(StringUtils.isNotEmpty(inferredFrom)) item.setAttribute("inferredFrom", inferredFrom);
+            store(item);
+            System.out.println("Evidence codes is..." + combinationcode + "   "+ code);
+            evidenceCodes.put(combinationcode, item.getIdentifier());
+        }*/
         if (evidenceCodes.get(code) == null) {
             Item item = createItem("DiseaseEvidenceCode");
             item.setAttribute("code", code);
+            if(StringUtils.isNotEmpty(withText)) item.setAttribute("withText", withText);
+            if(StringUtils.isNotEmpty(inferredFrom)) item.setAttribute("inferredFrom", inferredFrom);
             evidenceCodes.put(code, item.getIdentifier());
             store(item);
         }
@@ -420,8 +442,8 @@ public class AllianceDiseaseConverter extends BioFileConverter {
     private String getDataSourceCodeName(String sourceCode) {
         String title = sourceCode;
         // re-write some codes to better data source names
-       // if ("SGD".equalsIgnoreCase(sourceCode)) {
-            //title = "SGD curated Disease data";
+        // if ("SGD".equalsIgnoreCase(sourceCode)) {
+        //title = "SGD curated Disease data";
         //}
         return title;
     }
@@ -470,18 +492,30 @@ public class AllianceDiseaseConverter extends BioFileConverter {
     private String newPublication(String pubMedId) throws ObjectStoreException {
 
         String pubRefId = null;
+        String pmid = null;
+        String otherId = null;
 
-        if (StringUtil.allDigits(pubMedId)) {
-            pubRefId = publications.get(pubMedId);
+        if (pubMedId.startsWith("PMID:")) {
+            pmid = pubMedId.substring(5);
+        }else{
+            otherId = pubMedId;
+        }
+        if (StringUtil.allDigits(pmid)) {
+            pubRefId = publications.get(pmid);
             if (pubRefId == null) {
                 Item item = createItem("Publication");
-                item.setAttribute("pubMedId", pubMedId);
+                item.setAttribute("pubMedId", pmid);
                 pubRefId = item.getIdentifier();
-                publications.put(pubMedId, pubRefId);
+                publications.put(pmid, pubRefId);
                 store(item);
             }
+        }else if(otherId != null) {
+            Item item = createItem("Publication");
+            item.setAttribute("pubXrefId", otherId);
+            pubRefId = item.getIdentifier();
+            publications.put(pmid, pubRefId);
+            store(item);
         }
-
         return pubRefId;
     }
 
@@ -513,16 +547,16 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         private String evidenceCode = null;
         private Integer storedAnnotationId = null;
         private String withText = null;
-        private String annotType = null;
+        private String inferredFrom = null;
         private Item organism = null;
         private String dataSourceCode = null;
         private String dataSource = null;
 
-        protected Evidence(String evidenceCode, String publicationRefId, String withText, String annotType,
+        protected Evidence(String evidenceCode, String publicationRefId, String withText, String inferredFrom,
                            Item organism, String dataset, String datasource) {
             this.evidenceCode = evidenceCode;
             this.withText = withText;
-            this.annotType = annotType;
+            this.inferredFrom = inferredFrom;
             this.organism = organism;
             this.dataSourceCode = dataset;
             this.dataSource = datasource;
@@ -550,8 +584,8 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         }
 
         @SuppressWarnings("unused")
-        protected String getAnnotType() {
-            return annotType;
+        protected String getInferredFrom() {
+            return inferredFrom;
         }
 
         @SuppressWarnings("unused")
@@ -644,4 +678,3 @@ public class AllianceDiseaseConverter extends BioFileConverter {
     }
 
 }
-

@@ -100,7 +100,7 @@ public class GoConverter extends BioFileConverter
         defaultConfig = new Config(DEFAULT_IDENTIFIER_FIELD, DEFAULT_IDENTIFIER_FIELD,
                 DEFAULT_ANNOTATION_TYPE);
         readConfig();
-        loadEvidenceCodes();
+       // loadEvidenceCodes();
         datasetRefId = setDefaultDataset();
 
     }
@@ -241,13 +241,7 @@ public class GoConverter extends BioFileConverter
     @Override
     public void process(Reader reader) throws ObjectStoreException, IOException {
 
-        // Create id resolver
-        if (rslv == null) {
-            rslv = IdResolverService.getIdResolverForMOD();
-        }
-
         storeDataset();
-
         initialiseMapsForFile();
 
         BufferedReader br = new BufferedReader(reader);
@@ -283,19 +277,15 @@ public class GoConverter extends BioFileConverter
             }
             String goId = array[4];
             String qualifier = array[3];
-            String strEvidence = array[6];
+            String pub = array[5];
+            String sstrEvidence = array[6];
             String withText = array[7];
             String annotationExtension = null;
             if (array.length >= 16) {
                 annotationExtension = array[15];
             }
-            if (StringUtils.isNotEmpty(strEvidence)) {
-                if (!evidenceCodes.containsKey(strEvidence)) {
-                    throw new IllegalArgumentException("Evidence code is `" + strEvidence
-                            + "' which is not in the legal list of evidence codes. Oh no! "
-                            + "Is it new? Add to /resources/go-evidence-codes and try again. And "
-                            + "let InterMiners know so they can update the file too");
-                }
+            if (StringUtils.isNotEmpty(sstrEvidence)) {
+                storeEvidenceCode(sstrEvidence, withText);
             } else {
                 throw new IllegalArgumentException("Evidence is a required column but not "
                         + "found for goterm " + goId + " and productId " + productId);
@@ -304,10 +294,10 @@ public class GoConverter extends BioFileConverter
             String type = config.annotationType;
 
             // create unique key for go annotation
-            GoTermToGene key = new GoTermToGene(productId, goId, qualifier, withText);
+            GoTermToGene key = new GoTermToGene(productId, goId, qualifier, withText,annotationExtension, pub);
 
-//            String dataSourceCode = array[14]; // e.g. GDB, where uniprot collect the data from
-//            String dataSource = array[0]; // e.g. UniProtKB, where the goa file comes from
+           String dataSourceCode = array[14]; // e.g. GDB, where uniprot collect the data from
+           String dataSource = array[0]; // e.g. UniProtKB, where the goa file comes from
             Item organism = newOrganism(taxonId);
             String productIdentifier = newProduct(productId, type, organism, true, null);
 
@@ -315,15 +305,23 @@ public class GoConverter extends BioFileConverter
             if (productIdentifier != null) {
 
                 // null if no pub found
-                String pubRefId = newPublication(array[5]);
+                String pubRefId = newPublication(pub);
 
                 // get evidence codes for this goterm|gene pair
                 Set<Evidence> allEvidenceForAnnotation = goTermGeneToEvidence.get(key);
 
                 // new evidence
+                String strEvidence = "";
+                if(!withText.isEmpty()){
+                    strEvidence = sstrEvidence+":"+withText;
+                }else{
+                    strEvidence = sstrEvidence;
+                }
+
+                // new evidence
                 if (allEvidenceForAnnotation == null || !StringUtils.isEmpty(withText)) {
                     String goTermIdentifier = newGoTerm(goId);
-                    Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism);
+                    Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism, dataSource, dataSourceCode);
                     allEvidenceForAnnotation = new LinkedHashSet<Evidence>();
                     allEvidenceForAnnotation.add(evidence);
                     goTermGeneToEvidence.put(key, allEvidenceForAnnotation);
@@ -344,7 +342,7 @@ public class GoConverter extends BioFileConverter
                         }
                     }
                     if (!seenEvidenceCode) {
-                        Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism);
+                        Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism, dataSource, dataSourceCode);
                         evidence.storedAnnotationId = storedAnnotationId;
                         allEvidenceForAnnotation.add(evidence);
                     }
@@ -386,13 +384,13 @@ public class GoConverter extends BioFileConverter
                 }
 
                 // with objects
-                if (!StringUtils.isEmpty(evidence.withText)) {
+                /*if (!StringUtils.isEmpty(evidence.withText)) {
                     goevidence.setAttribute("withText", evidence.withText);
                     List<String> with = createWithObjects(evidence.withText, evidence.organism);
                     if (!with.isEmpty()) {
                         goevidence.addCollection(new ReferenceList("with", with));
                     }
-                }
+                }*/
 
                 store(goevidence);
                 evidenceRefIds.add(goevidence.getIdentifier());
@@ -515,20 +513,6 @@ public class GoConverter extends BioFileConverter
                 }
             }
 
-            if (rslv != null && rslv.hasTaxon(taxonId)) {
-                if ("10116".equals(taxonId)) { // RGD doesn't have prefix in its annotation data
-                    accession = "RGD:" + accession;
-                }
-                int resCount = rslv.countResolutions(taxonId, accession);
-
-                if (resCount != 1) {
-                    LOG.info("RESOLVER: failed to resolve gene to one identifier, "
-                            + "ignoring gene: " + accession + " count: " + resCount + " ID: "
-                            + rslv.resolveId(taxonId, accession));
-                    return null;
-                }
-                accession = rslv.resolveId(taxonId, accession).iterator().next();
-            }
         } else if ("protein".equalsIgnoreCase(type)) {
             // TODO use values in config
             clsName = "Protein";
@@ -555,13 +539,9 @@ public class GoConverter extends BioFileConverter
         }
         String key = makeProductKey(accession, type, organism, includeOrganism);
 
-        //Have we already seen this product somewhere before?
-        // if so, return the product rather than creating a new one...
         if (productMap.containsKey(key)) {
             return productMap.get(key);
         }
-
-        // if a Dmel gene we need to use FlyBaseIdResolver to find a current id
 
         Item product = createItem(clsName);
         if (organism != null && createOrganism) {
@@ -609,6 +589,24 @@ public class GoConverter extends BioFileConverter
     }
 
 
+    private void storeEvidenceCode(String code, String withText) throws ObjectStoreException {
+
+        String combinationcode = "";
+        if(withText.isEmpty()) {
+            combinationcode = code;
+        }else {
+            combinationcode = code+":"+withText;
+        }
+        if (evidenceCodes.get(combinationcode) == null) {
+            Item item = createItem("GOEvidenceCode");
+            item.setAttribute("code", code);
+            //if(!annotType.isEmpty()) {item.setAttribute("annotType", annotType); }
+            if(!withText.isEmpty()) { item.setAttribute("withText", withText); }
+            store(item);
+            evidenceCodes.put(combinationcode, item.getIdentifier());
+        }
+    }
+
     private String getDataSourceCodeName(String sourceCode) {
         String title = sourceCode;
 
@@ -636,38 +634,60 @@ public class GoConverter extends BioFileConverter
     }
 
     private String newPublication(String codes) throws ObjectStoreException {
+
         String pubRefId = null;
-        String[] array = codes.split("[|]");
-        Set<String> xrefs = new HashSet<String>();
-        Item item = null;
-        for (int i = 0; i < array.length; i++) {
-            if (array[i].startsWith("PMID:")) {
-                String pubMedId = array[i].substring(5);
+
+        if(codes.indexOf("|") != -1) {    //lists both PMID and SGD_REF; it is assumed there will be one publication per line
+
+            String[] array = codes.split("[|]");
+            String pubMedId = "";
+            String otherId = "";
+
+            for (int i = 0; i < array.length; i++) {
+                if (array[i].startsWith("PMID:")) {
+                    pubMedId = array[i].substring(5);
+                }else if(array[i].startsWith("SGD_REF:")){
+                    otherId = array[i].substring(8);
+                }
+            }
+            if (StringUtil.allDigits(pubMedId)) {
+                pubRefId = publications.get(pubMedId);
+                if (pubRefId == null) {
+                    Item item = createItem("Publication");
+                    item.setAttribute("pubMedId", pubMedId);
+                    item.setAttribute("pubXrefId", otherId);
+                    pubRefId = item.getIdentifier();
+                    publications.put(pubMedId, pubRefId);
+                    store(item);
+                }
+            }
+
+        }else {
+            if (codes.startsWith("SGD_REF:") || codes.startsWith("GO_REF:") || codes.startsWith("MGI_REF:")) { //lists only SGD_REF
+                String pubMedId = codes.substring(8);
+                //if (StringUtil.allDigits(pubMedId)) {
+                pubRefId = publications.get(pubMedId);
+                if (pubRefId == null) {
+                    Item item = createItem("Publication");
+                    item.setAttribute("pubXrefId", pubMedId);
+                    pubRefId = item.getIdentifier();
+                    publications.put(pubMedId, pubRefId);
+                    store(item);
+                }
+            }else if (codes.startsWith("PMID:")) {   //lists only PMID
+                String pubMedId = codes.substring(5);
                 if (StringUtil.allDigits(pubMedId)) {
                     pubRefId = publications.get(pubMedId);
                     if (pubRefId == null) {
-                        item = createItem("Publication");
+                        Item item = createItem("Publication");
                         item.setAttribute("pubMedId", pubMedId);
                         pubRefId = item.getIdentifier();
                         publications.put(pubMedId, pubRefId);
-
+                        store(item);
                     }
                 }
-            } else {
-                xrefs.add(array[i]);
             }
-        }
-        ReferenceList refIds = new ReferenceList("crossReferences");
 
-        // PMID may be first or last so we can't process xrefs until we've looked at all IDs
-        if (StringUtils.isNotEmpty(pubRefId)) {
-            for (String xref : xrefs) {
-                refIds.addRefId(createDbReference(xref));
-            }
-        }
-        if (item != null) {
-            item.addCollection(refIds);
-            store(item);
         }
         return pubRefId;
     }
@@ -729,14 +749,18 @@ public class GoConverter extends BioFileConverter
         private Integer storedAnnotationId = null;
         private String withText = null;
         private Item organism = null;
+        private String dataSourceCode = null;
+        private String dataSource = null;
 
         //dataSource, dataSourceCode
 
         protected Evidence(String evidenceCode, String publicationRefId, String withText,
-                           Item organism) {
+                           Item organism, String dataset, String datasource) {
             this.evidenceCode = evidenceCode;
             this.withText = withText;
             this.organism = organism;
+            this.dataSourceCode = dataset;
+            this.dataSource = datasource;
             addPublicationRefId(publicationRefId);
         }
 
@@ -786,12 +810,14 @@ public class GoConverter extends BioFileConverter
      * Identify a GoTerm/geneProduct pair with qualifier
      * used to also use evidence code
      */
-    private class GoTermToGene
-    {
+    private class GoTermToGene {
         private String productId;
         private String goId;
         private String qualifier;
         private String withText;
+        private String annotationExtension;
+        private String pub;
+        private String pubxref;
 
         /**
          * Constructor
@@ -800,11 +826,14 @@ public class GoConverter extends BioFileConverter
          * @param goId      GO term id
          * @param qualifier qualifier
          */
-        GoTermToGene(String productId, String goId, String qualifier, String withText) {
+        GoTermToGene(String productId, String goId, String qualifier, String withText, String annotationExtension, String pub) {
             this.productId = productId;
             this.goId = goId;
             this.qualifier = qualifier;
             this.withText = withText;
+            this.annotationExtension = annotationExtension;
+            this.pub = pub;
+            this.pubxref = pubxref;
         }
 
         /**
@@ -814,10 +843,20 @@ public class GoConverter extends BioFileConverter
         public boolean equals(Object o) {
             if (o instanceof GoTermToGene) {
                 GoTermToGene go = (GoTermToGene) o;
-                return productId.equals(go.productId)
-                        && goId.equals(go.goId)
-                        && qualifier.equals(go.qualifier)
-                        && withText.equals(go.withText);
+                if (annotationExtension == null) {
+                    return productId.equals(go.productId)
+                            && goId.equals(go.goId)
+                            && qualifier.equals(go.qualifier)
+                            && withText.equals(go.withText)
+                            && pub.equals(go.pub);
+                } else {
+                    return productId.equals(go.productId)
+                            && goId.equals(go.goId)
+                            && qualifier.equals(go.qualifier)
+                            && withText.equals(go.withText)
+                            && pub.equals(go.pub)
+                            && annotationExtension.equals(go.annotationExtension);
+                }
             }
             return false;
         }
@@ -827,10 +866,21 @@ public class GoConverter extends BioFileConverter
          */
         @Override
         public int hashCode() {
-            return ((3 * productId.hashCode())
-                    + (5 * goId.hashCode())
-                    + (7 * qualifier.hashCode())
-                    + (11 * withText.hashCode()));
+            if (annotationExtension == null) {
+
+                return ((3 * productId.hashCode())
+                        + (5 * goId.hashCode())
+                        + (7 * qualifier.hashCode())
+                        + (11 * withText.hashCode())
+                        + (13 * pub.hashCode()));
+            } else {
+                return ((3 * productId.hashCode())
+                        + (5 * goId.hashCode())
+                        + (7 * qualifier.hashCode())
+                        + (11 * withText.hashCode())
+                        + (13 * pub.hashCode())
+                        + (15 * annotationExtension.hashCode()));
+            }
         }
 
         /**
@@ -838,6 +888,7 @@ public class GoConverter extends BioFileConverter
          */
         @Override
         public String toString() {
+
             StringBuffer toStringBuff = new StringBuffer();
 
             toStringBuff.append("GoTermToGene - productId:");
@@ -848,6 +899,11 @@ public class GoConverter extends BioFileConverter
             toStringBuff.append(qualifier);
             toStringBuff.append(" withText:");
             toStringBuff.append(withText);
+            toStringBuff.append(" pub:");
+            toStringBuff.append(pub);
+            toStringBuff.append("annotationExtension:");
+            toStringBuff.append(annotationExtension);
+
             return toStringBuff.toString();
         }
     }
