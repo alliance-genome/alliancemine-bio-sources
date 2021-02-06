@@ -145,12 +145,16 @@
     <class name="DiseaseEvidence"  extends="OntologyEvidence" is-interface="true">
         <collection name="with" referenced-type="BioEntity"/>
         <attribute name="withText" type="java.lang.String"/>
+        <attribute name="inferredFrom" type="java.lang.String"/>
         <attribute name="annotType" type="java.lang.String"/>
         <reference name="code" referenced-type="DiseaseEvidenceCode"/>
         <collection name="publications" referenced-type="Publication"/>
     </class>
     <class name="DiseaseEvidenceCode"  extends="OntologyAnnotationEvidenceCode" is-interface="true">
+        <attribute name="withText" type="java.lang.String"/>
+        <attribute name="inferredFrom" type="java.lang.String"/>
         <attribute name="code" type="java.lang.String"/>
+
     </class>
     <class name="ECOTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="HPOTerm" extends="OntologyTerm" is-interface="true"/>
