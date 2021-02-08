@@ -86,6 +86,8 @@ public class AllianceGenesConverter extends BioFileConverter {
                 }else {
                     chr = "chr" + chromosome;
                 }
+            }else{
+                chr = chromosome;
             }
            Item g  = genes.get(primaryIdentifier);
            if (g != null){
