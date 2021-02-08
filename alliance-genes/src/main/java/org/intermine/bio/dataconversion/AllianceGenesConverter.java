@@ -73,12 +73,20 @@ public class AllianceGenesConverter extends BioFileConverter {
             String autoDescription = line[4].trim();
             String origspecies = line[5].trim();
             String species = origspecies.replace("NCBITaxon:","");
-            String chr = line[6].trim();
+            String chromosome = line[6].trim();
             String start = line[7].trim();
             String end = line[8].trim();
             String strand = line[9].trim();
             String feature_type = line[10].trim();
 
+            String chr = "";
+            if(species.equals("NCBITaxon:559292")){
+                if(chromosome.equals("Mito")){
+                    chr = "chrmt";
+                }else {
+                    chr = "chr" + chromosome;
+                }
+            }
            Item g  = genes.get(primaryIdentifier);
            if (g != null){
                System.out.println("Is a duplicate line.." + primaryIdentifier);
