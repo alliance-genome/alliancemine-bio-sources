@@ -80,7 +80,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             String feature_type = line[10].trim();
 
             String chr = "";
-            if(species.equals("NCBITaxon:559292")){
+            if(species.equals("559292")){
                 if(chromosome.equals("Mito")){
                     chr = "chrmt";
                 }else {
