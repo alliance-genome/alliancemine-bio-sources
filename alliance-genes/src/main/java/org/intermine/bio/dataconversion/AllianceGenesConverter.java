@@ -66,7 +66,6 @@ public class AllianceGenesConverter extends BioFileConverter {
             String[] line = (String[]) lineIter.next();
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
-            System.out.println("primaryId is ..." + primaryIdentifier);
             String secondaryIdentifier = line[1].trim();
             String name = line[2].trim();
             String description = line[3].trim();
