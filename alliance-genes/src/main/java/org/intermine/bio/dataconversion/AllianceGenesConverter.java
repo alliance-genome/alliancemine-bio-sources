@@ -161,7 +161,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
 
             item.setAttribute("primaryIdentifier", primaryIdentifier);
-            item.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("symbol", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
             if(StringUtils.isNotEmpty(description)) { item.setAttribute("briefDescription", description);}
