@@ -140,6 +140,14 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("PseudogenicGeneSegment");
             } else if (feature_type.equalsIgnoreCase("rRNA_gene")) {
                 item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("rRNA_18S_gene")) {
+                item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("rRNA_28S_gene")) {
+                item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("rRNA_5S_gene")) {
+                item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("rRNA_5_8S_gene")) {
+                item = createItem("RRNAGene");
             } else if (feature_type.equalsIgnoreCase("ribozyme_gene")) {
                 item = createItem("RibozymeGene");
             } else if (feature_type.equalsIgnoreCase("scRNA_gene")) {
@@ -160,7 +168,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("TransposableElementGene");
             }
 
-            item.setAttribute("primaryIdentifier", primaryIdentifier);
+            if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("symbol", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
