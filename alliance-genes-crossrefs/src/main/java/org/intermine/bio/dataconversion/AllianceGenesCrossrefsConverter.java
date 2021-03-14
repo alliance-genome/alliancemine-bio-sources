@@ -19,10 +19,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 import org.intermine.util.FormattedTextParser;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.io.Reader;
 
 /**
@@ -36,6 +33,7 @@ public class AllianceGenesCrossrefsConverter extends BioFileConverter {
     private static final String DATA_SOURCE_NAME = "Alliance CrossRef data";
     private Map<String, Item> genes = new HashMap();
     private Map<String, Item> organisms = new LinkedHashMap<String, Item>();
+    private Map<String, String> genesCrossrefs = new HashMap();
 
     /**
      * Construct a new AllianceGenesCrossrefsConverter.
@@ -74,28 +72,38 @@ public class AllianceGenesCrossrefsConverter extends BioFileConverter {
             if(taxonId.equalsIgnoreCase("Taxon")){ continue; }
             Item organism = newOrganism(taxonId);
 
-           String refId = getGene(geneId, organism);
-
-            if (refId != null) {
-                getCrossReference(refId, xrefId);
-            }
+           getGene(geneId, organism);
+           genesCrossrefs.put(geneId, xrefId);
 
         }
+
+
+        Set<Map.Entry<String, String>> set = genesCrossrefs.entrySet();
+        java.util.Iterator<Map.Entry<String, String>> it = set.iterator();
+
+        while (it.hasNext()) {
+            Map.Entry<String, String> anEntry = it.next();
+            String geneId = anEntry.getKey();
+            String xrefId = anEntry.getValue();
+            Item gene = genes.get(geneId);;
+            if (gene != null) {
+              getCrossReference(gene.getIdentifier(), xrefId);
+            }
+        }
+
         storeGenes();
 
     }
 
-    private String getGene(String geneId, Item org) throws ObjectStoreException {
+    private void getGene(String geneId, Item org) throws ObjectStoreException {
 
         Item gene = genes.get(geneId);
         if (gene == null) {
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", geneId);
             gene.setReference("organism", org);
-            //store(gene);
             genes.put(geneId, gene);
         }
-        return gene.getIdentifier();
     }
 
     /**
@@ -111,7 +119,7 @@ public class AllianceGenesCrossrefsConverter extends BioFileConverter {
         String type = "";
         if(id.contains(":")) {
             String[] t = id.split(":");
-            type = t[1];
+            type = t[0];
         }else{
             type = id;
         }

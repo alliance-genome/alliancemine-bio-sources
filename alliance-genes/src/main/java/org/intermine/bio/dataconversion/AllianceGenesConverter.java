@@ -208,24 +208,16 @@ public class AllianceGenesConverter extends BioFileConverter {
        String start = value.replace("[","");
        String end = start.replace("]","");
        String[] vals = end.split(",");
-
        for(int i=0; i<vals.length; i++) {
-
-           String refId = synonyms.get(vals[i]);
-           if (refId == null) {
-               Item syn = createItem("Synonym");
-               syn.setReference("subject", subjectId);
-               syn.setAttribute("value", value);
-               refId = syn.getIdentifier();
-               try {
-                   store(syn);
-               } catch (ObjectStoreException e) {
-                   throw new ObjectStoreException(e);
-               }
+           Item syn = createItem("Synonym");
+           syn.setReference("subject", subjectId);
+           if(StringUtils.isNotEmpty(vals[i])) syn.setAttribute("value", vals[i]);
+           try {
+               store(syn);
+           } catch (ObjectStoreException e) {
+               throw new ObjectStoreException(e);
            }
-
        }
-
     }
 
     private String getLocation(Item subject, String chromosomeRefId,
