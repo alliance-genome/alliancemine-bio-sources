@@ -56,7 +56,7 @@ public class AllianceGenesConverter extends BioFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
-       //Id	SecondaryID	Name	Symbol	MOD Description	Auto Description	Species	Chromosome	Start	End	Strand	SoTerm
+       //Id	SecondaryID	CrossRefs Name	Symbol	MOD Description	Auto Description	Species	Chromosome	Start	End	 Strand	  SoTerm
 
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
@@ -67,17 +67,18 @@ public class AllianceGenesConverter extends BioFileConverter {
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
             String synonyms = line[1].trim();
-            String name = line[2].trim();
-            String symbol = line[3].trim();
-            String description = line[4].trim();
-            String autoDescription = line[5].trim();
-            String origspecies = line[6].trim();
+            String crossrefs = line[2].trim();
+            String name = line[3].trim();
+            String symbol = line[4].trim();
+            String description = line[5].trim();
+            String autoDescription = line[6].trim();
+            String origspecies = line[7].trim();
             String species = origspecies.replace("NCBITaxon:","");
-            String chromosome = line[7].trim();
-            String start = line[8].trim();
-            String end = line[9].trim();
-            String strand = line[10].trim();
-            String feature_type = line[11].trim();
+            String chromosome = line[8].trim();
+            String start = line[9].trim();
+            String end = line[10].trim();
+            String strand = line[11].trim();
+            String feature_type = line[12].trim();
 
             String chr = "";
             if(species.equals("559292")){
@@ -188,6 +189,10 @@ public class AllianceGenesConverter extends BioFileConverter {
             if(!synonyms.equals("[]")) {
                 getSynonyms(refId, synonyms);
             }
+            //~~~crossrefs~~~
+            if(!crossrefs.equals("[]")) {
+                getCrossReference(refId, crossrefs);
+            }
             genes.put(primaryIdentifier, item);
         }
         System.out.println("size of genes:  " + genes.size());
@@ -195,6 +200,41 @@ public class AllianceGenesConverter extends BioFileConverter {
 
     }
 
+    /**
+     *
+     * @param subjectId
+     * @param id
+     * @throws ObjectStoreException
+     */
+    private void getCrossReference(String subjectId, String ids)
+            throws ObjectStoreException {
+
+        String start = ids.replace("[","");
+        String end = start.replace("]","");
+        String[] vals = end.split(",");
+        for(int i=0; i<vals.length; i++) {
+
+            String type = "";
+            if(vals[i].contains(":")) {
+                String[] t = vals[i].split(":");
+                type = t[0];
+            }else{
+                type = vals[i];
+            }
+
+            Item crf = createItem("CrossReference");
+            crf.setReference("subject", subjectId);
+            crf.setAttribute("identifier", vals[i]);
+            if(!type.equalsIgnoreCase(vals[i])) { crf.setAttribute("dbxreftype", type);}
+
+            try {
+                store(crf);
+            } catch (ObjectStoreException e) {
+                throw new ObjectStoreException(e);
+            }
+        }
+
+    }
     /**
      * [SGD:L000000542, TEF5, YAL003W, EF-1beta, eEF1Balpha]
      * @param subjectId
