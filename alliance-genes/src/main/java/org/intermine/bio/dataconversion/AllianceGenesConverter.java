@@ -191,7 +191,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
             //~~~crossrefs~~~
             if(!crossrefs.equals("[]")) {
-                getCrossReference(refId, crossrefs);
+                getCrossReference(primaryIdentifier, refId, crossrefs);
             }
             genes.put(primaryIdentifier, item);
         }
@@ -206,12 +206,13 @@ public class AllianceGenesConverter extends BioFileConverter {
      * @param id
      * @throws ObjectStoreException
      */
-    private void getCrossReference(String subjectId, String ids)
+    private void getCrossReference(String Id, String subjectId, String ids)
             throws ObjectStoreException {
 
         String start = ids.replace("[","");
         String end = start.replace("]","");
         String[] vals = end.split(",");
+
         for(int i=0; i<vals.length; i++) {
 
             String type = "";
@@ -221,6 +222,8 @@ public class AllianceGenesConverter extends BioFileConverter {
             }else{
                 type = vals[i];
             }
+
+            if(Id.equalsIgnoreCase(vals[i])){ continue; }
 
             Item crf = createItem("CrossReference");
             crf.setReference("subject", subjectId);
