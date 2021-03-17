@@ -17,5 +17,3 @@ include ':bio-source-alliance-alleles'
 project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
 include ':bio-source-alliance-expression'
 project(':bio-source-alliance-expression').projectDir = new File(settingsDir, './alliance-expression')
-include ':bio-source-alliance-genes-crossrefs'
-project(':bio-source-alliance-genes-crossrefs').projectDir = new File(settingsDir, './alliance-genes-crossrefs')
