@@ -34,8 +34,8 @@ public class AllianceGenesConverter extends BioFileConverter {
     private Map<String, String> plasmids = new HashMap();
     private Map<String, String> sequences = new HashMap();
     private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> synonyms = new HashMap();
-    private Map<String, Item> crossrefs = new HashMap();
+    private Map<Item, String> synonyms = new HashMap();
+    private Map<Item, String> crossrefs = new HashMap();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -240,7 +240,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
             }*/
-            crossrefs.put(vals[i], crf);
+            crossrefs.put(crf, vals[i]);
         }
 
     }
@@ -266,7 +266,7 @@ public class AllianceGenesConverter extends BioFileConverter {
            } catch (ObjectStoreException e) {
                throw new ObjectStoreException(e);
            }*/
-           synonyms.put(vals[i],syn);
+           synonyms.put(syn, vals[i]);
        }
     }
 
@@ -347,7 +347,7 @@ public class AllianceGenesConverter extends BioFileConverter {
      */
 
     private void storeSynonyms() throws ObjectStoreException {
-        for (Item syn : synonyms.values()) {
+        for (Item syn : synonyms.keySet()) {
             try {
                 store(syn);
             } catch (ObjectStoreException e) {
@@ -361,7 +361,7 @@ public class AllianceGenesConverter extends BioFileConverter {
      */
 
     private void storeCrossrefs() throws ObjectStoreException {
-        for (Item cr : crossrefs.values()) {
+        for (Item cr : crossrefs.keySet()) {
             try {
                 store(cr);
             } catch (ObjectStoreException e) {
