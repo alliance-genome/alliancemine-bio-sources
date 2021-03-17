@@ -117,7 +117,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             if( productId.equalsIgnoreCase("RGD:39457950")) { continue; }
             //String symbol = res.getString("gene_name");
             String doId = line[6].trim();
-            String relation_type = line[5].trim();
+            String qualifier = line[5].trim();
             String withText = line[8].trim();
             String inferredFrom = line[9].trim();
             String strEvidence = line[11].trim();
@@ -128,7 +128,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             String created_by = "alliance";
             String dataSourceCode = line[15].trim();
 
-            String qualifier = "";
+            //String qualifier = "";
             String annotationExtension = "";
 
             if (StringUtils.isNotEmpty(strEvidence)) {

@@ -257,7 +257,10 @@ public class GoConverter extends BioFileConverter
                 throw new IllegalArgumentException("Not enough elements (should be > 13 not "
                         + array.length + ") in line: " + line);
             }
-
+            String type = parseTaxonId(array[11]);
+            if(type.equalsIgnoreCase("protein")){
+                continue;
+            }
             String taxonId = parseTaxonId(array[12]);
             Config config = configs.get(taxonId);
             if (config == null) {
@@ -291,7 +294,7 @@ public class GoConverter extends BioFileConverter
                         + "found for goterm " + goId + " and productId " + productId);
             }
 
-            String type = config.annotationType;
+            //String type = config.annotationType;
 
             // create unique key for go annotation
             GoTermToGene key = new GoTermToGene(productId, goId, qualifier, withText,annotationExtension, pub);
@@ -646,8 +649,8 @@ public class GoConverter extends BioFileConverter
             for (int i = 0; i < array.length; i++) {
                 if (array[i].startsWith("PMID:")) {
                     pubMedId = array[i].substring(5);
-                }else if(array[i].startsWith("SGD_REF:") || codes.startsWith("GO_REF:") || codes.startsWith("MGI_REF:")){
-                    otherId = array[i].substring(8);
+                }else{
+                    otherId = array[i]; //.substring(8);
                 }
             }
             if (StringUtil.allDigits(pubMedId)) {
@@ -663,17 +666,7 @@ public class GoConverter extends BioFileConverter
             }
 
         }else {
-            if (codes.startsWith("SGD_REF:") || codes.startsWith("GO_REF:") || codes.startsWith("MGI_REF:")) { //lists only SGD_REF
-                String pubMedId = codes.substring(8);
-                pubRefId = publications.get(pubMedId);
-                if (pubRefId == null) {
-                    Item item = createItem("Publication");
-                    item.setAttribute("pubXrefId", pubMedId);
-                    pubRefId = item.getIdentifier();
-                    publications.put(pubMedId, pubRefId);
-                    store(item);
-                }
-            }else if (codes.startsWith("PMID:")) {   //lists only PMID
+            if (codes.startsWith("PMID:")) {   //lists only PMID
                 String pubMedId = codes.substring(5);
                 if (StringUtil.allDigits(pubMedId)) {
                     pubRefId = publications.get(pubMedId);
@@ -684,6 +677,16 @@ public class GoConverter extends BioFileConverter
                         publications.put(pubMedId, pubRefId);
                         store(item);
                     }
+                }
+            }else { //lists  SGD_REF WB_REF etc
+                String pubMedId = codes; //.substring(8);
+                pubRefId = publications.get(pubMedId);
+                if (pubRefId == null) {
+                    Item item = createItem("Publication");
+                    item.setAttribute("pubXrefId", pubMedId);
+                    pubRefId = item.getIdentifier();
+                    publications.put(pubMedId, pubRefId);
+                    store(item);
                 }
             }
 

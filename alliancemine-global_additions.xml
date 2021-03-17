@@ -689,12 +689,13 @@
         <attribute name="qualifier" type="java.lang.String"/>
         <attribute name="featAttribute" type="java.lang.String"/>
         <reference name="sequenceOntologyTerm" referenced-type="SOTerm"/>
-        <reference name="chromosomeLocation" referenced-type="Location"/>
+        <collection name="chromosomeLocation" referenced-type="Location"/>
         <reference name="sequence" referenced-type="Sequence"/>
-        <reference name="chromosome" referenced-type="Chromosome"/>
+        <collection name="chromosome" referenced-type="Chromosome"/>
         <collection name="overlappingFeatures" referenced-type="SequenceFeature"/>
         <collection name="childFeatures" referenced-type="SequenceFeature"/>
     </class>
+    <class name="ChromosomeBand" extends="SequenceFeature" is-interface="true"></class>
     <class name="SequenceVariant" is-interface="true">
         <collection name="genes" referenced-type="Gene"/>
     </class>

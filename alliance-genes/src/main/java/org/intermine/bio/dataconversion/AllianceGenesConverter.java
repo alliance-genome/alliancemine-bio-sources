@@ -34,13 +34,8 @@ public class AllianceGenesConverter extends BioFileConverter {
     private Map<String, String> plasmids = new HashMap();
     private Map<String, String> sequences = new HashMap();
     private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> locations = new HashMap();
-    private Map<String, Item> organisms = new HashMap();
-    private Map<String, Item> proteins = new HashMap();
-    private Map<String, Item> genesName = new HashMap();
-    private Map<String, String> genesAliases = new HashMap();
-    private Map<String, String> synonyms = new HashMap();
-    private Map<String, Item> publications = new HashMap();
+    private Map<String, Item> synonyms = new HashMap();
+    private Map<String, Item> crossrefs = new HashMap();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -90,14 +85,22 @@ public class AllianceGenesConverter extends BioFileConverter {
             }else{
                 chr = chromosome;
             }
-           Item g  = genes.get(primaryIdentifier);
-           if (g != null){
-               System.out.println("Is a duplicate line.." + primaryIdentifier);
-               continue;
-           }
+
             // ~~~ MOD and Chromosome ~~~
             String organism = getOrganism(species);
             String chrId = getChromosome(chr, organism);
+
+            Item g  = genes.get(primaryIdentifier);
+            if (g != null){
+                System.out.println("Is a duplicate line.." + primaryIdentifier);
+                //continue;
+                g.addToCollection("chromosome", chrId);
+                // ~~~ location ~~~
+                if(!start.equals("null") || !end.equals("null")) {
+                    String locationRefId = getLocation(g, chrId, start, end, strand);
+                    g.addToCollection("chromosomeLocation", locationRefId);
+                }
+            }
 
             Item item = null;
             if (feature_type.equalsIgnoreCase("RNase_MRP_RNA_gene")) {
@@ -172,17 +175,17 @@ public class AllianceGenesConverter extends BioFileConverter {
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             //if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
-            if(StringUtils.isNotEmpty(name)) { item.setAttribute("symbol", symbol); }
+            if(StringUtils.isNotEmpty(symbol)) { item.setAttribute("symbol", symbol); }
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("name", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
             if(StringUtils.isNotEmpty(description)) { item.setAttribute("briefDescription", description);}
             if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("description", autoDescription);}
             item.setReference("organism", organism);
-            item.setReference("chromosome", chrId);
+            item.addToCollection("chromosome", chrId);
             // ~~~ location ~~~
             if(!start.equals("null") || !end.equals("null")) {
                 String locationRefId = getLocation(item, chrId, start, end, strand);
-                item.setReference("chromosomeLocation", locationRefId);
+                item.addToCollection("chromosomeLocation", locationRefId);
             }
             String refId = item.getIdentifier();
             //~~~synonyms~~~
@@ -196,6 +199,8 @@ public class AllianceGenesConverter extends BioFileConverter {
             genes.put(primaryIdentifier, item);
         }
         System.out.println("size of genes:  " + genes.size());
+        storeSynonyms();
+        storeCrossrefs();
         storeGenes();
 
     }
@@ -230,11 +235,12 @@ public class AllianceGenesConverter extends BioFileConverter {
             crf.setAttribute("identifier", vals[i]);
             if(!type.equalsIgnoreCase(vals[i])) { crf.setAttribute("dbxreftype", type);}
 
-            try {
+            /*try {
                 store(crf);
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
-            }
+            }*/
+            crossrefs.put(vals[i], crf);
         }
 
     }
@@ -255,11 +261,12 @@ public class AllianceGenesConverter extends BioFileConverter {
            Item syn = createItem("Synonym");
            syn.setReference("subject", subjectId);
            if(StringUtils.isNotEmpty(vals[i])) syn.setAttribute("value", vals[i]);
-           try {
+           /*try {
                store(syn);
            } catch (ObjectStoreException e) {
                throw new ObjectStoreException(e);
-           }
+           }*/
+           synonyms.put(vals[i],syn);
        }
     }
 
@@ -300,7 +307,6 @@ public class AllianceGenesConverter extends BioFileConverter {
         if (StringUtils.isEmpty(chr)) {
             return null;
         }
-
         String unq = chr+":"+org;
         String chrId  = chromosomes.get(unq);
 
@@ -333,6 +339,35 @@ public class AllianceGenesConverter extends BioFileConverter {
         }
         Integer length = new Integer(b.intValue() - a.intValue());
         return length.toString();
+    }
+
+    /**
+     *
+     * @throws ObjectStoreException
+     */
+
+    private void storeSynonyms() throws ObjectStoreException {
+        for (Item syn : synonyms.values()) {
+            try {
+                store(syn);
+            } catch (ObjectStoreException e) {
+                throw new ObjectStoreException(e);
+            }
+        }
+    }
+    /**
+     *
+     * @throws ObjectStoreException
+     */
+
+    private void storeCrossrefs() throws ObjectStoreException {
+        for (Item cr : crossrefs.values()) {
+            try {
+                store(cr);
+            } catch (ObjectStoreException e) {
+                throw new ObjectStoreException(e);
+            }
+        }
     }
 
 
