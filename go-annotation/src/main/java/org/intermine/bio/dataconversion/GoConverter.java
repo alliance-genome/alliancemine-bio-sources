@@ -257,7 +257,7 @@ public class GoConverter extends BioFileConverter
                 throw new IllegalArgumentException("Not enough elements (should be > 13 not "
                         + array.length + ") in line: " + line);
             }
-            String type = parseTaxonId(array[11]);
+            String type = array[11];
             if(type.equalsIgnoreCase("protein")){
                 continue;
             }
