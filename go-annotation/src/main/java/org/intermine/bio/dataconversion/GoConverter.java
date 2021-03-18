@@ -503,7 +503,8 @@ public class GoConverter extends BioFileConverter
         // find gene attribute first to see if organism should be part of key
         if ("gene".equalsIgnoreCase(type)) {
             clsName = "Gene";
-            String taxonId = organism.getAttribute("taxonId").getValue();
+            idField = "primaryIdentifier";
+            /*String taxonId = organism.getAttribute("taxonId").getValue();
             if (idField == null) {
                 Config config = configs.get(taxonId);
                 if (config == null) {
@@ -514,7 +515,7 @@ public class GoConverter extends BioFileConverter
                     throw new RuntimeException("Could not find a identifier property for taxon: "
                             + taxonId + " check properties file: " + PROP_FILE);
                 }
-            }
+            }*/
 
         } else if ("protein".equalsIgnoreCase(type)) {
             // TODO use values in config
