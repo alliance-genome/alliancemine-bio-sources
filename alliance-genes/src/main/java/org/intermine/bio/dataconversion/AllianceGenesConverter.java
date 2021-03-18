@@ -93,13 +93,13 @@ public class AllianceGenesConverter extends BioFileConverter {
             Item g  = genes.get(primaryIdentifier);
             if (g != null){
                 System.out.println("Is a duplicate line.." + primaryIdentifier);
-                //continue;
                 g.addToCollection("chromosome", chrId);
                 // ~~~ location ~~~
                 if(!start.equals("null") || !end.equals("null")) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
                     g.addToCollection("chromosomeLocation", locationRefId);
                 }
+                continue;
             }
 
             Item item = null;
