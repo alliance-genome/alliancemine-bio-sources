@@ -258,7 +258,7 @@ public class GoConverter extends BioFileConverter
                         + array.length + ") in line: " + line);
             }
             String type = array[11];
-            if(type.equalsIgnoreCase("protein")){
+            if(!type.equalsIgnoreCase("gene")){
                 continue;
             }
             String taxonId = parseTaxonId(array[12]);
