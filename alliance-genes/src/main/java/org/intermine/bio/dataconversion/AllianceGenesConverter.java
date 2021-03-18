@@ -34,6 +34,7 @@ public class AllianceGenesConverter extends BioFileConverter {
     private Map<String, String> plasmids = new HashMap();
     private Map<String, String> sequences = new HashMap();
     private Map<String, Item> genes = new HashMap();
+    private Map <String, String> geneschromosomes = new HashMap();
     private Map<Item, String> synonyms = new HashMap();
     private Map<Item, String> crossrefs = new HashMap();
 
@@ -93,7 +94,10 @@ public class AllianceGenesConverter extends BioFileConverter {
             Item g  = genes.get(primaryIdentifier);
             if (g != null){
                 System.out.println("Is a duplicate line.." + primaryIdentifier);
-                g.addToCollection("chromosome", chrId);
+                String mcm = geneschromosomes.get(primaryIdentifier);
+                if(!mcm.equals(chrId)) {
+                    g.addToCollection("chromosome", mcm);
+                }
                 // ~~~ location ~~~
                 if(!start.equals("null") || !end.equals("null")) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
@@ -197,6 +201,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 getCrossReference(primaryIdentifier, refId, crossrefs);
             }
             genes.put(primaryIdentifier, item);
+            geneschromosomes.put(primaryIdentifier, chrId);
         }
         System.out.println("size of genes:  " + genes.size());
         storeSynonyms();
