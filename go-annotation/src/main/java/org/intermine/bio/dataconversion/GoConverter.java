@@ -272,10 +272,15 @@ public class GoConverter extends BioFileConverter
             int readColumn = config.readColumn();
             String db = array[0];
             String productId = "";
-            if(db.equalsIgnoreCase("WB") || db.equalsIgnoreCase("FB") || db.equalsIgnoreCase("RGD") || db.equalsIgnoreCase("SGD")
-            || db.equalsIgnoreCase("ZFIN")) {
+            if(db.equalsIgnoreCase("WB") || db.equalsIgnoreCase("FB") || db.equalsIgnoreCase("SGD") || db.equalsIgnoreCase("ZFIN")) {
                 productId = db + ":" + array[1];
-            } else {
+            } else if(db.equalsIgnoreCase("RGD")){
+                if(array[1].startsWith("HGNC:")) {
+                    productId = array[1];
+                }else{
+                    productId = db + ":" + array[1];
+                }
+            }else {
                 productId = array[1];
             }
             String goId = array[4];

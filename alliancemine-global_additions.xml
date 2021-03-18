@@ -66,6 +66,8 @@
         <reference name="centromereDNAElementIIs" referenced-type="CentromereDNAElementII" reverse-reference="centromere"/>
     </class>
 
+    <class name="HeritablePhenotypicMarker" extends="SequenceFeature" is-interface="true"> </class>
+
     <class name="CentromereDNAElementI" extends="SequenceFeature" is-interface="true">
         <reference name="centromere" referenced-type="Centromere" reverse-reference="centromereDNAElementIs"/>
     </class>
