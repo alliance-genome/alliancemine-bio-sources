@@ -257,10 +257,7 @@ public class GoConverter extends BioFileConverter
                 throw new IllegalArgumentException("Not enough elements (should be > 13 not "
                         + array.length + ") in line: " + line);
             }
-            String type = array[11];
-            if(!type.equalsIgnoreCase("gene")){
-                continue;
-            }
+
             String taxonId = parseTaxonId(array[12]);
             Config config = configs.get(taxonId);
             if (config == null) {
@@ -299,7 +296,7 @@ public class GoConverter extends BioFileConverter
                         + "found for goterm " + goId + " and productId " + productId);
             }
 
-            //String type = config.annotationType;
+            String type = config.annotationType;
 
             // create unique key for go annotation
             GoTermToGene key = new GoTermToGene(productId, goId, qualifier, withText,annotationExtension, pub);
@@ -500,16 +497,17 @@ public class GoConverter extends BioFileConverter
         return withProductList;
     }
 
-    private String newProduct(String identifier, String type, Item organism, boolean createOrganism,
+    private String newProduct(String identifier, String ptype, Item organism, boolean createOrganism,
                               String field) throws ObjectStoreException {
         String idField = field;
         String accession = identifier;
         String clsName = null;
+        String type = "gene";
         // find gene attribute first to see if organism should be part of key
         if ("gene".equalsIgnoreCase(type)) {
             clsName = "Gene";
             idField = "primaryIdentifier";
-            /*String taxonId = organism.getAttribute("taxonId").getValue();
+            String taxonId = organism.getAttribute("taxonId").getValue();
             if (idField == null) {
                 Config config = configs.get(taxonId);
                 if (config == null) {
@@ -520,7 +518,7 @@ public class GoConverter extends BioFileConverter
                     throw new RuntimeException("Could not find a identifier property for taxon: "
                             + taxonId + " check properties file: " + PROP_FILE);
                 }
-            }*/
+            }
 
         } else if ("protein".equalsIgnoreCase(type)) {
             // TODO use values in config
@@ -740,6 +738,7 @@ public class GoConverter extends BioFileConverter
     }
 
     private String parseTaxonId(String input) {
+
         if ("taxon:".equals(input)) {
             throw new IllegalArgumentException("Invalid taxon id read: " + input);
         }
