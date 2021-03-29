@@ -538,12 +538,8 @@ public class GoConverter extends BioFileConverter
             }
         }
 
-        boolean includeOrganism;
-        if ("primaryIdentifier".equals(idField) || "protein".equals(type)) {
-            includeOrganism = false;
-        } else {
-            includeOrganism = createOrganism;
-        }
+        boolean includeOrganism = false;
+        
         String key = makeProductKey(accession, type, organism, includeOrganism);
 
         if (productMap.containsKey(key)) {
