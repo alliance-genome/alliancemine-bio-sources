@@ -539,7 +539,7 @@ public class GoConverter extends BioFileConverter
         }
 
         boolean includeOrganism = false;
-        
+
         String key = makeProductKey(accession, type, organism, includeOrganism);
 
         if (productMap.containsKey(key)) {

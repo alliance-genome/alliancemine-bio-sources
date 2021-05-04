@@ -265,7 +265,7 @@ public class AllianceGenesConverter extends BioFileConverter {
        for(int i=0; i<vals.length; i++) {
            Item syn = createItem("Synonym");
            syn.setReference("subject", subjectId);
-           if(StringUtils.isNotEmpty(vals[i])) syn.setAttribute("value", vals[i]);
+           if(StringUtils.isNotEmpty(vals[i])) syn.setAttribute("value", vals[i].trim());
            /*try {
                store(syn);
            } catch (ObjectStoreException e) {
