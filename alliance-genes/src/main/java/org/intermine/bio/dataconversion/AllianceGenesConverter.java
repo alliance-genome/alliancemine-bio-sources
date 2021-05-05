@@ -194,6 +194,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             String refId = item.getIdentifier();
             //~~~synonyms~~~
             if(!synonyms.equals("[]")) {
+                System.out.println("Syns.. " + synonyms);
                 getSynonyms(refId, synonyms);
             }
             //~~~crossrefs~~~
@@ -265,7 +266,7 @@ public class AllianceGenesConverter extends BioFileConverter {
        for(int i=0; i<vals.length; i++) {
            Item syn = createItem("Synonym");
            syn.setReference("subject", subjectId);
-           if(StringUtils.isNotEmpty(vals[i])) syn.setAttribute("value", vals[i].trim());
+           if(StringUtils.isNotEmpty(vals[i]) && !vals[i].equals(" ")) syn.setAttribute("value", vals[i].trim());
            /*try {
                store(syn);
            } catch (ObjectStoreException e) {
