@@ -67,19 +67,20 @@ public class AllianceOrthologsConverter extends BioFileConverter {
             String[] line = (String[]) lineIter.next();
             if(count < 17 ) { count++; continue;}
 
-            String gene1id = line[0];
-            String gene2id = line[4];
-            String origspecies1 = line[2].trim();
-            String species1 = origspecies1.replace("NCBITaxon:","");
-            String org1 = getOrganism(species1);
+            String gene1id = line[0].trim();
+            String gene2id = line[4].trim();
+            if(gene1id.equals("MGI:3648653") || gene2id.equals("MGI:3648653")) {continue;}
+            String origspecies1 = line[2].trim().trim();
+            String species1 = origspecies1.replace("NCBITaxon:","").trim();
+            String org1 = getOrganism(species1).trim();
             String origspecies2 = line[6].trim();
-            String species2 = origspecies2.replace("NCBITaxon:","");
-            String org2 = getOrganism(species2);
-            String algorithms = line[8];
-            String matchCount = line[9];
-            String totalCount = line[10];
-            String bestScore = line[11];
-            String revScore = line[12];
+            String species2 = origspecies2.replace("NCBITaxon:","").trim();
+            String org2 = getOrganism(species2).trim();
+            String algorithms = line[8].trim();
+            String matchCount = line[9].trim();
+            String totalCount = line[10].trim();
+            String bestScore = line[11].trim();
+            String revScore = line[12].trim();
 
             processHomologues(gene1id, org1, gene2id, org2, algorithms, matchCount, totalCount, bestScore, revScore);
 
