@@ -65,11 +65,9 @@ public class AllianceOrthologsConverter extends BioFileConverter {
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
-            if(count < 17 ) { count++; continue;}
-
+            if(count < 16 ) { count++; continue;}
             String gene1id = line[0].trim();
             String gene2id = line[4].trim();
-            if(gene1id.equals("MGI:3648653") || gene2id.equals("MGI:3648653")) {continue;}
             String origspecies1 = line[2].trim().trim();
             String species1 = origspecies1.replace("NCBITaxon:","").trim();
             String org1 = getOrganism(species1).trim();
@@ -110,8 +108,6 @@ public class AllianceOrthologsConverter extends BioFileConverter {
         String gene1 = getGene(g1, o1);
         String gene2 = getGene(g2, o2);
 
-        // resolver didn't resolve OR a duplicate
-        // AND genes can be paralogues with themselves so don't duplicate
         if (gene1 == null || gene2 == null || homologuePairs.contains(new MultiKey(gene1, gene2)) || gene1.equals(gene2)) {
             return;
         }
@@ -124,8 +120,7 @@ public class AllianceOrthologsConverter extends BioFileConverter {
         homologue.setAttribute("algorithmsAttempted", total);
         homologue.setAttribute("isBestScore", best);
         homologue.setAttribute("isBestReverseScore", reverse);
-        //store(homologue);
-        homologues.put(gene1, homologue);
+        homologues.put(homologue.getIdentifier(), homologue);
         homologuePairs.add(new MultiKey(gene1, gene2));
     }
 
@@ -140,18 +135,13 @@ public class AllianceOrthologsConverter extends BioFileConverter {
 
         Item gene  = genes.get(g);
         if(gene == null) {
-             gene = createItem("Gene");
+            System.out.println("creating new gene..." + g);
+            gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);
-          /* try {
-                store(gene);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }*/
+            genes.put(g, gene);
         }
-        String geneId = gene.getIdentifier();
-        genes.put(geneId, gene);
-        return geneId;
+        return gene.getIdentifier();
     }
 
 
