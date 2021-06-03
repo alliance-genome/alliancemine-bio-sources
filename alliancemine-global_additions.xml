@@ -1,5 +1,42 @@
 <model name="genomic" package="org.intermine.model.bio">
 
+
+    <class name="Allele" extends="SequenceCollection SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001023">
+        <attribute name="alleleId" type="java.lang.String"/>
+        <attribute name="alleleSymbol" type="java.lang.String"/>
+        <attribute name="category" type="java.lang.String"/>
+        <attribute name="alleleType" type="java.lang.String"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="alleles"/>
+        <reference name="publication" referenced-type="Publication"/>
+        <!--<collection name="synonyms" referenced-type="Synonym"/>-->
+        <collection name="variants" referenced-type="Variant" reverse-reference="allele"/>
+    </class>
+
+    <class name="Variant" extends="SequenceCollection SequenceFeature" is-interface="true">
+        <attribute name="variantId" type="java.lang.String"/>
+        <attribute name="VariantsHgvsNames" type="java.lang.String"/>
+        <attribute name="variantSymbol" type="java.lang.String"/>
+        <attribute name="variantType" type="java.lang.String"/>
+        <reference name="allele" referenced-type="Allele" reverse-reference="variants"/>
+        <reference name="publication" referenced-type="Publication"/>
+        <!--<collection name="synonyms" referenced-type="Synonym"/>-->
+        <!--<collection name="crossreferences" referenced-type="CrossReference" reverse-reference="variant"/>-->
+        <collection name="variantdetails" referenced-type="VariantDetails"/>
+    </class>
+
+    <class name="VariantDetails" extends="SequenceCollection SequenceFeature" is-interface="true">
+        <attribute name="assembly" type="java.lang.String"/>
+        <attribute name="chr" type="java.lang.String"/>
+        <attribute name="chrStartPosition" type="java.lang.String"/>
+        <attribute name="chrEndPosition" type="java.lang.String"/>
+        <attribute name="sequenceOfReference" type="java.lang.String"/>
+        <attribute name="sequenceOfVariant" type="java.lang.String"/>
+        <attribute name="mostSevereConsequenceName" type="java.lang.String"/>
+        <attribute name="variantInformationReference" type="java.lang.String"/>
+        <attribute name="hasDiseaseAnnotations" type="java.lang.String"/>
+        <attribute name="hasPhenotypeAnnotations" type="java.lang.String"/>
+    </class>
+
     <class name="ARS" extends="OriginOfReplication" is-interface="true">
         <attribute name="geneSummary" type="java.lang.String"/>
         <collection name="arsconsensussequences" referenced-type="ARSConsensusSequence" reverse-reference="ars"/>
@@ -112,6 +149,7 @@
         <attribute name="url" type="java.lang.String"/>
         <reference name="source" referenced-type="DataSource"/>
         <reference name="subject" referenced-type="BioEntity" reverse-reference="crossReferences"/>
+        <!--<reference name="variant" referenced-type="BioEntity" reverse-reference="crossReferences"/>-->
     </class>
     <class name="DOTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="DataSet" is-interface="true">
@@ -230,6 +268,7 @@
         <reference name="downstreamIntergenicRegion" referenced-type="IntergenicRegion"/>
         <reference name="plasmid" referenced-type="Plasmid" reverse-reference="genes"/>
         <reference name="plasmidLocation" referenced-type="Location"/>
+        <collection name="alleles" referenced-type="Allele" reverse-reference="gene"/>
         <collection name="complements" referenced-type="Complement" reverse-reference="gene"/>
         <collection name="flankingRegions" referenced-type="GeneFlankingRegion" reverse-reference="gene"/>
         <collection name="introns" referenced-type="Intron" reverse-reference="genes"/>
@@ -708,6 +747,8 @@
     <class name="Synonym" is-interface="true">
         <attribute name="value" type="java.lang.String"/>
         <reference name="subject" referenced-type="BioEntity" reverse-reference="synonyms"/>
+        <!--<reference name="allele" referenced-type="Allele" reverse-reference="synonyms"/>
+        <reference name="variant" referenced-type="Variant" reverse-reference="synonyms"/>-->
         <collection name="dataSets" referenced-type="DataSet"/>
     </class>
     <class name="TFBindingSite" extends="BindingSite RegulatoryRegion" is-interface="true">
