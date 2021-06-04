@@ -94,7 +94,10 @@ public class AllianceAllelesConverter extends BioFileConverter {
             String hasDisease = line[25].trim();
             String hasPhenotype = line[26].trim();
 
-            Item gene = getGene(geneId, org);
+            Item gene = null;
+            if(StringUtils.isNotEmpty(geneId)){
+                gene = getGene(geneId, org);
+            }
             Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, gene);
             processVariants(allele, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
                     chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype);
@@ -125,7 +128,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
             Item allele = alleles.get(alleleId);
 
-            if (gene != null) {
+            //if (gene != null) {
 
                 if (allele == null) {
 
@@ -135,7 +138,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
                     if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
                     //if (StringUtils.isNotEmpty(alleleSynonym)) allele.setAttribute("alleleSynonym", alleleSynonym);
                     if (StringUtils.isNotEmpty(alleleType)) allele.setAttribute("alleleType", alleleType);
-                    String refId = allele.getIdentifier();
+                    //String refId = allele.getIdentifier();
 
                     /*if(pmrefNo != null ) {
                         Item publication = publications.get(pmrefNo);
@@ -146,14 +149,17 @@ public class AllianceAllelesConverter extends BioFileConverter {
                         }
                         allele.addToCollection("publications", publication);
                     }*/
-                    allele.setReference("gene", gene);
+                    if(gene != null) {
+                        allele.setReference("gene", gene);
+                        gene.addToCollection("alleles", allele);
+                    }
                     alleles.put(alleleId, allele);
                     alleleNames.put(alleleId, allele);
 
                 } //allele
-                gene.addToCollection("alleles", allele);
 
-            }//gene
+
+            //}//gene
 
            return allele;
     }
