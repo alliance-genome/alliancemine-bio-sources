@@ -64,7 +64,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
-            //if(count < 14 ) { count++; continue;}
+            if(count < 15 ) { count++; continue;}
             //allele information
             String origspecies1 = line[0].trim().trim();
             String species = origspecies1.replace("NCBITaxon:","").trim();
