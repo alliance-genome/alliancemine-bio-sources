@@ -99,8 +99,9 @@ public class AllianceAllelesConverter extends BioFileConverter {
                 gene = getGene(geneId, org);
             }
             Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, gene);
-            processVariants(allele, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
+            Item var = processVariants(variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
                     chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype);
+            allele.addToCollection("variants", var.getIdentifier());
 
         }
         System.out.println("size of alleles:  " + alleles.size());
@@ -177,12 +178,12 @@ public class AllianceAllelesConverter extends BioFileConverter {
      * @param reverse
      * @throws ObjectStoreException
      */
-    private void processVariants(Item allele, String variantId, String variantSymbol, String variantSynonym, String variantCrossRefs,
+    private Item processVariants(String variantId, String variantSymbol, String variantSynonym, String variantCrossRefs,
                                  String variantHgvsName, String variantType, String assembly, String chr,
                                  String chrStart, String chrEnd, String seqRef, String seqVariant, String mostSevere, String variantReference, String hasDisease, String hasPhenotype)
             throws ObjectStoreException {
 
-        if (allele != null) {
+        //if (allele != null) {
 
             Item variant = createItem("Variant");
             if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
@@ -203,6 +204,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
             if (StringUtils.isNotEmpty(variantReference)) variantdetail.setAttribute("variantInformationReference", variantReference);
             if (StringUtils.isNotEmpty(hasDisease)) variantdetail.setAttribute("hasDiseaseAnnotations", hasDisease);
             if (StringUtils.isNotEmpty(hasPhenotype)) variantdetail.setAttribute("hasPhenotypeAnnotations", hasPhenotype);
+
             variant.addToCollection("variantdetails", variantdetail);
 
             try {
@@ -220,11 +222,11 @@ public class AllianceAllelesConverter extends BioFileConverter {
                 }
                 allele.addToCollection("publications", publication);
             }*/
-            allele.addToCollection("variants", variant.getIdentifier());
+            //allele.addToCollection("variants", variant.getIdentifier());
             variants.put(variantId, variant);
-            variantdetails.put(variantId, variantdetail);
-        }
-
+            //variantdetails.put(variantId, variantdetail);
+        //}
+        return variant;
     }
 
     /**
@@ -238,7 +240,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
         Item gene  = genes.get(g);
         if(gene == null) {
-            System.out.println("creating new gene..." + g);
+            System.out.println("creating new  ..." + g);
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);
