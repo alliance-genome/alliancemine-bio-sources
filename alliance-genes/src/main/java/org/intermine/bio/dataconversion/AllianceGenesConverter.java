@@ -105,7 +105,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 }
                 continue;
             }
-
+            System.out.println("FT is..." + feature_type);
             Item item = null;
             if (feature_type.equalsIgnoreCase("RNase_MRP_RNA_gene")) {
                 item = createItem("RNaseMRPRNAGene");
@@ -175,6 +175,8 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("TelomeraseRNAGene");
             } else if (feature_type.equalsIgnoreCase("transposable_element_gene")) {
                 item = createItem("TransposableElementGene");
+            }else if (feature_type.equalsIgnoreCase("non_transcribed_region")) {
+                item = createItem("NonTranscribedRegion");
             }
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
