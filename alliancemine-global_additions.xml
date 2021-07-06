@@ -730,9 +730,9 @@
         <attribute name="qualifier" type="java.lang.String"/>
         <attribute name="featAttribute" type="java.lang.String"/>
         <reference name="sequenceOntologyTerm" referenced-type="SOTerm"/>
-        <collection name="chromosomeLocation" referenced-type="Location"/>
+        <reference name="chromosomeLocation" referenced-type="Location"/>
         <reference name="sequence" referenced-type="Sequence"/>
-        <collection name="chromosome" referenced-type="Chromosome"/>
+        <reference name="chromosome" referenced-type="Chromosome"/>
         <collection name="overlappingFeatures" referenced-type="SequenceFeature"/>
         <collection name="childFeatures" referenced-type="SequenceFeature"/>
     </class>
