@@ -105,7 +105,6 @@ public class AllianceGenesConverter extends BioFileConverter {
                 }
                 continue;
             }
-            System.out.println("FT is..." + feature_type);
             Item item = null;
             if (feature_type.equalsIgnoreCase("RNase_MRP_RNA_gene")) {
                 item = createItem("RNaseMRPRNAGene");
@@ -187,16 +186,15 @@ public class AllianceGenesConverter extends BioFileConverter {
             if(StringUtils.isNotEmpty(description)) { item.setAttribute("briefDescription", description);}
             if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("description", autoDescription);}
             item.setReference("organism", organism);
-            item.addToCollection("chromosome", chrId);
+            item.setReference("chromosome", chrId);
             // ~~~ location ~~~
             if(!start.equals("null") || !end.equals("null")) {
                 String locationRefId = getLocation(item, chrId, start, end, strand);
-                item.addToCollection("chromosomeLocation", locationRefId);
+                item.setReference("chromosomeLocation", locationRefId);
             }
             String refId = item.getIdentifier();
             //~~~synonyms~~~
             if(!synonyms.equals("[]")) {
-                System.out.println("Syns.. " + synonyms);
                 getSynonyms(refId, synonyms);
             }
             //~~~crossrefs~~~
