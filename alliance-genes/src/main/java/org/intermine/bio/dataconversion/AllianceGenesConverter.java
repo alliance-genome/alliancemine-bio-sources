@@ -96,12 +96,12 @@ public class AllianceGenesConverter extends BioFileConverter {
                 System.out.println("Is a duplicate line.." + primaryIdentifier);
                 String mcm = geneschromosomes.get(primaryIdentifier);
                 if(!mcm.equals(chrId)) {
-                    g.addToCollection("chromosome", mcm);
+                    g.setReference("chromosome", mcm);
                 }
                 // ~~~ location ~~~
                 if(!start.equals("null") || !end.equals("null")) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
-                    g.addToCollection("chromosomeLocation", locationRefId);
+                    g.setReference("chromosomeLocation", locationRefId);
                 }
                 continue;
             }
