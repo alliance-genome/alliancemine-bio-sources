@@ -62,19 +62,20 @@ public class AllianceGenesConverter extends BioFileConverter {
             String[] line = (String[]) lineIter.next();
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
-            String synonyms = line[1].trim();
-            String crossrefs = line[2].trim();
-            String name = line[3].trim();
-            String symbol = line[4].trim();
-            String description = line[5].trim();
-            String autoDescription = line[6].trim();
-            String origspecies = line[7].trim();
+            String secondaryIdentifier = line[1].trim();
+            String synonyms = line[2].trim();
+            String crossrefs = line[3].trim();
+            String name = line[4].trim();
+            String symbol = line[5].trim();
+            String description = line[6].trim();
+            String autoDescription = line[7].trim();
+            String origspecies = line[8].trim();
             String species = origspecies.replace("NCBITaxon:","");
-            String chromosome = line[8].trim();
-            String start = line[9].trim();
-            String end = line[10].trim();
-            String strand = line[11].trim();
-            String feature_type = line[12].trim();
+            String chromosome = line[9].trim();
+            String start = line[10].trim();
+            String end = line[11].trim();
+            String strand = line[12].trim();
+            String feature_type = line[13].trim();
 
             String chr = "";
             if(species.equals("559292")){
@@ -179,7 +180,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
-            //if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
+            if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
             if(StringUtils.isNotEmpty(symbol)) { item.setAttribute("symbol", symbol); }
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("name", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
