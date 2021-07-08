@@ -37,9 +37,10 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
     /**
      * Construct a new AllianceGenesConverter.
+     *
      * @param database the database to read from
-     * @param model the Model used by the object store we will write to with the ItemWriter
-     * @param writer an ItemWriter used to handle Items created
+     * @param model    the Model used by the object store we will write to with the ItemWriter
+     * @param writer   an ItemWriter used to handle Items created
      */
     public AllianceAllelesConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
@@ -48,7 +49,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
     /**
      * {@inheritDoc}
      */
-    public void process(Reader reader) throws Exception, ObjectStoreException{
+    public void process(Reader reader) throws Exception, ObjectStoreException {
 
         /*Taxon	SpeciesName	AlleleId	AlleleSymbol	AlleleSynonyms
         VariantId	VariantSymbol	VariantSynonyms	VariantCrossReferences
@@ -64,10 +65,13 @@ public class AllianceAllelesConverter extends BioFileConverter {
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
-            if(count < 15 ) { count++; continue;}
+            if (count < 15) {
+                count++;
+                continue;
+            }
             //allele information
             String origspecies1 = line[0].trim().trim();
-            String species = origspecies1.replace("NCBITaxon:","").trim();
+            String species = origspecies1.replace("NCBITaxon:", "").trim();
             String org = getOrganism(species).trim();
             String alleleId = line[2].trim();
             String alleleSymbol = line[3].trim();
@@ -95,24 +99,24 @@ public class AllianceAllelesConverter extends BioFileConverter {
             String hasPhenotype = line[26].trim();
 
             Item gene = null;
-            if(StringUtils.isNotEmpty(geneId)){
+            if (StringUtils.isNotEmpty(geneId)) {
                 gene = getGene(geneId, org);
             }
-            Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, gene);
-            Item var = processVariants(variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
+            Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
                     chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype);
-            allele.addToCollection("variants", var.getIdentifier());
-
+            if (gene != null) {
+                allele.setReference("gene", gene);
+                gene.addToCollection("alleles", allele);
+            }
         }
         System.out.println("size of alleles:  " + alleles.size());
-        storeGenes();
-        storeAlleles();
-        storeVariants();
 
+        storeVariants();
+        storeAlleles();
+        storeGenes();
     }
 
     /**
-     *
      * @param g1
      * @param s1
      * @param g2
@@ -124,22 +128,23 @@ public class AllianceAllelesConverter extends BioFileConverter {
      * @param reverse
      * @throws ObjectStoreException
      */
-    private Item processAlleles(String alleleId, String alleleSymbol, String alleleSynonym, String alleleType, Item gene)
+    private Item processAlleles(String alleleId, String alleleSymbol, String alleleSynonym, String alleleType, String variantId, String variantSymbol, String variantSynonym, String variantCrossRefs,
+                                String variantHgvsName, String variantType, String assembly, String chr,
+                                String chrStart, String chrEnd, String seqRef, String seqVariant, String mostSevere,
+                                String variantReference, String hasDisease, String hasPhenotype)
             throws ObjectStoreException {
 
-            Item allele = alleles.get(alleleId);
+        Item allele = alleles.get(alleleId);
 
-            //if (gene != null) {
+        if (allele == null) {
 
-                if (allele == null) {
-
-                    allele = createItem("Allele");
-                    allele.setAttribute("featureType", "Allele");
-                    if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("alleleId", alleleId);
-                    if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
-                    //if (StringUtils.isNotEmpty(alleleSynonym)) allele.setAttribute("alleleSynonym", alleleSynonym);
-                    if (StringUtils.isNotEmpty(alleleType)) allele.setAttribute("alleleType", alleleType);
-                    //String refId = allele.getIdentifier();
+            allele = createItem("Allele");
+            allele.setAttribute("featureType", "Allele");
+            if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("alleleId", alleleId);
+            if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
+            //if (StringUtils.isNotEmpty(alleleSynonym)) allele.setAttribute("alleleSynonym", alleleSynonym);
+            if (StringUtils.isNotEmpty(alleleType)) allele.setAttribute("alleleType", alleleType);
+            //String refId = allele.getIdentifier();
 
                     /*if(pmrefNo != null ) {
                         Item publication = publications.get(pmrefNo);
@@ -149,70 +154,42 @@ public class AllianceAllelesConverter extends BioFileConverter {
                             publications.put(pmrefNo, publication);
                         }
                         allele.addToCollection("publications", publication);
-                    }*/
+                    }
                     if(gene != null) {
                         allele.setReference("gene", gene);
                         gene.addToCollection("alleles", allele);
-                    }
-                    alleles.put(alleleId, allele);
-                    alleleNames.put(alleleId, allele);
+                    }*/
+            alleles.put(alleleId, allele);
+            alleleNames.put(alleleId, allele);
 
-                } //allele
+        Item variant = createItem("Variant");
+        if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
+        if (StringUtils.isNotEmpty(variantSymbol)) variant.setAttribute("variantSymbol", variantSymbol);
+        //if (StringUtils.isNotEmpty(variantSynonym)) variant.setAttribute("variantSynonym", variantSynonym);
+        //if (StringUtils.isNotEmpty(variantCrossRefs)) variant.setAttribute("variantCrossRefs", variantCrossRefs);
+        if (StringUtils.isNotEmpty(variantHgvsName)) variant.setAttribute("VariantsHgvsNames", variantHgvsName);
+        if (StringUtils.isNotEmpty(variantType)) variant.setAttribute("variantType", variantType);
 
+        Item variantdetail = createItem("VariantDetails");
+        if (StringUtils.isNotEmpty(assembly)) variantdetail.setAttribute("assembly", assembly);
+        if (StringUtils.isNotEmpty(chr)) variantdetail.setAttribute("chr", chr);
+        if (StringUtils.isNotEmpty(chrStart)) variantdetail.setAttribute("chrStartPosition", chrStart);
+        if (StringUtils.isNotEmpty(chrEnd)) variantdetail.setAttribute("chrEndPosition", chrEnd);
+        if (StringUtils.isNotEmpty(seqRef)) variantdetail.setAttribute("sequenceOfReference", seqRef);
+        if (StringUtils.isNotEmpty(seqVariant)) variantdetail.setAttribute("sequenceOfVariant", seqVariant);
+        if (StringUtils.isNotEmpty(mostSevere)) variantdetail.setAttribute("mostSevereConsequenceName", mostSevere);
+        if (StringUtils.isNotEmpty(variantReference)) variantdetail.setAttribute("variantInformationReference", variantReference);
+        if (StringUtils.isNotEmpty(hasDisease)) variantdetail.setAttribute("hasDiseaseAnnotations", hasDisease);
+        if (StringUtils.isNotEmpty(hasPhenotype)) variantdetail.setAttribute("hasPhenotypeAnnotations", hasPhenotype);
 
-            //}//gene
+        variant.addToCollection("variantdetails", variantdetail);
+        variant.setReference("allele", allele);  //<---missed and wasted many hours!!??!!??!!
 
-           return allele;
-    }
-
-    /**
-     *
-     * @param g1
-     * @param s1
-     * @param g2
-     * @param s2
-     * @param algorithm
-     * @param match
-     * @param total
-     * @param best
-     * @param reverse
-     * @throws ObjectStoreException
-     */
-    private Item processVariants(String variantId, String variantSymbol, String variantSynonym, String variantCrossRefs,
-                                 String variantHgvsName, String variantType, String assembly, String chr,
-                                 String chrStart, String chrEnd, String seqRef, String seqVariant, String mostSevere, String variantReference, String hasDisease, String hasPhenotype)
-            throws ObjectStoreException {
-
-        //if (allele != null) {
-
-            Item variant = createItem("Variant");
-            if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
-            if (StringUtils.isNotEmpty(variantSymbol)) variant.setAttribute("variantSymbol", variantSymbol);
-            //if (StringUtils.isNotEmpty(variantSynonym)) variant.setAttribute("variantSynonym", variantSynonym);
-            //if (StringUtils.isNotEmpty(variantCrossRefs)) variant.setAttribute("variantCrossRefs", variantCrossRefs);
-            if (StringUtils.isNotEmpty(variantHgvsName)) variant.setAttribute("VariantsHgvsNames", variantHgvsName);
-            if (StringUtils.isNotEmpty(variantType)) variant.setAttribute("variantType", variantType);
-
-            Item variantdetail = createItem("VariantDetails");
-            if (StringUtils.isNotEmpty(assembly)) variantdetail.setAttribute("assembly", assembly);
-            if (StringUtils.isNotEmpty(chr)) variantdetail.setAttribute("chr", chr);
-            if (StringUtils.isNotEmpty(chrStart)) variantdetail.setAttribute("chrStartPosition", chrStart);
-            if (StringUtils.isNotEmpty(chrEnd)) variantdetail.setAttribute("chrEndPosition", chrEnd);
-            if (StringUtils.isNotEmpty(seqRef)) variantdetail.setAttribute("sequenceOfReference", seqRef);
-            if (StringUtils.isNotEmpty(seqVariant)) variantdetail.setAttribute("sequenceOfVariant", seqVariant);
-            if (StringUtils.isNotEmpty(mostSevere)) variantdetail.setAttribute("mostSevereConsequenceName", mostSevere);
-            if (StringUtils.isNotEmpty(variantReference)) variantdetail.setAttribute("variantInformationReference", variantReference);
-            if (StringUtils.isNotEmpty(hasDisease)) variantdetail.setAttribute("hasDiseaseAnnotations", hasDisease);
-            if (StringUtils.isNotEmpty(hasPhenotype)) variantdetail.setAttribute("hasPhenotypeAnnotations", hasPhenotype);
-
-            variant.addToCollection("variantdetails", variantdetail);
-
-            try {
-                store(variantdetail);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-
+        try {
+            store(variantdetail);
+        } catch (ObjectStoreException e) {
+            throw new ObjectStoreException(e);
+        }
             /*if(pmrefNo != null ) {
                 Item publication = publications.get(pmrefNo);
                 if (publication == null) {
@@ -222,11 +199,10 @@ public class AllianceAllelesConverter extends BioFileConverter {
                 }
                 allele.addToCollection("publications", publication);
             }*/
-            //allele.addToCollection("variants", variant.getIdentifier());
-            variants.put(variantId, variant);
-            //variantdetails.put(variantId, variantdetail);
-        //}
-        return variant;
+        allele.addToCollection("variants", variant);
+        variants.put(variantId, variant);
+        } //allele
+        return allele;
     }
 
     /**
