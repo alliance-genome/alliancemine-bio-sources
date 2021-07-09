@@ -26,7 +26,7 @@ import org.apache.commons.lang.StringUtils;
  */
 public class AllianceAllelesConverter extends BioFileConverter {
 
-    private static final String DATASET_TITLE = "Alliance Orthologs data set";
+    private static final String DATASET_TITLE = "Alliance Alleles data set";
     private static final String DATA_SOURCE_NAME = "DiOPT";
     private String licence;
     private Map<String, Item> genes = new HashMap();
