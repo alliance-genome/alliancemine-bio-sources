@@ -744,6 +744,7 @@
     <class name="SmallMolecule" extends="BioEntity" is-interface="true"/>
     <class name="SnRNAGene" extends="NcRNAGene" is-interface="true"/>
     <class name="SnoRNAGene" extends="NcRNAGene" is-interface="true"/>
+    <class name="ScaRNAGene" extends="NcRNAGene" is-interface="true"/>
     <class name="Synonym" is-interface="true">
         <attribute name="value" type="java.lang.String"/>
         <reference name="subject" referenced-type="BioEntity" reverse-reference="synonyms"/>

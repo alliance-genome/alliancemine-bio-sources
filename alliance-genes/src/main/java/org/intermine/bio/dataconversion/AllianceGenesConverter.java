@@ -77,6 +77,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             String strand = line[12].trim();
             String feature_type = line[13].trim();
 
+            System.out.println("FT...." + feature_type);
             String chr = "";
             if(species.equals("559292")){
                 if(chromosome.equals("Mito")){
@@ -169,7 +170,9 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("SnRNAGene");
             } else if (feature_type.equalsIgnoreCase("snoRNA_gene")) {
                 item = createItem("SnoRNAGene");
-            } else if (feature_type.equalsIgnoreCase("tRNA_gene")) {
+            } else if (feature_type.equalsIgnoreCase("scaRNA")) {
+                item = createItem("ScaRNAGene");
+            }else if (feature_type.equalsIgnoreCase("tRNA_gene")) {
                 item = createItem("TRNAGene");
             } else if (feature_type.equalsIgnoreCase("telomerase_RNA_gene")) {
                 item = createItem("TelomeraseRNAGene");
