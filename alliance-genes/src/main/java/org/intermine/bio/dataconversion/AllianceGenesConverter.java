@@ -201,7 +201,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("Antisense");
             }
 
-            if(item == null) { System.out.println("null FT..." + feature_type); }
+            if(item == null) { System.out.println("null FT..." + feature_type); continue;}
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
