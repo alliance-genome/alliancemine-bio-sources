@@ -77,7 +77,6 @@ public class AllianceGenesConverter extends BioFileConverter {
             String strand = line[12].trim();
             String feature_type = line[13].trim();
 
-            System.out.println("FT...." + feature_type);
             String chr = "";
             if(species.equals("559292")){
                 if(chromosome.equals("Mito")){
@@ -154,9 +153,11 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("ProcessedPseudogene");
             } else if (feature_type.equalsIgnoreCase("transcribed_processed_pseudogene")) {
                 item = createItem("TranscribedProcessedPseudogene");
-            } else if (feature_type.equalsIgnoreCase("transcribed_unprocessed_pseudogene")) {
+            }
+            /*else if (feature_type.equalsIgnoreCase("transcribed_unprocessed_pseudogene")) {
                 item = createItem("TranscribedUnprocessedPseudogene");
-            } else if (feature_type.equalsIgnoreCase("non_processed_pseudogene")) {
+            }*/
+            else if (feature_type.equalsIgnoreCase("non_processed_pseudogene")) {
                 item = createItem("NonProcessedPseudogene");
             } else if (feature_type.equalsIgnoreCase("pseudogenic_gene_segment")) {
                 item = createItem("PseudogenicGeneSegment");
@@ -200,6 +201,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("Antisense");
             }
 
+            if(item == null) { System.out.println("null FT..." + feature_type); }
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
