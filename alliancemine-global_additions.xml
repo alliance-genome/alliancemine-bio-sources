@@ -110,9 +110,9 @@
 
     <class name="TranscribedProcessedPseudogene" extends="Gene"  is-interface="true"> </class>
 
-    <class name="TranscribedUnprocessedPseudogene" extends="Gene" is-interface="true"> </class>
+     <class name="TranscribedUnprocessedPseudogene" extends="Gene" is-interface="true"> </class>
 
-    <class name="NonProcessedPseudogene" extends="Gene" is-interface="true"> </class>
+     <class name="NonProcessedPseudogene" extends="Gene" is-interface="true"> </class>
 
     <class name="CentromereDNAElementI" extends="SequenceFeature" is-interface="true">
         <reference name="centromere" referenced-type="Centromere" reverse-reference="centromereDNAElementIs"/>
