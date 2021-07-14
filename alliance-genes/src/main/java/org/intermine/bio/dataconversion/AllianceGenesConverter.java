@@ -180,6 +180,8 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("TransposableElementGene");
             }else if (feature_type.equalsIgnoreCase("non_transcribed_region")) {
                 item = createItem("NonTranscribedRegion");
+            } else if (feature_type.equalsIgnoreCase("unconfirmed_transcript")) {
+                item = createItem("UnconfirmedTranscript");
             }
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
