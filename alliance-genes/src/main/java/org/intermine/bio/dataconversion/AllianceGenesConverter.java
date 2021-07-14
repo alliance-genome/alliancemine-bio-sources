@@ -134,7 +134,11 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("LncRNAGene");
             } else if (feature_type.equalsIgnoreCase("miRNA_gene")) {
                 item = createItem("MiRNAGene");
-            } else if (feature_type.equalsIgnoreCase("ncRNA_gene")) {
+            } else if (feature_type.equalsIgnoreCase("mt_rRNA")) {
+                item = createItem("MtRRNA");
+            } else if (feature_type.equalsIgnoreCase("mt_tRNA")) {
+                item = createItem("MtTRNA");
+            }else if (feature_type.equalsIgnoreCase("ncRNA_gene")) {
                 item = createItem("NcRNAGene");
             } else if (feature_type.equalsIgnoreCase("piRNA_gene")) {
                 item = createItem("PiRNAGene");
@@ -146,6 +150,14 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("ProteinCodingGene");
             } else if (feature_type.equalsIgnoreCase("pseudogene")) {
                 item = createItem("Pseudogene");
+            } else if (feature_type.equalsIgnoreCase("processed_pseudogene")) {
+                item = createItem("ProcessedPseudogene");
+            } else if (feature_type.equalsIgnoreCase("transcribed_processed_pseudogene")) {
+                item = createItem("TranscribedProcessedPseudogene");
+            } else if (feature_type.equalsIgnoreCase("transcribed_unprocessed_pseudogene")) {
+                item = createItem("TranscribedUnprocessedPseudogene");
+            } else if (feature_type.equalsIgnoreCase("non_processed_pseudogene")) {
+                item = createItem("NonProcessedPseudogene");
             } else if (feature_type.equalsIgnoreCase("pseudogenic_gene_segment")) {
                 item = createItem("PseudogenicGeneSegment");
             } else if (feature_type.equalsIgnoreCase("rRNA_gene")) {
@@ -172,17 +184,22 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("SnoRNAGene");
             } else if (feature_type.equalsIgnoreCase("scaRNA")) {
                 item = createItem("ScaRNAGene");
-            }else if (feature_type.equalsIgnoreCase("tRNA_gene")) {
+            } else if (feature_type.equalsIgnoreCase("tRNA_gene")) {
                 item = createItem("TRNAGene");
             } else if (feature_type.equalsIgnoreCase("telomerase_RNA_gene")) {
                 item = createItem("TelomeraseRNAGene");
             } else if (feature_type.equalsIgnoreCase("transposable_element_gene")) {
                 item = createItem("TransposableElementGene");
-            }else if (feature_type.equalsIgnoreCase("non_transcribed_region")) {
+            } else if (feature_type.equalsIgnoreCase("non_transcribed_region")) {
                 item = createItem("NonTranscribedRegion");
             } else if (feature_type.equalsIgnoreCase("unconfirmed_transcript")) {
                 item = createItem("UnconfirmedTranscript");
+            } else if (feature_type.equalsIgnoreCase("processed_transcript")) {
+                item = createItem("ProcessedTranscript");
+            } else if (feature_type.equalsIgnoreCase("antisense")) {
+                item = createItem("Antisense");
             }
+
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
