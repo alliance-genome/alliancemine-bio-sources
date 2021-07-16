@@ -83,16 +83,13 @@ public class AllianceAllelesConverter extends BioFileConverter {
             String geneId = line[9].trim();
             String alleleType = line[13].trim();
             String variantType = line[15].trim();
-
             String variantHgvsName = line[16].trim();
-
             String assembly = line[17].trim();
             String chr = line[18].trim();
             String chrStart = line[19].trim();
             String chrEnd = line[20].trim();
             String seqRef = line[21].trim();
             String seqVariant = line[22].trim();
-
             String mostSevere = line[23].trim();
             String variantReference = line[24].trim();
             String hasDisease = line[25].trim();
@@ -163,8 +160,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
             alleleNames.put(alleleId, allele);
         } //allele
 
-        if(alleleType.matches("with")) {
-
+        if(alleleType.contains("with")) {
 
             Item variant = createItem("Variant");
             if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
