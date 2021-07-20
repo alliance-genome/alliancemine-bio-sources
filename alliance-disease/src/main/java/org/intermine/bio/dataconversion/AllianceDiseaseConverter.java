@@ -98,6 +98,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         Taxon SpeciesName	DBobjectType	DBObjectID
         DBObjectSymbol	AssociationType	DOID	DOtermName
         WithOrthologs	InferredFromID	InferredFromSymbol
+        ExperimentalCondition   Modifier
         EvidenceCode	EvidenceCodeName	Reference	Date	Source
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
@@ -115,24 +116,24 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             if(!productType.equalsIgnoreCase("gene")) { continue; }
             String productId = line[3].trim();
             if( productId.equalsIgnoreCase("RGD:39457950")) { continue; }
-            //String symbol = res.getString("gene_name");
-            String doId = line[6].trim();
             String qualifier = line[5].trim();
+            String doId = line[6].trim();
             String withText = line[8].trim();
             String inferredFrom = line[9].trim();
-            String strEvidence = line[11].trim();
+            String expCondition = line[11].trim();
+            String modifier = line[12].trim();
+            String strEvidence = line[13].trim();
             String annotType = "manually curated";
-            //String evidence_type = res.getString("evidence_type");
-            String pub = line[13].trim();
-            String date_assigned = line[14].trim();
+            String pub = line[15].trim();
+            String date_assigned = line[16].trim();
             String created_by = "alliance";
-            String dataSourceCode = line[15].trim();
+            String dataSourceCode = line[17].trim();
 
             //String qualifier = "";
             String annotationExtension = "";
 
             if (StringUtils.isNotEmpty(strEvidence)) {
-                storeEvidenceCode(strEvidence, inferredFrom, withText);
+                storeEvidenceCode(strEvidence, inferredFrom, withText, expCondition, modifier);
             } else {
                 throw new IllegalArgumentException("Evidence is a required column but not "
                         + "found for doterm " + doId + " and productId " + productId);
@@ -407,7 +408,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         return doTermIdentifier;
     }
 
-    private void storeEvidenceCode(String code, String inferredFrom, String withText) throws ObjectStoreException {
+    private void storeEvidenceCode(String code, String inferredFrom, String withText, String expCondition, String modifier) throws ObjectStoreException {
 
         /*String combinationcode = "";
         if(withText.isEmpty() && inferredFrom.isEmpty()) {
@@ -433,6 +434,9 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             item.setAttribute("code", code);
             if(StringUtils.isNotEmpty(withText)) item.setAttribute("withText", withText);
             if(StringUtils.isNotEmpty(inferredFrom)) item.setAttribute("inferredFrom", inferredFrom);
+            if(StringUtils.isNotEmpty(expCondition)) item.setAttribute("experimentCondition", expCondition);
+            if(StringUtils.isNotEmpty(modifier)) item.setAttribute("modifier", modifier);
+
             evidenceCodes.put(code, item.getIdentifier());
             store(item);
         }

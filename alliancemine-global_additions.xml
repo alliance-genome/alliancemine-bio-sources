@@ -198,6 +198,8 @@
         <collection name="with" referenced-type="BioEntity"/>
         <attribute name="withText" type="java.lang.String"/>
         <attribute name="inferredFrom" type="java.lang.String"/>
+        <attribute name="experimentCondition" type="java.lang.String"/>
+        <attribute name="modifier" type="java.lang.String"/>
         <attribute name="annotType" type="java.lang.String"/>
         <reference name="code" referenced-type="DiseaseEvidenceCode"/>
         <collection name="publications" referenced-type="Publication"/>
