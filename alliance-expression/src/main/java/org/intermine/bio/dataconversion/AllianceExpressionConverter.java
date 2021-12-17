@@ -10,11 +10,7 @@ package org.intermine.bio.dataconversion;
  *
  */
 import java.io.Reader;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 import org.intermine.metadata.Model;
 import org.apache.commons.lang.StringUtils;
@@ -23,21 +19,18 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
 
-import org.apache.commons.collections.keyvalue.MultiKey;
-import org.apache.commons.collections.map.MultiKeyMap;
-
 /*
  *
  * @author
  */
 public class AllianceExpressionConverter extends BioFileConverter {
 
-    private static final String DATASET_TITLE = "Alliance Expression data set";
-    private static final String DATA_SOURCE_NAME = "Alliance Expression";
+    private static final String DATASET_TITLE = "Alliance WT Expression data set";
+    private static final String DATA_SOURCE_NAME = "Alliance WT Expression";
     private String licence;
     private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> homologues = new HashMap();
-    private Set<MultiKey> homologuePairs = new HashSet<MultiKey>();
+    private Map<String, Item> expannotations = new HashMap();
+    protected Map<String, String> ontoTerms = new LinkedHashMap<String, String>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -54,82 +47,80 @@ public class AllianceExpressionConverter extends BioFileConverter {
      */
     public void process(Reader reader) throws Exception, ObjectStoreException{
 
-        /*Species SpeciesID       GeneID  GeneSymbol      Location        StageTerm
-        AssayID AssayTermName   CellularComponentID     CellularComponentTerm   CellularComponentQualifierIDs
-        CellularComponentQualifierTermNames
-         SubStructureID  SubStructureName        SubStructureQualifierIDs        SubStructureQualifierTermNames
-          AnatomyTermID   AnatomyTermName AnatomyTermQualifierIDs AnatomyTermQualifierTermNames
-          SourceURL       Source  Reference
+        /*Species SpeciesID  {1}     GeneID {2}  GeneSymbol      Location{4}        StageTerm{5}
+        AssayID {6} AssayTermName
+        CellularComponentID {8}     CellularComponentTerm   CellularComponentQualifierIDs CellularComponentQualifierTermNames
+        SubStructureID {12}  SubStructureName        SubStructureQualifierIDs        SubStructureQualifierTermNames
+         AnatomyTermID   {16} AnatomyTermName AnatomyTermQualifierIDs AnatomyTermQualifierTermNames
+         SourceURL{20}   Source{21}  Reference {22}
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
         System.out.println("Processing Expression...");
         while (lineIter.hasNext()) {
-
             String[] line = (String[]) lineIter.next();
-            if(count < 17 ) { count++; continue;}
-
-            String gene1id = line[0];
-            String gene2id = line[4];
-            String origspecies1 = line[2].trim();
-            String species1 = origspecies1.replace("NCBITaxon:","");
-            String org1 = getOrganism(species1);
-            String origspecies2 = line[6].trim();
-            String species2 = origspecies2.replace("NCBITaxon:","");
-            String org2 = getOrganism(species2);
-            String algorithms = line[8];
-            String matchCount = line[9];
-            String totalCount = line[10];
-            String bestScore = line[11];
-            String revScore = line[12];
-
-            processHomologues(gene1id, org1, gene2id, org2, algorithms, matchCount, totalCount, bestScore, revScore);
-
+           // if(count < 17 ) { count++; continue;}
+            String origspecies = line[1].trim();
+            String species = origspecies.replace("NCBITaxon:","");
+            String org = getOrganism(species);
+            String geneId = line[2];
+            String location = line[4];
+            String stageterm = line[5];
+            String assayID = line[6];
+            String cellularcomponentID = line[8];
+            String substructureID = line[12];
+            String anatomyID = line[16];
+            String sourceUrl = line[20];
+            String source = line[21];
+            String reference = line[22];
+            processExpressionAnnotation(geneId, org, location, stageterm, assayID, cellularcomponentID, substructureID,
+                    anatomyID, sourceUrl, source, reference);
         }
-        System.out.println("size of orthologs:  " + genes.size());
+        System.out.println("size of expannots genes:  " + genes.size());
         storeGenes();
-        storeHomologues();
+        storeExpAnnotations();
 
     }
 
     /**
      *
-     * @param g1
-     * @param s1
-     * @param g2
-     * @param s2
-     * @param algorithm
-     * @param match
-     * @param total
-     * @param best
-     * @param reverse
+     * @param g
+     * @param o
+     * @param loc
+     * @param stage
+     * @param assay
+     * @param cellular
+     * @param structure
+     * @param anatomy
+     * @param sourceurl
+     * @param ref
      * @throws ObjectStoreException
      */
-    private void processHomologues(String g1, String o1, String g2, String o2, String algorithm, String match, String total, String best, String reverse)
+    private void processExpressionAnnotation(String g, String o, String loc, String stage, String assay, String cellular, String structure,
+                                   String anatomy, String sourceurl, String source, String ref)
             throws ObjectStoreException {
 
-        String gene1 = getGene(g1, o1);
-        String gene2 = getGene(g2, o2);
+        String gene = getGene(g, o);
 
-        // resolver didn't resolve OR a duplicate
-        // AND genes can be paralogues with themselves so don't duplicate
-        if (gene1 == null || gene2 == null || homologuePairs.contains(new MultiKey(gene1, gene2)) || gene1.equals(gene2)) {
+        if (gene == null) {
             return;
         }
+        Item expAnnot = createItem("ExpressionAnnotation");
+        expAnnot.setReference("gene", gene);
+        expAnnot.setAttribute("location", loc);
+        expAnnot.setAttribute("stageTerm", stage);
+        expAnnot.setAttribute("source", source);
+        expAnnot.setAttribute("sourceURL", sourceurl);
+        expAnnot.setReference("assay", newOntologyTerm(assay));
+        expAnnot.setReference("cellularcomponent", newOntologyTerm(cellular));
+        expAnnot.setReference("substructure", newOntologyTerm(structure));
+        expAnnot.setReference("anatomy", newOntologyTerm(anatomy));
+        expAnnot.setAttribute("pubmedID", ref);
+        expannotations.put(gene, expAnnot);
+        expAnnot.setReference("gene", gene);
+        gene.addToCollection("expressionAnnotations", expAnnot);
 
-        Item homologue = createItem("Homologue");
-        homologue.setReference("gene", gene1);
-        homologue.setReference("homologue", gene2);
-        homologue.setAttribute("algorithms", algorithm);
-        homologue.setAttribute("algorithmsMatch", match);
-        homologue.setAttribute("algorithmsAttempted", total);
-        homologue.setAttribute("isBestScore", best);
-        homologue.setAttribute("isBestReverseScore", reverse);
-        //store(homologue);
-        homologues.put(gene1, homologue);
-        homologuePairs.add(new MultiKey(gene1, gene2));
     }
-
     /**
      *
      * @param g
@@ -144,18 +135,26 @@ public class AllianceExpressionConverter extends BioFileConverter {
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);
-          /* try {
-                store(gene);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }*/
         }
         String geneId = gene.getIdentifier();
         genes.put(geneId, gene);
         return geneId;
     }
 
-
+    private String newOntologyTerm(String identifier) throws ObjectStoreException {
+        if (identifier == null) {
+            return null;
+        }
+        String termIdentifier = ontoTerms.get(identifier);
+        if (termIdentifier == null) {
+            Item item = createItem(termClassName);
+            item.setAttribute("identifier", identifier);
+            store(item);
+            termIdentifier = item.getIdentifier();
+            ontoTerms.put(identifier, termIdentifier);
+        }
+        return termIdentifier;
+    }
     /**
      *
      * @throws ObjectStoreException
@@ -175,10 +174,10 @@ public class AllianceExpressionConverter extends BioFileConverter {
      * @throws ObjectStoreException
      */
 
-    private void storeHomologues() throws ObjectStoreException {
-        for (Item homolog : homologues.values()) {
+    private void storeExpAnnotations() throws ObjectStoreException {
+        for (Item exp : expannotations.values()) {
             try {
-                store(homolog);
+                store(exp);
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
             }

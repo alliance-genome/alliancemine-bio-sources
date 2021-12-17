@@ -218,7 +218,7 @@
         <reference name="gene" referenced-type="Gene" reverse-reference="exons"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="exons"/>
     </class>
-    <class name="ExpressionCondition" is-interface="true">
+    <!--<class name="ExpressionCondition" is-interface="true">
         <attribute name="conditionname" type="java.lang.String"/>
         <attribute name="ordernumber" type="java.lang.Integer"/>
         <reference name="expressiondataset" referenced-type="ExpressionDataSet" reverse-reference="expressionconditions"/>
@@ -245,10 +245,17 @@
     <class name="ExpressionDataSetTag" is-interface="true">
         <attribute name="tagname" type="java.lang.String"/>
         <collection name="expressiondatasets" referenced-type="ExpressionDataSet" reverse-reference="expressiondatasettags"/>
-    </class>
-    <class name="ExpressionScore" is-interface="true">
-        <attribute name="score" type="java.lang.Float"/>
-        <reference name="expressioncondition" referenced-type="ExpressionCondition"/>
+    </class>-->
+    <class name="ExpressionAnnotation" is-interface="true">
+        <attribute name="stageTerm" type="java.lang.String"/>
+        <attribute name="Location" type="java.lang.String"/>
+        <reference name="assay" referenced-type="MMOTerm"/>
+        <reference name="cellularcomponent" referenced-type="GOTerm"/>
+        <reference name="substructure" referenced-type="OntologyTerm"/>
+        <reference name="anatomy" referenced-type="OntologyTerm"/>
+        <attribute name="pubmedID" type="java.lang.String"/>
+        <attribute name="source" type="java.lang.String"/>
+        <attribute name="sourceURL" type="java.lang.String"/>
     </class>
     <class name="ExternalTranscribedSpacerRegion" extends="BiologicalRegion" is-interface="true">
         <reference name="ncrna_gene" referenced-type="NcRNAGene" reverse-reference="externaltranscribedspacerregions"/>
@@ -273,6 +280,11 @@
     </class>
     <class name="GOSlimTerm" extends="GOTerm" is-interface="true"/>
     <class name="GOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="MMOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="EMAPATerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="ZFATerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="WBBTTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="FBBTTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="Gene" extends="SequenceFeature" is-interface="true">
         <attribute name="geneSummary" type="java.lang.String"/>
         <attribute name="phenotypeSummary" type="java.lang.String"/>
@@ -291,7 +303,7 @@
         <collection name="exons" referenced-type="Exon" reverse-reference="gene"/>
         <collection name="pathways" referenced-type="Pathway" reverse-reference="genes"/>
         <collection name="UTRs" referenced-type="UTR" reverse-reference="gene"/>
-        <collection name="expressionScores" referenced-type="ExpressionScore"/>
+        <collection name="expressionAnnotations" referenced-type="ExpressionAnnotation"/>
         <collection name="phenotypes" referenced-type="Phenotype" reverse-reference="genes"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="gene"/>
         <collection name="regulatoryRegions" referenced-type="RegulatoryRegion" reverse-reference="gene"/>

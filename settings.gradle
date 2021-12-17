@@ -17,3 +17,19 @@ include ':bio-source-alliance-alleles'
 project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
 include ':bio-source-alliance-expression'
 project(':bio-source-alliance-expression').projectDir = new File(settingsDir, './alliance-expression')
+include ':bio-source-alliance-molecular-interactions'
+project(':bio-source-alliance-molecular-interactions').projectDir = new File(settingsDir, './alliance-molecular-interactions')
+include ':bio-source-alliance-genetic-interactions'
+project(':bio-source-alliance-genetic-interactions').projectDir = new File(settingsDir, './alliance-genetic-interactions')
+include ':bio-source-mmo'
+project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
+include ':bio-source-zfa'
+project(':bio-source-zfa').projectDir = new File(settingsDir, './zfa')
+include ':bio-source-emapa'
+project(':bio-source-emapa').projectDir = new File(settingsDir, './emapa')
+include ':bio-source-wbbt'
+project(':bio-source-wbbt').projectDir = new File(settingsDir, './wbbt')
+include ':bio-source-fbbt'
+project(':bio-source-fbbt').projectDir = new File(settingsDir, './fbbt')
+include ':bio-source-go-slim'
+project(':bio-source-go-slim').projectDir = new File(settingsDir, './go-slim')
