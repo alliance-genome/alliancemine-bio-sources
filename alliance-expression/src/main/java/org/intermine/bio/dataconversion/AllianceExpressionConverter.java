@@ -29,7 +29,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
     private static final String DATA_SOURCE_NAME = "Alliance WT Expression";
     private String licence;
     private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> expannotations = new HashMap();
+    private Map<Item, Item> expannotations = new HashMap();
     protected Map<String, String> ontoTerms = new LinkedHashMap<String, String>();
 
     /**
@@ -100,7 +100,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
                                    String anatomy, String sourceurl, String source, String ref)
             throws ObjectStoreException {
 
-        String gene = getGene(g, o);
+        Item gene = getGene(g, o);
 
         if (gene == null) {
             return;
@@ -128,7 +128,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
      * @return
      * @throws Exception
      */
-    private String getGene(String g, String org) throws ObjectStoreException {
+    private Item getGene(String g, String org) throws ObjectStoreException {
 
         Item gene  = genes.get(g);
         if(gene == null) {
@@ -138,7 +138,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
         }
         String geneId = gene.getIdentifier();
         genes.put(geneId, gene);
-        return geneId;
+        return gene;
     }
 
     private String newOntologyTerm(String identifier) throws ObjectStoreException {
@@ -147,7 +147,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
         }
         String termIdentifier = ontoTerms.get(identifier);
         if (termIdentifier == null) {
-            Item item = createItem(termClassName);
+            Item item = createItem("ECOTerm");  //kk 
             item.setAttribute("identifier", identifier);
             store(item);
             termIdentifier = item.getIdentifier();
