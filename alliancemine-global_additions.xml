@@ -248,12 +248,12 @@
     </class>-->
     <class name="ExpressionAnnotation" is-interface="true">
         <attribute name="stageTerm" type="java.lang.String"/>
-        <attribute name="Location" type="java.lang.String"/>
-        <reference name="assay" referenced-type="MMOTerm"/>
-        <reference name="cellularcomponent" referenced-type="GOTerm"/>
+        <attribute name="location" type="java.lang.String"/>
+        <reference name="assay" referenced-type="OntologyTerm"/>
+        <reference name="cellularcomponent" referenced-type="OntologyTerm"/>
         <reference name="substructure" referenced-type="OntologyTerm"/>
         <reference name="anatomy" referenced-type="OntologyTerm"/>
-        <attribute name="pubmedID" type="java.lang.String"/>
+        <collection name="publications" referenced-type="Publication"/>
         <attribute name="source" type="java.lang.String"/>
         <attribute name="sourceURL" type="java.lang.String"/>
     </class>

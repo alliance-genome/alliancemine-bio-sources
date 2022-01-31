@@ -30,7 +30,8 @@ public class AllianceExpressionConverter extends BioFileConverter {
     private String licence;
     private Map<String, Item> genes = new HashMap();
     private Map<Item, Item> expannotations = new HashMap();
-    protected Map<String, String> ontoTerms = new LinkedHashMap<String, String>();
+    private Map<String, Item> ontoTerms = new HashMap();
+    private Map<String, Item> publications = new HashMap();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -77,8 +78,9 @@ public class AllianceExpressionConverter extends BioFileConverter {
                     anatomyID, sourceUrl, source, reference);
         }
         System.out.println("size of expannots genes:  " + genes.size());
-        storeGenes();
+        storeOntologyTerms();
         storeExpAnnotations();
+        storeGenes();
 
     }
 
@@ -106,21 +108,46 @@ public class AllianceExpressionConverter extends BioFileConverter {
             return;
         }
         Item expAnnot = createItem("ExpressionAnnotation");
-        expAnnot.setReference("gene", gene);
-        expAnnot.setAttribute("location", loc);
-        expAnnot.setAttribute("stageTerm", stage);
-        expAnnot.setAttribute("source", source);
-        expAnnot.setAttribute("sourceURL", sourceurl);
-        expAnnot.setReference("assay", newOntologyTerm(assay));
-        expAnnot.setReference("cellularcomponent", newOntologyTerm(cellular));
-        expAnnot.setReference("substructure", newOntologyTerm(structure));
-        expAnnot.setReference("anatomy", newOntologyTerm(anatomy));
-        expAnnot.setAttribute("pubmedID", ref);
+        if(StringUtils.isNotEmpty(loc) ) { expAnnot.setAttribute("location", loc);}
+        if(StringUtils.isNotEmpty(stage) ) { expAnnot.setAttribute("stageTerm", stage);}
+        if(StringUtils.isNotEmpty(source) ) { expAnnot.setAttribute("source", source);}
+        if(StringUtils.isNotEmpty(sourceurl) ) {expAnnot.setAttribute("sourceURL", sourceurl);}
+        if(StringUtils.isNotEmpty(assay) ) { expAnnot.setReference("assay", newOntologyTerm(assay));}
+        if(StringUtils.isNotEmpty(cellular) ) { expAnnot.setReference("cellularcomponent", newOntologyTerm(cellular));}
+        if(StringUtils.isNotEmpty(structure) ) {expAnnot.setReference("substructure", newOntologyTerm(structure));}
+        if(StringUtils.isNotEmpty(anatomy) ) { expAnnot.setReference("anatomy", newOntologyTerm(anatomy));}
+        if(StringUtils.isNotEmpty(ref) ) {
+            String[] s = ref.split(",");
+            for(int i=0; i < s.length; i++) {
+                String pub = getPublication(s[i]);
+                expAnnot.addToCollection("publications", pub);
+            }
+        }
         expannotations.put(gene, expAnnot);
-        expAnnot.setReference("gene", gene);
+        //expAnnot.setReference("gene", gene);
         gene.addToCollection("expressionAnnotations", expAnnot);
 
     }
+
+
+    private String getPublication(String pubMedId)
+            throws ObjectStoreException {
+        Item item = publications.get(pubMedId);
+        if (item == null) {
+            item = createItem("Publication");
+            if (StringUtils.isNotEmpty(pubMedId)) {
+                item.setAttribute("pubMedId", pubMedId);
+            }
+            try {
+                store(item);
+            } catch (ObjectStoreException e) {
+                throw new ObjectStoreException(e);
+            }
+            publications.put(pubMedId, item);
+        }
+        return item.getIdentifier();
+    }
+
     /**
      *
      * @param g
@@ -137,23 +164,31 @@ public class AllianceExpressionConverter extends BioFileConverter {
             gene.setReference("organism", org);
         }
         String geneId = gene.getIdentifier();
-        genes.put(geneId, gene);
+        genes.put(g, gene);
         return gene;
     }
 
     private String newOntologyTerm(String identifier) throws ObjectStoreException {
-        if (identifier == null) {
-            return null;
+
+        Item term = ontoTerms.get(identifier);
+        if (term == null) {
+            String[] ont = identifier.split(":");
+            if(ont[0].startsWith("ZFA")){
+                term = createItem("ZFATerm");
+            }else if(ont[0].startsWith("EMAPA")){
+                term = createItem("EMAPATerm");
+            }else if(ont[0].startsWith("WBbt")){
+                term = createItem("WBBTTerm");
+            }else if(ont[0].startsWith("FBbt")){
+                term = createItem("FBBTTerm");
+            }else{
+                term = createItem("OntologyTerm");
+            }
+            System.out.println(" term.. " + identifier);
+            term.setAttribute("identifier", identifier);
         }
-        String termIdentifier = ontoTerms.get(identifier);
-        if (termIdentifier == null) {
-            Item item = createItem("ECOTerm");  //kk 
-            item.setAttribute("identifier", identifier);
-            store(item);
-            termIdentifier = item.getIdentifier();
-            ontoTerms.put(identifier, termIdentifier);
-        }
-        return termIdentifier;
+        ontoTerms.put(identifier, term);
+        return term.getIdentifier();
     }
     /**
      *
@@ -178,6 +213,22 @@ public class AllianceExpressionConverter extends BioFileConverter {
         for (Item exp : expannotations.values()) {
             try {
                 store(exp);
+            } catch (ObjectStoreException e) {
+                throw new ObjectStoreException(e);
+            }
+        }
+    }
+
+
+    /**
+     *
+     * @throws ObjectStoreException
+     */
+
+    private void storeOntologyTerms() throws ObjectStoreException {
+        for (Item ont : ontoTerms.values()) {
+            try {
+                store(ont);
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
             }
