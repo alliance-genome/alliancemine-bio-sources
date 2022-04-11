@@ -252,26 +252,23 @@ public class AllianceGenesConverter extends BioFileConverter {
         for(int i=0; i<vals.length; i++) {
 
             String type = "";
+            String identifier = "";
             if(vals[i].contains(":")) {
                 String[] t = vals[i].split(":");
-                type = t[0];
+                type = t[0].trim();
+                identifier = t[1].trim();
             }else{
-                type = vals[i];
+                identifier = vals[i].trim();
             }
 
-            if(Id.equalsIgnoreCase(vals[i])){ continue; }
+            if(Id.equalsIgnoreCase(identifier)){ continue; }
 
             Item crf = createItem("CrossReference");
             crf.setReference("subject", subjectId);
-            crf.setAttribute("identifier", vals[i]);
-            if(!type.equalsIgnoreCase(vals[i])) { crf.setAttribute("dbxreftype", type);}
+            crf.setAttribute("identifier", identifier);
+            if(StringUtils.isNotEmpty(type)) { crf.setAttribute("dbxreftype", type);}
 
-            /*try {
-                store(crf);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }*/
-            crossrefs.put(crf, vals[i]);
+            crossrefs.put(crf, identifier);
         }
 
     }
