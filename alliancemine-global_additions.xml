@@ -103,9 +103,11 @@
         <reference name="centromereDNAElementIIs" referenced-type="CentromereDNAElementII" reverse-reference="centromere"/>
     </class>
 
-    <!--<class name="HeritablePhenotypicMarker" extends="SequenceFeature" is-interface="true"> </class>-->
+    <class name="HeritablePhenotypicMarker" extends="Gene" is-interface="true"> </class>
 
     <class name="GeneSegment" extends="Gene" is-interface="true"> </class>
+
+    <class name="PseudogenicGeneSegment" extends="Gene" is-interface="true"> </class>
 
     <class name="Antisense" extends="SequenceFeature" is-interface="true"> </class>
 
