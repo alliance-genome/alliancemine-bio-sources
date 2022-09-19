@@ -62,6 +62,9 @@ public class AllianceGenesConverter extends BioFileConverter {
             String[] line = (String[]) lineIter.next();
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
+            if(line.length < 14) {
+                System.out.println("Gene line problem: " + primaryIdentifier);
+                continue; }
             String secondaryIdentifier = line[1].trim();
             String synonyms = line[2].trim();
             String crossrefs = line[3].trim();
@@ -289,11 +292,6 @@ public class AllianceGenesConverter extends BioFileConverter {
            Item syn = createItem("Synonym");
            syn.setReference("subject", subjectId);
            if(StringUtils.isNotEmpty(vals[i]) && !vals[i].equals(" ")) syn.setAttribute("value", vals[i].trim());
-           /*try {
-               store(syn);
-           } catch (ObjectStoreException e) {
-               throw new ObjectStoreException(e);
-           }*/
            synonyms.put(syn, vals[i]);
        }
     }

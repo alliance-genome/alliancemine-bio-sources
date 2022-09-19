@@ -159,6 +159,7 @@
     </class>
     <class name="CrossReference" is-interface="true">
         <attribute name="dbxreftype" type="java.lang.String"/>
+        <attribute name="primaryIdentifier" type="java.lang.String"/>
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="url" type="java.lang.String"/>
         <reference name="source" referenced-type="DataSource"/>
