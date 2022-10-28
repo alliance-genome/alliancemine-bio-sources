@@ -111,6 +111,22 @@
 
     <class name="Antisense" extends="SequenceFeature" is-interface="true"> </class>
 
+    <class name="MtLSURRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="MtSSURRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="HpRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="CDBoxScaRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="CDBoxSnoRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="HACABoxScaRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="HACABoxSnoRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="IGVGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="RNA7SKGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="TRCGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="TRJGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="TRVGene" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="YRNA" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="SbRNAGene" extends="SequenceFeature" is-interface="true"> </class>
+
+
     <class name="TranscribedProcessedPseudogene" extends="ProcessedPseudogene"  is-interface="true"> </class>
 
     <!--<class name="TranscribedUnprocessedPseudogene" extends="NonProcessedPseudogene" is-interface="true"> </class>-->

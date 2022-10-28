@@ -60,7 +60,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
         System.out.println("Processing Expression...");
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
-           // if(count < 17 ) { count++; continue;}
+            if(count < 15 ) { count++; continue;}
             String origspecies = line[1].trim();
             String species = origspecies.replace("NCBITaxon:","");
             String org = getOrganism(species);

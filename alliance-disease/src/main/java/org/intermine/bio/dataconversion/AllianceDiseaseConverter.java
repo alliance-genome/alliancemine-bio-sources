@@ -106,7 +106,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         System.out.println("Processing DiseaseCombined.tsv...");
         while (lineIter.hasNext()) {
             count++;
-            if (count < 17) { continue;}
+            if (count < 15) { continue;}
             String[] line = (String[]) lineIter.next();
             String origspecies = line[0].trim();
             String taxonId = origspecies.replace("NCBITaxon:", "");

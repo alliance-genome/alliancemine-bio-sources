@@ -166,18 +166,22 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("PseudogenicGeneSegment");
             } else if (feature_type.equalsIgnoreCase("rRNA_gene")) {
                 item = createItem("RRNAGene");
-            } else if (feature_type.equalsIgnoreCase("rRNA_18S_gene")) {
+            } else if (feature_type.equalsIgnoreCase("cytosolic_rRNA_18S_gene")) {
                 item = createItem("RRNAGene");
-            } else if (feature_type.equalsIgnoreCase("rRNA_28S_gene")) {
+            } else if (feature_type.equalsIgnoreCase("cytosolic_rRNA_28S_gene")) {
                 item = createItem("RRNAGene");
-            } else if (feature_type.equalsIgnoreCase("rRNA_5S_gene")) {
+            } else if (feature_type.equalsIgnoreCase("cytosolic_rRNA_5S_gene")) {
                 item = createItem("RRNAGene");
-            } else if (feature_type.equalsIgnoreCase("rRNA_5_8S_gene")) {
+            } else if (feature_type.equalsIgnoreCase("cytosolic_rRNA_5_8S_gene")) {
+                item = createItem("RRNAGene");
+            } else if (feature_type.equalsIgnoreCase("cytosolic_rRNA_2S_gene")) {
                 item = createItem("RRNAGene");
             } else if (feature_type.equalsIgnoreCase("ribozyme_gene")) {
                 item = createItem("RibozymeGene");
             } else if (feature_type.equalsIgnoreCase("scRNA_gene")) {
                 item = createItem("ScRNAGene");
+            } else if (feature_type.equalsIgnoreCase("sbRNA_gene")) {
+                item = createItem("SbRNAGene");
             } else if (feature_type.equalsIgnoreCase("sense_intronic_ncRNA_gene")) {
                 item = createItem("SenseIntronicNcRNAGene");
             } else if (feature_type.equalsIgnoreCase("sense_overlap_ncRNA_gene")) {
@@ -202,7 +206,34 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("ProcessedTranscript");
             } else if (feature_type.equalsIgnoreCase("antisense")) {
                 item = createItem("Antisense");
+            } else if (feature_type.equalsIgnoreCase("mt_LSU_rRNA_gene")) {
+                item = createItem("MtLSURRNAGene");
+            } else if (feature_type.equalsIgnoreCase("mt_SSU_rRNA_gene")) {
+                item = createItem("MtSSURRNAGene");
+            } else if (feature_type.equalsIgnoreCase("hpRNA_gene")) {
+                item = createItem("HpRNAGene");
+            } else if (feature_type.equalsIgnoreCase("C_D_box_scaRNA_gene")) {
+                item = createItem("CDBoxScaRNAGene");
+            } else if (feature_type.equalsIgnoreCase("C_D_box_snoRNA_gene")) {
+                item = createItem("CDBoxSnoRNAGene");
+            } else if (feature_type.equalsIgnoreCase("H_ACA_box_scaRNA_gene")) {
+                item = createItem("HACABoxScaRNAGene");
+            } else if (feature_type.equalsIgnoreCase("H_ACA_box_snoRNA_gene")) {
+                item = createItem("HACABoxSnoRNAGene");
+            } else if (feature_type.equalsIgnoreCase("IG_V_gene")) {
+                item = createItem("IGVGene");
+            } else if (feature_type.equalsIgnoreCase("RNA_7SK_gene")) {
+                item = createItem("RNA7SKGene");
+            } else if (feature_type.equalsIgnoreCase("TR_C_Gene")) {
+                item = createItem("TRCGene");
+            } else if (feature_type.equalsIgnoreCase("TR_J_Gene")) {
+                item = createItem("TRJGene");
+            } else if (feature_type.equalsIgnoreCase("TR_V_Gene")) {
+                item = createItem("TRVGene");
+            } else if (feature_type.equalsIgnoreCase("Y_RNA")) {
+                item = createItem("YRNA");
             }
+
 
             if(item == null) { System.out.println("null FT..." + feature_type); continue;}
 
