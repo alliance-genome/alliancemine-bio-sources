@@ -249,7 +249,7 @@ public class GoConverter extends BioFileConverter
 
         // loop through entire file
         while ((line = br.readLine()) != null) {
-            if (line.startsWith("!") || line.startsWith("UniProtKB") || || line.startsWith("PR") || line.startsWith("RefSeq")) {
+            if (line.startsWith("!") || line.startsWith("UniProtKB") || line.startsWith("PR") || line.startsWith("RefSeq")) {
                 continue;
             }
             String[] array = line.split("\t", -1); // keep trailing empty Strings
