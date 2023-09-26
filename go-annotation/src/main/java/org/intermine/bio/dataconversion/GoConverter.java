@@ -249,7 +249,7 @@ public class GoConverter extends BioFileConverter
 
         // loop through entire file
         while ((line = br.readLine()) != null) {
-            if (line.startsWith("!") || line.startsWith("UniProtKB")) {
+            if (line.startsWith("!") || line.startsWith("UniProtKB") || || line.startsWith("PR") || line.startsWith("RefSeq")) {
                 continue;
             }
             String[] array = line.split("\t", -1); // keep trailing empty Strings
@@ -269,7 +269,8 @@ public class GoConverter extends BioFileConverter
             int readColumn = config.readColumn();
             String db = array[0];
             String productId = "";
-            if(db.equalsIgnoreCase("Xenbase") || db.equalsIgnoreCase("WB") || db.equalsIgnoreCase("FB") || db.equalsIgnoreCase("SGD") || db.equalsIgnoreCase("ZFIN")) {
+            if(db.equalsIgnoreCase("Xenbase") || db.equalsIgnoreCase("WB") || db.equalsIgnoreCase("FB")
+                    || db.equalsIgnoreCase("SGD") || db.equalsIgnoreCase("ZFIN")) {
                 productId = db + ":" + array[1];
             } else if(db.equalsIgnoreCase("RGD")){
                 if(array[1].startsWith("HGNC:")) {
