@@ -33,3 +33,32 @@ include ':bio-source-fbbt'
 project(':bio-source-fbbt').projectDir = new File(settingsDir, './fbbt')
 include ':bio-source-go-slim'
 project(':bio-source-go-slim').projectDir = new File(settingsDir, './go-slim')
+
+include ':bio-source-cglabrata-homologs',
+        ':bio-source-cgob-homologs',
+        ':bio-source-fungi-homologs',
+        ':bio-source-homolog-genes',
+        ':bio-source-pombe-homologs',
+        ':bio-source-sgd-gff-utr',
+        ':bio-source-sgd-gff',
+        ':bio-source-sgd-protein-ntermini',
+        ':bio-source-sgd-protein-properties',
+        ':bio-source-sgd',
+        ':bio-source-sgd-complexes',
+        ':bio-source-sgd-db-utr',
+        ':bio-source-sgd-complementation-db'
+
+
+project(':bio-source-cglabrata-homologs').projectDir = new File(settingsDir, './cglabrata-homologs')
+project(':bio-source-cgob-homologs').projectDir = new File(settingsDir, './cgob-homologs')
+project(':bio-source-fungi-homologs').projectDir = new File(settingsDir, './fungi-homologs')
+project(':bio-source-homolog-genes').projectDir = new File(settingsDir, './homolog-genes')
+project(':bio-source-pombe-homologs').projectDir = new File(settingsDir, './pombe-homologs')
+project(':bio-source-sgd-gff-utr').projectDir = new File(settingsDir, './sgd-gff-utr')
+project(':bio-source-sgd-gff').projectDir = new File(settingsDir, './sgd-gff')
+project(':bio-source-sgd-protein-ntermini').projectDir = new File(settingsDir, './sgd-protein-ntermini')
+project(':bio-source-sgd-protein-properties').projectDir = new File(settingsDir, './sgd-protein-properties')
+project(':bio-source-sgd').projectDir = new File(settingsDir, './sgd')
+project(':bio-source-sgd-complexes').projectDir = new File(settingsDir, './sgd-complexes')
+project(':bio-source-sgd-db-utr').projectDir = new File(settingsDir, './sgd-db-utr')
+project(':bio-source-sgd-complementation-db').projectDir = new File(settingsDir, './sgd-complementation-db')
