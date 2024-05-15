@@ -293,6 +293,7 @@
     <class name="ZFATerm" extends="OntologyTerm" is-interface="true"/>
     <class name="WBBTTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="FBBTTerm" extends="OntologyTerm" is-interface="true"/>
+
     <class name="Gene" extends="SequenceFeature" is-interface="true">
         <attribute name="geneSummary" type="java.lang.String"/>
         <attribute name="phenotypeSummary" type="java.lang.String"/>
@@ -768,12 +769,12 @@
         <reference name="sequenceOntologyTerm" referenced-type="SOTerm"/>
     </class>
     <class name="SequenceFeature" extends="BioEntity" is-interface="true">
-        <attribute name="briefDescription" type="java.lang.String"/>
+        <attribute name="modDescription" type="java.lang.String"/>
         <attribute name="functionSummary" type="java.lang.String"/>
         <reference name="regulationSummary" referenced-type="RegulationSummary"/>
         <attribute name="score" type="java.lang.Double"/>
         <attribute name="scoreType" type="java.lang.String"/>
-        <attribute name="description" type="java.lang.String"/>
+        <attribute name="automatedDescription" type="java.lang.String"/>
         <attribute name="status" type="java.lang.String"/>
         <attribute name="length" type="java.lang.Integer"/>
         <attribute name="featureType" type="java.lang.String"/>

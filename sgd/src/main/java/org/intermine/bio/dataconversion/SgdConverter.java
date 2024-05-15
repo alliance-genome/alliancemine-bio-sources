@@ -77,11 +77,11 @@ public class SgdConverter extends BioDBConverter {
 	private Map<String, Item> proteinAbundance = new HashMap<String, Item>();
 	private Map<String, Item> regulationSummary = new HashMap<String, Item>();
 
-	private static final String TAXON_ID = "4932";
+	private static final String TAXON_ID = "559292"; //4932
 	private static final String H_TAXON_ID = "9606";
 	private Item organism;
 	private Map<String, String> featureMap = new HashMap();
-	private static final boolean LOCAL = false;
+	private static final boolean LOCAL = true;
 	private String licence;
 
 
@@ -269,13 +269,13 @@ public class SgdConverter extends BioDBConverter {
 				// set for all types, so you can use LSF to query for these
 				// different type of objects in a template.
 				item.setAttribute("featureType", feature_type);
-				item.setAttribute("primaryIdentifier", primaryIdentifier);
+				item.setAttribute("primaryIdentifier", "SGD:"+primaryIdentifier);
 				if (StringUtils.isNotEmpty(name)) item.setAttribute("name", name);
 				item.setAttribute("secondaryIdentifier", secondaryIdentifier);
 				item.setReference("organism", organism);
 				if (StringUtils.isNotEmpty(symbol)) item.setAttribute("symbol", symbol);				
-				if (StringUtils.isNotEmpty(description)) item.setAttribute("description", description);
-				if (StringUtils.isNotEmpty(headline)) item.setAttribute("briefDescription", headline);				
+				if (StringUtils.isNotEmpty(description)) item.setAttribute("modDescription", description);
+				//if (StringUtils.isNotEmpty(headline)) item.setAttribute("briefDescription", headline);
 				if (qualifier != null) {
 					if (StringUtils.isNotEmpty(qualifier)) {
 						item.setAttribute("qualifier", qualifier);
@@ -330,13 +330,13 @@ public class SgdConverter extends BioDBConverter {
 				// set for all types, so you can use LSF to query for these
 				// different type of objects in a template.
 				item.setAttribute("featureType", "not in systematic sequence of S288C");
-				item.setAttribute("primaryIdentifier", primaryIdentifier);
+				item.setAttribute("primaryIdentifier", "SGD:"+primaryIdentifier);
 				if (StringUtils.isNotEmpty(name)) item.setAttribute("name", name);
 				item.setAttribute("secondaryIdentifier", secondaryIdentifier);
 				item.setReference("organism", organism);
 				if (StringUtils.isNotEmpty(symbol)) item.setAttribute("symbol", symbol);				
 				if (StringUtils.isNotEmpty(description)) item.setAttribute("description", description);
-				if (StringUtils.isNotEmpty(headline)) item.setAttribute("briefDescription", headline);				
+				//if (StringUtils.isNotEmpty(headline)) item.setAttribute("briefDescription", headline);
 				if (qualifier != null) {
 					if (StringUtils.isNotEmpty(qualifier)) {
 						item.setAttribute("qualifier", qualifier);
@@ -496,7 +496,7 @@ public class SgdConverter extends BioDBConverter {
 				if (transcript == null) {
 					transcript = createItem("MRNA");
 					transcript.setAttribute("featureType", "mRNA");
-					if (StringUtils.isNotEmpty(name)) transcript.setAttribute("primaryIdentifier", name);
+					if (StringUtils.isNotEmpty(name)) transcript.setAttribute("primaryIdentifier", "SGD:"+name);
 					if (StringUtils.isNotEmpty(in_gal)) transcript.setAttribute("in_gal", ingal);
 					if (StringUtils.isNotEmpty(in_ypd)) transcript.setAttribute("in_ypd", inypd);
 					if (StringUtils.isNotEmpty(in_ncbi)) transcript.setAttribute("in_ncbi", incbi);

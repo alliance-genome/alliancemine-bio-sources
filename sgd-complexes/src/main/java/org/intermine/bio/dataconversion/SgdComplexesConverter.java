@@ -54,7 +54,7 @@ public class SgdComplexesConverter extends BioDBConverter
     private final Map<String, Item> proteins = new HashMap<String, Item>();
     private final Map<String, Item> otherinteractors = new HashMap<String, Item>();
 
-    private static final String TAXON_ID = "4932";
+    private static final String TAXON_ID = "559292"; //4932
     private Item yorganism;
 
     /**

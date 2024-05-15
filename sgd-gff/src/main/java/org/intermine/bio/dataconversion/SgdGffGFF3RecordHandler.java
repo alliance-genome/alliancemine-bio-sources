@@ -32,7 +32,7 @@ public class SgdGffGFF3RecordHandler extends GFF3RecordHandler
 
     private final Map<String, Item> pubmedIdMap = new HashMap<String, Item>();
     private final Map<String, Item> geneIdMap = new HashMap<String, Item>();
-    private static final String TAXON_ID = "4932";
+    private static final String TAXON_ID = "559292"; //4932
     
     protected static final Logger LOG = Logger.getLogger(SgdGffGFF3RecordHandler.class);
     

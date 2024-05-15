@@ -32,7 +32,7 @@ public class SgdComplementationConverter extends BioFileConverter {
 	private final Map<String, Item> genes = new HashMap<String, Item>();
 	private final Map<String, Item> publications = new HashMap<String, Item>();
 	private final Map<String, String> homologs = new HashMap<String, String>();
-	private static final String TAXON_ID = "4932";
+	private static final String TAXON_ID = "559292"; //4932
 	private static final String H_TAXON_ID = "9606";
 	private Item yorganism;
 	private Item horganism;
@@ -126,8 +126,6 @@ public class SgdComplementationConverter extends BioFileConverter {
 
 	}
 
-
-
 	/**
 	 * 
 	 * @param c
@@ -155,10 +153,7 @@ public class SgdComplementationConverter extends BioFileConverter {
 		comp.setAttribute("source", s);
 		comp.setReference("publication", pub);
 		comp.setReference("gene", yg);
-		comp.setReference("complement", hg);	
-        //comp.addToCollection("crossReferences",
-               // createCrossReference(homologue.getIdentifier(), pantherId,
-                       // DATA_SOURCE_NAME, true));
+		comp.setReference("complement", hg);
 		store(comp);
        
 	}

@@ -34,7 +34,7 @@ public class SgdComplementationDbConverter extends BioDBConverter {
     private static final String DATA_SOURCE_NAME = "SGD-BioGRID curated complementation";
     private final Map<String, Item> genes = new HashMap<String, Item>();
     private final Map<String, Item> publications = new HashMap<String, Item>();
-    private static final String TAXON_ID = "4932";
+    private static final String TAXON_ID = "559292"; //4932
     private static final String H_TAXON_ID = "9606";
     private Item yorganism;
     private Item horganism;
