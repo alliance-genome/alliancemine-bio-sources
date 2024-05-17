@@ -180,15 +180,23 @@
     </class>
     <class name="Complex" is-interface="true">
         <attribute name="identifier" type="java.lang.String"/>
+        <attribute name="accession" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <attribute name="systematicName" type="java.lang.String"/>
         <attribute name="function" type="java.lang.String"/>
         <attribute name="properties" type="java.lang.String"/>
         <collection name="dataSets" referenced-type="DataSet"/>
+        <reference name="complexEvidence" referenced-type="ComplexEvidence"/>
+        <collection name="synonyms" referenced-type="Synonym"/>
         <collection name="allInteractors" referenced-type="Interactor"/>
         <collection name="goAnnotation" referenced-type="GOAnnotation"/>
         <collection name="publications" referenced-type="Publication"/>
     </class>
+
+    <class name="ComplexEvidence" extends="OntologyAnnotation" is-interface="true">
+        <collection name="publications" referenced-type="Publication"/>
+    </class>
+
     <class name="CrossReference" is-interface="true">
         <attribute name="dbxreftype" type="java.lang.String"/>
         <attribute name="primaryIdentifier" type="java.lang.String"/>
