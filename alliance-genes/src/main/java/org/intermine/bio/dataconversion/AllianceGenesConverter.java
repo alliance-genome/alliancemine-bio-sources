@@ -242,12 +242,14 @@ public class AllianceGenesConverter extends BioFileConverter {
             if(item == null) { System.out.println("null FT..." + feature_type); continue;}
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
-            if(StringUtils.isNotEmpty(secondaryIdentifier)) { item.setAttribute("secondaryIdentifier", secondaryIdentifier); }
+            if(StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
+                item.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            }
             if(StringUtils.isNotEmpty(symbol)) { item.setAttribute("symbol", symbol); }
             if(StringUtils.isNotEmpty(name)) { item.setAttribute("name", name); }
             if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
-            if(StringUtils.isNotEmpty(description)) { item.setAttribute("briefDescription", description);}
-            if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("description", autoDescription);}
+            if(StringUtils.isNotEmpty(description)) { item.setAttribute("modDescription", description);}
+            if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("automatedDescription", autoDescription);}
             item.setReference("organism", organism);
             item.setReference("chromosome", chrId);
             // ~~~ location ~~~
