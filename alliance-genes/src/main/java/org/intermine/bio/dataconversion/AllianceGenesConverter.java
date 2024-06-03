@@ -73,7 +73,10 @@ public class AllianceGenesConverter extends BioFileConverter {
             String description = line[6].trim();
             String autoDescription = line[7].trim();
             String origspecies = line[8].trim();
-            if(!origspecies.startsWith("NCBITaxon:")) continue;
+            if(!origspecies.startsWith("NCBITaxon:")) {
+                System.out.println("Taxon problem new line in MOD description: " + primaryIdentifier);
+                continue;
+            }
             String species = origspecies.replace("NCBITaxon:","");
             String chromosome = line[9].trim();
             String start = line[10].trim();
