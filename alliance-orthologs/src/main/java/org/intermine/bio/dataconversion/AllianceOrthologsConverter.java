@@ -135,7 +135,7 @@ public class AllianceOrthologsConverter extends BioFileConverter {
 
         Item gene  = genes.get(g);
         if(gene == null) {
-            System.out.println("creating new gene..." + g);
+            //System.out.println("creating new gene..." + g);
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);

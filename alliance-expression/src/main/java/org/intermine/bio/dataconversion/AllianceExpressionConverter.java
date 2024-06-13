@@ -184,7 +184,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
             }else{
                 term = createItem("OntologyTerm");
             }
-            System.out.println(" term.. " + identifier);
+            //System.out.println(" term.. " + identifier);
             term.setAttribute("identifier", identifier);
         }
         ontoTerms.put(identifier, term);

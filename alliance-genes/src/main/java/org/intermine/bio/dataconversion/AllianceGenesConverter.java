@@ -63,7 +63,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             if(count == 0) { count++; continue;}
             String primaryIdentifier = line[0].trim();
             if(line.length < 14) {
-                System.out.println("Gene line problem: " + primaryIdentifier);
+                //System.out.println("Gene line problem: " + primaryIdentifier);
                 continue; }
             String secondaryIdentifier = line[1].trim();
             String synonyms = line[2].trim();
@@ -74,7 +74,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             String autoDescription = line[7].trim();
             String origspecies = line[8].trim();
             if(!origspecies.startsWith("NCBITaxon:")) {
-                System.out.println("Taxon problem new line in MOD description: " + primaryIdentifier);
+                //System.out.println("Taxon problem new line in MOD description: " + primaryIdentifier);
                 continue;
             }
             String species = origspecies.replace("NCBITaxon:","");
@@ -101,7 +101,7 @@ public class AllianceGenesConverter extends BioFileConverter {
 
             Item g  = genes.get(primaryIdentifier);
             if (g != null){
-                System.out.println("Is a duplicate line.." + primaryIdentifier);
+                //System.out.println("Is a duplicate line.." + primaryIdentifier);
                 String mcm = geneschromosomes.get(primaryIdentifier);
                 if(!mcm.equals(chrId)) {
                     g.setReference("chromosome", mcm);
@@ -239,7 +239,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
 
 
-            if(item == null) { System.out.println("null FT..." + feature_type); continue;}
+            if(item == null) { //System.out.println("null FT..." + feature_type); continue;}
 
             if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
             if(StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
