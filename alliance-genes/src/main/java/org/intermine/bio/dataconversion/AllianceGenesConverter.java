@@ -241,56 +241,56 @@ public class AllianceGenesConverter extends BioFileConverter {
             } else if (feature_type.equalsIgnoreCase("Y_RNA")) {
                 item = createItem("YRNA");
             }
-
-
-            if (item == null) { //System.out.println("null FT..." + feature_type); continue;}
-
-                if (StringUtils.isNotEmpty(primaryIdentifier)) {
-                    item.setAttribute("primaryIdentifier", primaryIdentifier);
-                }
-                if (StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
-                    item.setAttribute("secondaryIdentifier", secondaryIdentifier);
-                }
-                if (StringUtils.isNotEmpty(symbol)) {
-                    item.setAttribute("symbol", symbol);
-                }
-                if (StringUtils.isNotEmpty(name)) {
-                    item.setAttribute("name", name);
-                }
-                if (StringUtils.isNotEmpty(feature_type)) {
-                    item.setAttribute("featureType", feature_type);
-                }
-                if (StringUtils.isNotEmpty(description)) {
-                    item.setAttribute("modDescription", description);
-                }
-                if (StringUtils.isNotEmpty(autoDescription)) {
-                    item.setAttribute("automatedDescription", autoDescription);
-                }
-                item.setReference("organism", organism);
-                item.setReference("chromosome", chrId);
-                // ~~~ location ~~~
-                if (!start.equals("null") || !end.equals("null")) {
-                    String locationRefId = getLocation(item, chrId, start, end, strand);
-                    item.setReference("chromosomeLocation", locationRefId);
-                }
-                String refId = item.getIdentifier();
-                //~~~synonyms~~~
-                if (!synonyms.equals("[]")) {
-                    getSynonyms(refId, synonyms);
-                }
-                //~~~crossrefs~~~
-                if (!crossrefs.equals("[]")) {
-                    getCrossReference(primaryIdentifier, refId, crossrefs);
-                }
-                genes.put(primaryIdentifier, item);
-                geneschromosomes.put(primaryIdentifier, chrId);
+            if (item == null) {
+                //System.out.println("null FT..." + feature_type);
+                continue;
             }
-            System.out.println("size of genes:  " + genes.size());
-            storeSynonyms();
-            storeCrossrefs();
-            storeGenes();
+
+            if (StringUtils.isNotEmpty(primaryIdentifier)) {
+                item.setAttribute("primaryIdentifier", primaryIdentifier);
+            }
+            if (StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
+                item.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            }
+            if (StringUtils.isNotEmpty(symbol)) {
+                item.setAttribute("symbol", symbol);
+            }
+            if (StringUtils.isNotEmpty(name)) {
+                item.setAttribute("name", name);
+            }
+            if (StringUtils.isNotEmpty(feature_type)) {
+                item.setAttribute("featureType", feature_type);
+            }
+            if (StringUtils.isNotEmpty(description)) {
+                item.setAttribute("modDescription", description);
+            }
+            if (StringUtils.isNotEmpty(autoDescription)) {
+                item.setAttribute("automatedDescription", autoDescription);
+            }
+            item.setReference("organism", organism);
+            item.setReference("chromosome", chrId);
+            // ~~~ location ~~~
+            if (!start.equals("null") || !end.equals("null")) {
+                String locationRefId = getLocation(item, chrId, start, end, strand);
+                item.setReference("chromosomeLocation", locationRefId);
+            }
+            String refId = item.getIdentifier();
+            //~~~synonyms~~~
+            if (!synonyms.equals("[]")) {
+                getSynonyms(refId, synonyms);
+            }
+            //~~~crossrefs~~~
+            if (!crossrefs.equals("[]")) {
+                getCrossReference(primaryIdentifier, refId, crossrefs);
+            }
+            genes.put(primaryIdentifier, item);
+            geneschromosomes.put(primaryIdentifier, chrId);
 
         }
+        System.out.println("size of genes:  " + genes.size());
+        storeSynonyms();
+        storeCrossrefs();
+        storeGenes();
     }
 
     /**
