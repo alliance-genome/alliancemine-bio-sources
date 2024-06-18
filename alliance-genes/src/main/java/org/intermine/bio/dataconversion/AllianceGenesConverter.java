@@ -51,8 +51,8 @@ public class AllianceGenesConverter extends BioFileConverter {
     /**
      * {@inheritDoc}
      */
-    public void process(Reader reader) throws Exception, ObjectStoreException{
-       //Id	SecondaryID	CrossRefs Name	Symbol	MOD Description	Auto Description	Species	Chromosome	Start	End	 Strand	  SoTerm
+    public void process(Reader reader) throws Exception, ObjectStoreException {
+        //Id	SecondaryID	CrossRefs Name	Symbol	MOD Description	Auto Description	Species	Chromosome	Start	End	 Strand	  SoTerm
 
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
@@ -60,11 +60,15 @@ public class AllianceGenesConverter extends BioFileConverter {
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
-            if(count == 0) { count++; continue;}
+            if (count == 0) {
+                count++;
+                continue;
+            }
             String primaryIdentifier = line[0].trim();
-            if(line.length < 14) {
+            if (line.length < 14) {
                 //System.out.println("Gene line problem: " + primaryIdentifier);
-                continue; }
+                continue;
+            }
             String secondaryIdentifier = line[1].trim();
             String synonyms = line[2].trim();
             String crossrefs = line[3].trim();
@@ -73,11 +77,11 @@ public class AllianceGenesConverter extends BioFileConverter {
             String description = line[6].trim();
             String autoDescription = line[7].trim();
             String origspecies = line[8].trim();
-            if(!origspecies.startsWith("NCBITaxon:")) {
+            if (!origspecies.startsWith("NCBITaxon:")) {
                 //System.out.println("Taxon problem new line in MOD description: " + primaryIdentifier);
                 continue;
             }
-            String species = origspecies.replace("NCBITaxon:","");
+            String species = origspecies.replace("NCBITaxon:", "");
             String chromosome = line[9].trim();
             String start = line[10].trim();
             String end = line[11].trim();
@@ -85,13 +89,13 @@ public class AllianceGenesConverter extends BioFileConverter {
             String feature_type = line[13].trim();
 
             String chr = "";
-            if(species.equals("559292")){
-                if(chromosome.equals("Mito")){
+            if (species.equals("559292")) {
+                if (chromosome.equals("Mito")) {
                     chr = "chrmt";
-                }else {
+                } else {
                     chr = "chr" + chromosome;
                 }
-            }else{
+            } else {
                 chr = chromosome;
             }
 
@@ -99,15 +103,15 @@ public class AllianceGenesConverter extends BioFileConverter {
             String organism = getOrganism(species);
             String chrId = getChromosome(chr, organism);
 
-            Item g  = genes.get(primaryIdentifier);
-            if (g != null){
+            Item g = genes.get(primaryIdentifier);
+            if (g != null) {
                 //System.out.println("Is a duplicate line.." + primaryIdentifier);
                 String mcm = geneschromosomes.get(primaryIdentifier);
-                if(!mcm.equals(chrId)) {
+                if (!mcm.equals(chrId)) {
                     g.setReference("chromosome", mcm);
                 }
                 // ~~~ location ~~~
-                if(!start.equals("null") || !end.equals("null")) {
+                if (!start.equals("null") || !end.equals("null")) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
                     g.setReference("chromosomeLocation", locationRefId);
                 }
@@ -144,7 +148,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("MtRRNA");
             } else if (feature_type.equalsIgnoreCase("mt_tRNA")) {
                 item = createItem("MtTRNA");
-            }else if (feature_type.equalsIgnoreCase("ncRNA_gene")) {
+            } else if (feature_type.equalsIgnoreCase("ncRNA_gene")) {
                 item = createItem("NcRNAGene");
             } else if (feature_type.equalsIgnoreCase("piRNA_gene")) {
                 item = createItem("PiRNAGene");
@@ -239,41 +243,54 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
 
 
-            if(item == null) { //System.out.println("null FT..." + feature_type); continue;}
+            if (item == null) { //System.out.println("null FT..." + feature_type); continue;}
 
-            if(StringUtils.isNotEmpty(primaryIdentifier) ) { item.setAttribute("primaryIdentifier", primaryIdentifier); }
-            if(StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
-                item.setAttribute("secondaryIdentifier", secondaryIdentifier);
+                if (StringUtils.isNotEmpty(primaryIdentifier)) {
+                    item.setAttribute("primaryIdentifier", primaryIdentifier);
+                }
+                if (StringUtils.isNotEmpty(secondaryIdentifier) && !primaryIdentifier.startsWith("SGD:")) {
+                    item.setAttribute("secondaryIdentifier", secondaryIdentifier);
+                }
+                if (StringUtils.isNotEmpty(symbol)) {
+                    item.setAttribute("symbol", symbol);
+                }
+                if (StringUtils.isNotEmpty(name)) {
+                    item.setAttribute("name", name);
+                }
+                if (StringUtils.isNotEmpty(feature_type)) {
+                    item.setAttribute("featureType", feature_type);
+                }
+                if (StringUtils.isNotEmpty(description)) {
+                    item.setAttribute("modDescription", description);
+                }
+                if (StringUtils.isNotEmpty(autoDescription)) {
+                    item.setAttribute("automatedDescription", autoDescription);
+                }
+                item.setReference("organism", organism);
+                item.setReference("chromosome", chrId);
+                // ~~~ location ~~~
+                if (!start.equals("null") || !end.equals("null")) {
+                    String locationRefId = getLocation(item, chrId, start, end, strand);
+                    item.setReference("chromosomeLocation", locationRefId);
+                }
+                String refId = item.getIdentifier();
+                //~~~synonyms~~~
+                if (!synonyms.equals("[]")) {
+                    getSynonyms(refId, synonyms);
+                }
+                //~~~crossrefs~~~
+                if (!crossrefs.equals("[]")) {
+                    getCrossReference(primaryIdentifier, refId, crossrefs);
+                }
+                genes.put(primaryIdentifier, item);
+                geneschromosomes.put(primaryIdentifier, chrId);
             }
-            if(StringUtils.isNotEmpty(symbol)) { item.setAttribute("symbol", symbol); }
-            if(StringUtils.isNotEmpty(name)) { item.setAttribute("name", name); }
-            if(StringUtils.isNotEmpty(feature_type)) { item.setAttribute("featureType", feature_type);}
-            if(StringUtils.isNotEmpty(description)) { item.setAttribute("modDescription", description);}
-            if(StringUtils.isNotEmpty(autoDescription)) { item.setAttribute("automatedDescription", autoDescription);}
-            item.setReference("organism", organism);
-            item.setReference("chromosome", chrId);
-            // ~~~ location ~~~
-            if(!start.equals("null") || !end.equals("null")) {
-                String locationRefId = getLocation(item, chrId, start, end, strand);
-                item.setReference("chromosomeLocation", locationRefId);
-            }
-            String refId = item.getIdentifier();
-            //~~~synonyms~~~
-            if(!synonyms.equals("[]")) {
-                getSynonyms(refId, synonyms);
-            }
-            //~~~crossrefs~~~
-            if(!crossrefs.equals("[]")) {
-                getCrossReference(primaryIdentifier, refId, crossrefs);
-            }
-            genes.put(primaryIdentifier, item);
-            geneschromosomes.put(primaryIdentifier, chrId);
+            System.out.println("size of genes:  " + genes.size());
+            storeSynonyms();
+            storeCrossrefs();
+            storeGenes();
+
         }
-        System.out.println("size of genes:  " + genes.size());
-        storeSynonyms();
-        storeCrossrefs();
-        storeGenes();
-
     }
 
     /**
