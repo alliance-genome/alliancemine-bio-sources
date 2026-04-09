@@ -1275,12 +1275,13 @@ public class SgdConverter extends BioDBConverter {
 
 			String fixed_chromosome_no = getFixedChrName(chromosome_no);
 
-			// figure out why duplicates in the SQL..???..
-			/*if (featureMap.get(geneChildFeatureNo) == null) {
+			// Skip duplicate child features: SQL query returns duplicate rows
+			// for telomeric_repeat features causing "Duplicate objects found for pk" errors.
+			if (featureMap.get(geneChildFeatureNo) == null) {
 				featureMap.put(geneChildFeatureNo, geneFeatureNo);
 			} else {
 				continue;
-			}*/
+			}
 
 			Item parent = genes.get(geneFeatureNo);
 			// create the child Item
