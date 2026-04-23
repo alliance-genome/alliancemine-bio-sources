@@ -206,7 +206,7 @@
         <reference name="subject" referenced-type="BioEntity" reverse-reference="crossReferences"/>
         <!--<reference name="variant" referenced-type="BioEntity" reverse-reference="crossReferences"/>-->
     </class>
-    <class name="DOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="DOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/doid.owl"/>
     <class name="DataSet" is-interface="true">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="url" type="java.lang.String"/>
@@ -253,10 +253,10 @@
         <attribute name="code" type="java.lang.String"/>
 
     </class>
-    <class name="ECOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="HPOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="PATOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="MPOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="ECOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/eco.owl"/>
+    <class name="HPOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/hp.owl"/>
+    <class name="PATOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/pato.owl"/>
+    <class name="MPOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/mp.owl"/>
     <class name="Exon" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000147">
         <reference name="gene" referenced-type="Gene" reverse-reference="exons"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="exons"/>
@@ -294,13 +294,13 @@
         <attribute name="annotType" type="java.lang.String"/>
         <attribute name="code" type="java.lang.String"/>
     </class>
-    <class name="GOSlimTerm" extends="GOTerm" is-interface="true"/>
-    <class name="GOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="MMOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="EMAPATerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="ZFATerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="WBBTTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="FBBTTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="GOSlimTerm" extends="GOTerm" is-interface="true" term="http://purl.obolibrary.org/obo/go.owl"/>
+    <class name="GOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/go.owl"/>
+    <class name="MMOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/mmo.owl"/>
+    <class name="EMAPATerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/emapa.owl"/>
+    <class name="ZFATerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/zfa.owl"/>
+    <class name="WBBTTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/wbbt.owl"/>
+    <class name="FBBTTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/fbbt.owl"/>
 
     <class name="Gene" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000704">
         <attribute name="geneSummary" type="java.lang.String"/>
@@ -456,7 +456,7 @@
         <reference name="W_regions" referenced-type="W_region" reverse-reference="matingtyperegion"/>
     </class>
     <class name="MatrixAttachmentSite" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000357"/>
-    <class name="MeshTerm" is-interface="true">
+    <class name="MeshTerm" is-interface="true" term="https://id.nlm.nih.gov/mesh/">
         <attribute name="name" type="java.lang.String"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="meshTerms"/>
     </class>
@@ -766,7 +766,7 @@
     </class>
     <class name="Retrotransposon" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000180"/>
     <class name="SAGETag" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001168"/>
-    <class name="SOTerm" extends="OntologyTerm" is-interface="true"/>
+    <class name="SOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/so.owl"/>
     <class name="Sequence" is-interface="true">
         <attribute name="md5checksum" type="java.lang.String"/>
         <attribute name="residues" type="org.intermine.objectstore.query.ClobAccess"/>
