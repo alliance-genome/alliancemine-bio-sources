@@ -43,7 +43,7 @@
     </class>
 
     <class name="Antisense" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000644"> </class>
-    <class name="Author" is-interface="true">
+    <class name="Author" is-interface="true" term="http://xmlns.com/foaf/0.1/Person">
         <attribute name="firstName" type="java.lang.String"/>
         <attribute name="initials" type="java.lang.String"/>
         <attribute name="lastName" type="java.lang.String"/>
@@ -143,7 +143,7 @@
     </class>
 
 
-    <class name="YRNA" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="YRNA" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000405"> </class>
 
     <!--<class name="TranscribedUnprocessedPseudogene" extends="NonProcessedPseudogene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0002100"> </class>-->
 
@@ -163,7 +163,7 @@
     </class>
 
     <class name="Chromosome" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000340"/>
-    <class name="Comment" is-interface="true">
+    <class name="Comment" is-interface="true" term="http://www.w3.org/2000/01/rdf-schema#comment">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="type" type="java.lang.String"/>
     </class>
@@ -197,7 +197,7 @@
         <collection name="publications" referenced-type="Publication"/>
     </class>
 
-    <class name="CrossReference" is-interface="true">
+    <class name="CrossReference" is-interface="true" term="http://purl.org/dc/terms/identifier">
         <attribute name="dbxreftype" type="java.lang.String"/>
         <attribute name="primaryIdentifier" type="java.lang.String"/>
         <attribute name="identifier" type="java.lang.String"/>
@@ -207,7 +207,7 @@
         <!--<reference name="variant" referenced-type="BioEntity" reverse-reference="crossReferences"/>-->
     </class>
     <class name="DOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/doid.owl"/>
-    <class name="DataSet" is-interface="true">
+    <class name="DataSet" is-interface="true" term="http://purl.org/dc/dcmitype/Dataset">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="url" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
@@ -216,14 +216,14 @@
         <reference name="publication" referenced-type="Publication"/>
         <collection name="bioEntities" referenced-type="BioEntity" reverse-reference="dataSets"/>
     </class>
-    <class name="DataSource" is-interface="true">
+    <class name="DataSource" is-interface="true" term="http://purl.org/dc/terms/Agent">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="url" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <collection name="publications" referenced-type="Publication"/>
         <collection name="dataSets" referenced-type="DataSet" reverse-reference="dataSource"/>
     </class>
-    <class name="DatabaseReference" is-interface="true">
+    <class name="DatabaseReference" is-interface="true" term="http://purl.org/dc/terms/identifier">
         <attribute name="identifier" type="java.lang.String"/>
         <reference name="subject" referenced-type="Publication" reverse-reference="crossReferences"/>
         <reference name="source" referenced-type="DataSource"/>
@@ -336,7 +336,7 @@
         <reference name="gene" referenced-type="Gene" reverse-reference="flankingRegions"/>
     </class>
     <class name="GeneGroup" extends="SequenceFeature" is-interface="true"/>
-    <class name="Homologue" is-interface="true">
+    <class name="Homologue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000857">
         <attribute name="source" type="java.lang.String"/>
         <attribute name="type" type="java.lang.String"/>
         <attribute name="algorithms" type="java.lang.String"/>
@@ -357,7 +357,7 @@
     <class name="InteinEncodingRegion" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000597">
         <reference name="orf" referenced-type="ORF" reverse-reference="inteinencodingregions"/>
     </class>
-    <class name="Interaction" is-interface="true">
+    <class name="Interaction" is-interface="true" term="http://semanticscience.org/resource/SIO_000897">
         <reference name="participant1" referenced-type="BioEntity" reverse-reference="interactions"/>
         <reference name="participant2" referenced-type="BioEntity"/>
         <reference name="complex" referenced-type="Complex"/>
@@ -402,7 +402,7 @@
         <collection name="locations" referenced-type="Location"/>
     </class>
     <class name="InteractionTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="Interactor" is-interface="true">
+    <class name="Interactor" is-interface="true" term="http://semanticscience.org/resource/SIO_010043">
         <attribute name="annotations" type="java.lang.String"/>
         <attribute name="type" type="java.lang.String"/>
         <attribute name="stoichiometry" type="java.lang.Integer"/>
@@ -423,7 +423,7 @@
     <class name="LiteratureTopic" is-interface="true">
         <attribute name="name" type="java.lang.String"/>
     </class>
-    <class name="Location" is-interface="true">
+    <class name="Location" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000001">
         <attribute name="strand" type="java.lang.String"/>
         <attribute name="start" type="java.lang.Integer"/>
         <attribute name="end" type="java.lang.Integer"/>
@@ -483,11 +483,11 @@
         <collection name="fiveprimeutrintrons" referenced-type="FivePrimeUTRIntron" reverse-reference="orf"/>
         <collection name="telomericRepeats" referenced-type="TelomericRepeat" reverse-reference="orf"/>
     </class>
-    <class name="Ontology" is-interface="true">
+    <class name="Ontology" is-interface="true" term="http://www.w3.org/2002/07/owl#Ontology">
         <attribute name="url" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
     </class>
-    <class name="OntologyAnnotation" is-interface="true">
+    <class name="OntologyAnnotation" is-interface="true" term="http://purl.obolibrary.org/obo/IAO_0000136">
         <attribute name="qualifier" type="java.lang.String"/>
         <reference name="ontologyTerm" referenced-type="OntologyTerm" reverse-reference="ontologyAnnotations"/>
         <reference name="subject" referenced-type="Annotatable" reverse-reference="ontologyAnnotations"/>
@@ -509,14 +509,14 @@
     </class>
 
 
-    <class name="OntologyRelation" is-interface="true">
+    <class name="OntologyRelation" is-interface="true" term="http://www.w3.org/2002/07/owl#ObjectProperty">
         <attribute name="redundant" type="java.lang.Boolean"/>
         <attribute name="direct" type="java.lang.Boolean"/>
         <attribute name="relationship" type="java.lang.String"/>
         <reference name="parentTerm" referenced-type="OntologyTerm"/>
         <reference name="childTerm" referenced-type="OntologyTerm"/>
     </class>
-    <class name="OntologyTerm" is-interface="true">
+    <class name="OntologyTerm" is-interface="true" term="http://www.w3.org/2004/02/skos/core#Concept">
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="description" type="java.lang.String"/>
         <attribute name="obsolete" type="java.lang.Boolean"/>
@@ -530,11 +530,11 @@
         <collection name="dataSets" referenced-type="DataSet"/>
         <collection name="crossReferences" referenced-type="OntologyTerm"/>
     </class>
-    <class name="OntologyTermSynonym" is-interface="true">
+    <class name="OntologyTermSynonym" is-interface="true" term="http://www.w3.org/2004/02/skos/core#altLabel">
         <attribute name="type" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
     </class>
-    <class name="Organism" is-interface="true">
+    <class name="Organism" is-interface="true" term="http://purl.obolibrary.org/obo/OBI_0100026">
         <attribute name="species" type="java.lang.String"/>
         <attribute name="genus" type="java.lang.String"/>
         <attribute name="taxonId" type="java.lang.String"/>
@@ -553,7 +553,7 @@
         <attribute name="abbreviation" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
     </class>
-    <class name="Pathway" is-interface="true">
+    <class name="Pathway" is-interface="true" term="http://purl.obolibrary.org/obo/GO:0008150">
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <reference name="summary" referenced-type="PathwaySummary"/>
@@ -567,7 +567,7 @@
         <collection name="publications" referenced-type="Publication"/>
     </class>
     
-    <class name="Phenotype" is-interface="true">
+    <class name="Phenotype" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001682">
         <attribute name="mutantType" type="java.lang.String"/>
         <attribute name="strainBackground" type="java.lang.String"/>
         <attribute name="experimentType" type="java.lang.String"/>
@@ -708,7 +708,7 @@
         <!--<collection name="CDSs" referenced-type="CDS" reverse-reference="pseudogene"/>-->
         <collection name="plus1translationalframeshifts" referenced-type="Plus1TranslationalFrameshift" reverse-reference="pseudogene"/>
     </class>
-    <class name="Publication" is-interface="true">
+    <class name="Publication" is-interface="true" term="http://purl.org/ontology/bibo/Article">
         <attribute name="year" type="java.lang.Integer"/>
         <attribute name="citation" type="java.lang.String"/>
         <attribute name="issue" type="java.lang.String"/>
@@ -733,7 +733,7 @@
         <collection name="pathways" referenced-type="Pathway" reverse-reference="publications"/>
         <!--<collection name="pathwaysummary" referenced-type="Phenotype" reverse-reference="publications"/>-->
     </class>
-    <class name="PublicationAnnotation" is-interface="true">
+    <class name="PublicationAnnotation" is-interface="true" term="http://purl.org/ontology/bibo/Article">
         <reference name="publication" referenced-type="Publication"/>
         <collection name="literatureTopics" referenced-type="LiteratureTopic"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="publicationAnnotations"/>
@@ -767,12 +767,12 @@
     <class name="Retrotransposon" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000180"/>
     <class name="SAGETag" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001168"/>
     <class name="SOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/so.owl"/>
-    <class name="Sequence" is-interface="true">
+    <class name="Sequence" is-interface="true" term="http://purl.uniprot.org/core/Sequence">
         <attribute name="md5checksum" type="java.lang.String"/>
         <attribute name="residues" type="org.intermine.objectstore.query.ClobAccess"/>
         <attribute name="length" type="int"/>
     </class>
-    <class name="SequenceCollection" extends="BioEntity" is-interface="true">
+    <class name="SequenceCollection" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001260">
         <reference name="sequenceOntologyTerm" referenced-type="SOTerm"/>
     </class>
     <class name="SequenceFeature" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000110">
@@ -799,13 +799,13 @@
         <collection name="genes" referenced-type="Gene"/>
     </class>
     <class name="SilentMatingTypeCassetteArray" extends="SequenceFeature" is-interface="true"/>
-    <class name="SmallMolecule" extends="BioEntity" is-interface="true"/>
+    <class name="SmallMolecule" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/CHEBI_23367"/>
     <class name="SnRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001268"/>
     <class name="SnoRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001267"/>
-    <class name="ScaRNAGene" extends="NcRNAGene" is-interface="true"/>
-    <class name="UnconfirmedTranscript" extends="SequenceFeature" is-interface="true"/>
+    <class name="ScaRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001266"/>
+    <class name="UnconfirmedTranscript" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0002139"/>
 
-    <class name="Synonym" is-interface="true">
+    <class name="Synonym" is-interface="true" term="http://www.w3.org/2004/02/skos/core#altLabel">
         <attribute name="value" type="java.lang.String"/>
         <reference name="subject" referenced-type="BioEntity" reverse-reference="synonyms"/>
         <!--<reference name="allele" referenced-type="Allele" reverse-reference="synonyms"/>
