@@ -177,8 +177,13 @@ public class AllianceAllelesConverter extends BioFileConverter {
             Item variantdetail = createItem("VariantDetails");
             if (StringUtils.isNotEmpty(assembly)) variantdetail.setAttribute("assembly", assembly);
             if (StringUtils.isNotEmpty(chr)) variantdetail.setAttribute("chr", chr);
-            if (StringUtils.isNotEmpty(chrStart)) variantdetail.setAttribute("chrStartPosition", chrStart);
-            if (StringUtils.isNotEmpty(chrEnd)) variantdetail.setAttribute("chrEndPosition", chrEnd);
+            // chrStart/chrEnd come in as digits-or-dash; filter the dash so the Integer cast succeeds.
+            if (StringUtils.isNotEmpty(chrStart) && !"-".equals(chrStart)) {
+                variantdetail.setAttribute("chrStartPosition", chrStart);
+            }
+            if (StringUtils.isNotEmpty(chrEnd) && !"-".equals(chrEnd)) {
+                variantdetail.setAttribute("chrEndPosition", chrEnd);
+            }
             if (StringUtils.isNotEmpty(seqRef)) variantdetail.setAttribute("sequenceOfReference", seqRef);
             if (StringUtils.isNotEmpty(seqVariant)) variantdetail.setAttribute("sequenceOfVariant", seqVariant);
             if (StringUtils.isNotEmpty(mostSevere)) variantdetail.setAttribute("mostSevereConsequenceName", mostSevere);
