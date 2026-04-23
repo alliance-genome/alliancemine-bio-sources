@@ -22,15 +22,17 @@ import org.intermine.xml.full.Item;
 import org.intermine.xml.full.ReferenceList;
 import org.intermine.util.FormattedTextParser;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.io.Reader;
 
 
@@ -161,7 +163,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                 if (allEvidenceForAnnotation == null ) { //|| !StringUtils.isEmpty(withText)
                     String goTermIdentifier = newDoTerm(doId, dataSource, dataSourceCode);
                     Evidence evidence = new Evidence(strEvidence, pubRefId, withText, annotType, organism,
-                            dataSource, dataSourceCode);
+                            dataSource, dataSourceCode, date_assigned);
                     allEvidenceForAnnotation = new LinkedHashSet<Evidence>();
                     allEvidenceForAnnotation.add(evidence);
                     doTermGeneToEvidence.put(key, allEvidenceForAnnotation);
@@ -184,7 +186,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                     }
                     if (!seenEvidenceCode) {
                         Evidence evidence = new Evidence(strEvidence, pubRefId, withText, annotType, organism,
-                                dataSource, dataSourceCode);   //was strEvidence
+                                dataSource, dataSourceCode, date_assigned);   //was strEvidence
                         evidence.storedAnnotationId = storedAnnotationId;
                         allEvidenceForAnnotation.add(evidence);
                     }
@@ -230,6 +232,15 @@ public class AllianceDiseaseConverter extends BioFileConverter {
 				}*/
                 if(!StringUtils.isEmpty(evidence.withText)) {
                     goevidence.setAttribute("withText", evidence.withText);
+                }
+                // DISEASE TSV encodes Date as YYYYMMDD; translate to java.util.Date for the model field.
+                if (!StringUtils.isEmpty(evidence.dateAssigned)) {
+                    try {
+                        Date d = new SimpleDateFormat("yyyyMMdd").parse(evidence.dateAssigned);
+                        goevidence.setAttribute("dateAssigned", new SimpleDateFormat("yyyy-MM-dd").format(d));
+                    } catch (java.text.ParseException e) {
+                        LOG.warn("Could not parse DateAssigned '" + evidence.dateAssigned + "': " + e.getMessage());
+                    }
                 }
                 store(goevidence);
                 evidenceRefIds.add(goevidence.getIdentifier());
@@ -536,15 +547,17 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         private Item organism = null;
         private String dataSourceCode = null;
         private String dataSource = null;
+        private String dateAssigned = null;
 
         protected Evidence(String evidenceCode, String publicationRefId, String withText, String inferredFrom,
-                           Item organism, String dataset, String datasource) {
+                           Item organism, String dataset, String datasource, String dateAssigned) {
             this.evidenceCode = evidenceCode;
             this.withText = withText;
             this.inferredFrom = inferredFrom;
             this.organism = organism;
             this.dataSourceCode = dataset;
             this.dataSource = datasource;
+            this.dateAssigned = dateAssigned;
             addPublicationRefId(publicationRefId);
         }
 

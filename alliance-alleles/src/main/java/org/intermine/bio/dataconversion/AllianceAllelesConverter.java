@@ -85,7 +85,9 @@ public class AllianceAllelesConverter extends BioFileConverter {
             String variantSynonym = line[7].trim();
             String variantCrossRefs = line[8].trim();
             String geneId = line[9].trim();
+            String affectedGeneId = line[11].trim();
             String alleleType = line[13].trim();
+            String variantsTypeId = line[14].trim();
             String variantType = line[15].trim();
             String variantHgvsName = line[16].trim();
             String assembly = line[17].trim();
@@ -103,8 +105,15 @@ public class AllianceAllelesConverter extends BioFileConverter {
             if (StringUtils.isNotEmpty(geneId)) {
                 gene = getGene(geneId, org);
             }
-            Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, assembly, chr,
-                    chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype);
+            // AlleleAssociatedGeneId (line 9) and VariantAffectedGeneId (line 11) can be distinct:
+            // the allele is *associated* with one gene but the variant may *affect* another.
+            Item affectedGene = null;
+            if (StringUtils.isNotEmpty(affectedGeneId) && !"-".equals(affectedGeneId)
+                    && !affectedGeneId.equals(geneId)) {
+                affectedGene = getGene(affectedGeneId, org);
+            }
+            Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, variantsTypeId, assembly, chr,
+                    chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype, affectedGene);
             if (gene != null) {
                 allele.setReference("gene", gene);
                 gene.addToCollection("alleles", allele);
@@ -131,9 +140,9 @@ public class AllianceAllelesConverter extends BioFileConverter {
      */
     private Item processAlleles(String alleleId, String alleleSymbol, String alleleSynonym, String alleleType,
                                 String variantId, String variantSymbol, String variantSynonym, String variantCrossRefs,
-                                String variantHgvsName, String variantType, String assembly, String chr,
+                                String variantHgvsName, String variantType, String variantsTypeId, String assembly, String chr,
                                 String chrStart, String chrEnd, String seqRef, String seqVariant, String mostSevere,
-                                String variantReference, String hasDisease, String hasPhenotype)
+                                String variantReference, String hasDisease, String hasPhenotype, Item affectedGene)
             throws ObjectStoreException {
 
         Item allele = alleles.get(alleleId);
@@ -144,7 +153,8 @@ public class AllianceAllelesConverter extends BioFileConverter {
             allele.setAttribute("featureType", "Allele");
             if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("alleleId", alleleId);
             if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
-            //if (StringUtils.isNotEmpty(alleleSynonym)) allele.setAttribute("alleleSynonym", alleleSynonym);
+            // Allele.synonyms is inherited from BioEntity; emit one Synonym item per pipe-separated token.
+            createSynonyms(allele, alleleSynonym);
             if (StringUtils.isNotEmpty(alleleType)) allele.setAttribute("alleleType", alleleType);
             //String refId = allele.getIdentifier();
                     /*if(pmrefNo != null ) {
@@ -169,10 +179,17 @@ public class AllianceAllelesConverter extends BioFileConverter {
             Item variant = createItem("Variant");
             if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
             if (StringUtils.isNotEmpty(variantSymbol)) variant.setAttribute("variantSymbol", variantSymbol);
-            //if (StringUtils.isNotEmpty(variantSynonym)) variant.setAttribute("variantSynonym", variantSynonym);
-            //if (StringUtils.isNotEmpty(variantCrossRefs)) variant.setAttribute("variantCrossRefs", variantCrossRefs);
+            // Variant.synonyms / crossReferences inherited from BioEntity; attach items with subject=variant.
+            createSynonyms(variant, variantSynonym);
+            createCrossReferences(variant, variantCrossRefs);
             if (StringUtils.isNotEmpty(variantHgvsName)) variant.setAttribute("VariantsHgvsNames", variantHgvsName);
             if (StringUtils.isNotEmpty(variantType)) variant.setAttribute("variantType", variantType);
+            if (StringUtils.isNotEmpty(variantsTypeId) && !"-".equals(variantsTypeId)) {
+                variant.setAttribute("variantsTypeId", variantsTypeId);
+            }
+            if (affectedGene != null) {
+                variant.setReference("affectedGene", affectedGene);
+            }
 
             Item variantdetail = createItem("VariantDetails");
             if (StringUtils.isNotEmpty(assembly)) variantdetail.setAttribute("assembly", assembly);
@@ -245,6 +262,47 @@ public class AllianceAllelesConverter extends BioFileConverter {
             genes.put(g, gene);
         }
         return gene; //.getIdentifier();
+    }
+
+    // Split pipe-separated synonym list and emit one Synonym item per token, linked to the subject
+    // via the inherited BioEntity.synonyms collection (Synonym.subject reverse-reference).
+    private void createSynonyms(Item subject, String value) throws ObjectStoreException {
+        if (StringUtils.isEmpty(value) || "-".equals(value)) {
+            return;
+        }
+        for (String part : value.split("\\|")) {
+            String v = part.trim();
+            if (v.isEmpty() || "-".equals(v)) {
+                continue;
+            }
+            Item syn = createItem("Synonym");
+            syn.setReference("subject", subject);
+            syn.setAttribute("value", v);
+            store(syn);
+        }
+    }
+
+    // Split pipe-separated xref list and emit one CrossReference per token, linked to the subject
+    // via the inherited BioEntity.crossReferences collection. Tokens in "DB:ID" form get their
+    // prefix captured as dbxreftype.
+    private void createCrossReferences(Item subject, String value) throws ObjectStoreException {
+        if (StringUtils.isEmpty(value) || "-".equals(value)) {
+            return;
+        }
+        for (String part : value.split("\\|")) {
+            String v = part.trim();
+            if (v.isEmpty() || "-".equals(v)) {
+                continue;
+            }
+            Item cref = createItem("CrossReference");
+            cref.setReference("subject", subject);
+            cref.setAttribute("identifier", v);
+            int colon = v.indexOf(':');
+            if (colon > 0 && colon < v.length() - 1) {
+                cref.setAttribute("dbxreftype", v.substring(0, colon));
+            }
+            store(cref);
+        }
     }
 
 

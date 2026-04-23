@@ -123,8 +123,10 @@
         <attribute name="VariantsHgvsNames" type="java.lang.String"/>
         <attribute name="variantSymbol" type="java.lang.String"/>
         <attribute name="variantType" type="java.lang.String"/>
+        <attribute name="variantsTypeId" type="java.lang.String"/>
         <reference name="allele" referenced-type="Allele" reverse-reference="variants"/>
         <reference name="publication" referenced-type="Publication"/>
+        <reference name="affectedGene" referenced-type="Gene"/>
         <!--<collection name="synonyms" referenced-type="Synonym"/>-->
         <!--<collection name="crossreferences" referenced-type="CrossReference" reverse-reference="variant"/>-->
         <collection name="variantdetails" referenced-type="VariantDetails"/>
@@ -244,6 +246,7 @@
         <attribute name="experimentCondition" type="java.lang.String"/>
         <attribute name="modifier" type="java.lang.String"/>
         <attribute name="annotType" type="java.lang.String"/>
+        <attribute name="dateAssigned" type="java.util.Date"/>
         <reference name="code" referenced-type="DiseaseEvidenceCode"/>
         <collection name="publications" referenced-type="Publication"/>
     </class>
@@ -265,6 +268,12 @@
     <class name="ExpressionAnnotation" is-interface="true">
         <attribute name="stageTerm" type="java.lang.String"/>
         <attribute name="location" type="java.lang.String"/>
+        <attribute name="cellularComponentQualifierIds" type="java.lang.String"/>
+        <attribute name="cellularComponentQualifierTermNames" type="java.lang.String"/>
+        <attribute name="substructureQualifierIds" type="java.lang.String"/>
+        <attribute name="substructureQualifierTermNames" type="java.lang.String"/>
+        <attribute name="anatomyQualifierIds" type="java.lang.String"/>
+        <attribute name="anatomyQualifierTermNames" type="java.lang.String"/>
         <reference name="assay" referenced-type="OntologyTerm"/>
         <reference name="cellularcomponent" referenced-type="OntologyTerm"/>
         <reference name="substructure" referenced-type="OntologyTerm"/>
