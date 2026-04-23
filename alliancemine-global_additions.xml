@@ -42,7 +42,7 @@
         <collection name="publications" referenced-type="Publication" reverse-reference="entities"/>
     </class>
 
-    <class name="Antisense" extends="SequenceFeature" is-interface="true"> </class>
+    <class name="Antisense" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000644"> </class>
     <class name="Author" is-interface="true">
         <attribute name="firstName" type="java.lang.String"/>
         <attribute name="initials" type="java.lang.String"/>
@@ -50,7 +50,7 @@
         <attribute name="name" type="java.lang.String"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="authors"/>
     </class>
-    <class name="BindingSite" extends="BiologicalRegion" is-interface="true">
+    <class name="BindingSite" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000409">
         <reference name="regulator" referenced-type="Gene"/>
         <reference name="xelement" referenced-type="XElement" reverse-reference="bindingsites"/>
     </class>
@@ -76,7 +76,7 @@
     </class>
     <class name="CDBoxScaRNAGene" extends="SequenceFeature" is-interface="true"> </class>
     <class name="CDBoxSnoRNAGene" extends="SequenceFeature" is-interface="true"> </class>
-    <class name="CDS" extends="BiologicalRegion" is-interface="true">
+    <class name="CDS" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000316">
         <reference name="plasmid" referenced-type="Plasmid" reverse-reference="CDSs"/>
         <reference name="pseudogene" referenced-type="Pseudogene"/>
         <reference name="blockedreadingframe" referenced-type="BlockedReadingFrame"/>
@@ -91,7 +91,7 @@
         <reference name="feature" referenced-type="BioEntity"/>
     </class>
 
-    <class name="Centromere" extends="BiologicalRegion" is-interface="true">
+    <class name="Centromere" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000577">
         <collection name="alleles" referenced-type="Allele" reverse-reference="centromere"/>
         <reference name="centromereDNAElementIs" referenced-type="CentromereDNAElementI" reverse-reference="centromere"/>
         <reference name="centromereDNAElementIIIs" referenced-type="CentromereDNAElementIII" reverse-reference="centromere"/>
@@ -162,7 +162,7 @@
         <reference name="centromere" referenced-type="Centromere" reverse-reference="centromereDNAElementIIIs"/>
     </class>
 
-    <class name="Chromosome" extends="BiologicalRegion" is-interface="true"/>
+    <class name="Chromosome" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000340"/>
     <class name="Comment" is-interface="true">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="type" type="java.lang.String"/>
@@ -257,7 +257,7 @@
     <class name="HPOTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="PATOTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="MPOTerm" extends="OntologyTerm" is-interface="true"/>
-    <class name="Exon" extends="SequenceFeature" is-interface="true">
+    <class name="Exon" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000147">
         <reference name="gene" referenced-type="Gene" reverse-reference="exons"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="exons"/>
     </class>
@@ -276,7 +276,7 @@
     <class name="ExternalTranscribedSpacerRegion" extends="BiologicalRegion" is-interface="true">
         <reference name="ncrna_gene" referenced-type="NcRNAGene" reverse-reference="externaltranscribedspacerregions"/>
     </class>
-    <class name="FivePrimeUTR" extends="UTR" is-interface="true"/>
+    <class name="FivePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000204"/>
     <class name="FivePrimeUTRIntron" extends="SequenceFeature" is-interface="true">
         <reference name="orf" referenced-type="ORF" reverse-reference="fiveprimeutrintrons"/>
     </class>
@@ -302,7 +302,7 @@
     <class name="WBBTTerm" extends="OntologyTerm" is-interface="true"/>
     <class name="FBBTTerm" extends="OntologyTerm" is-interface="true"/>
 
-    <class name="Gene" extends="SequenceFeature" is-interface="true">
+    <class name="Gene" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000704">
         <attribute name="geneSummary" type="java.lang.String"/>
         <attribute name="phenotypeSummary" type="java.lang.String"/>
         <attribute name="functionSummary" type="java.lang.String"/>
@@ -416,7 +416,7 @@
     <class name="InternalTranscribedSpacerRegion" extends="BiologicalRegion" is-interface="true">
         <reference name="ncrna_gene" referenced-type="NcRNAGene" reverse-reference="internaltranscribedspacerregions"/>
     </class>
-    <class name="Intron" extends="BiologicalRegion" is-interface="true">
+    <class name="Intron" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000188">
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="introns"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="introns"/>
     </class>
@@ -435,7 +435,7 @@
         <attribute name="geneSummary" type="java.lang.String"/>
     </class>
     
-    <class name="MRNA" extends="Transcript" is-interface="true">
+    <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000234">
         <attribute name="fivePrimeDataSet" type="java.lang.String"/>
         <attribute name="note" type="java.lang.String"/>
         <attribute name="threePrimeScore" type="java.lang.String"/>
@@ -460,7 +460,7 @@
         <attribute name="name" type="java.lang.String"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="meshTerms"/>
     </class>
-    <class name="NcRNAGene" extends="BiologicalRegion Gene" is-interface="true">
+    <class name="NcRNAGene" extends="BiologicalRegion Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001263">
         <collection name="nontranscribedregions" referenced-type="NonTranscribedRegion" reverse-reference="ncrna_gene"/>
         <collection name="noncodingexons" referenced-type="NoncodingExon" reverse-reference="ncrna_gene"/>
         <collection name="externaltranscribedspacerregions" referenced-type="ExternalTranscribedSpacerRegion" reverse-reference="ncrna_gene"/>
@@ -588,7 +588,7 @@
         <collection name="publications" referenced-type="Publication" reverse-reference="phenotypes"/>
     </class>
     
-    <class name="Plasmid" extends="BiologicalRegion" is-interface="true">
+    <class name="Plasmid" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000155">
         <collection name="genes" referenced-type="Gene" reverse-reference="plasmid"/>
         <collection name="CDSs" referenced-type="CDS" reverse-reference="plasmid"/>
     </class>
@@ -597,7 +597,7 @@
         <reference name="pseudogene" referenced-type="Pseudogene" reverse-reference="plus1translationalframeshifts"/>
         <reference name="orf" referenced-type="ORF" reverse-reference="plus1translationalframeshifts"/>
     </class>
-    <class name="Protein" extends="BioEntity" is-interface="true">
+    <class name="Protein" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000104">
         <attribute name="symbol" type="java.lang.String"/>
         <attribute name="pI" type="java.lang.Float"/>
         <attribute name="molecularWeight" type="java.lang.Double"/>
@@ -661,7 +661,7 @@
         <reference name="origPublication" referenced-type="Publication"/>
         <collection name="proteins" referenced-type="Protein" reverse-reference="proteinAbundance"/>
     </class>
-    <class name="ProteinCodingGene" extends="BiologicalRegion Gene" is-interface="true"/>
+    <class name="ProteinCodingGene" extends="BiologicalRegion Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001217"/>
     <class name="ProteinDomain" is-interface="true">
         <attribute name="method" type="java.lang.String"/>
         <attribute name="description" type="java.lang.String"/>
@@ -704,7 +704,7 @@
         <reference name="publication" referenced-type="Publication"/>
         <collection name="proteins" referenced-type="Protein" reverse-reference="proteinProperties"/>
     </class>
-    <class name="Pseudogene" extends="Gene" is-interface="true">
+    <class name="Pseudogene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000336">
         <!--<collection name="CDSs" referenced-type="CDS" reverse-reference="pseudogene"/>-->
         <collection name="plus1translationalframeshifts" referenced-type="Plus1TranslationalFrameshift" reverse-reference="pseudogene"/>
     </class>
@@ -741,7 +741,7 @@
 
     <class name="RNA" extends="BioEntity" is-interface="true"/>
 
-    <class name="RRNAGene" extends="NcRNAGene" is-interface="true"/>
+    <class name="RRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001637"/>
 
     <class name="RegulationEvidence" extends="OntologyAnnotation" is-interface="true">
         <collection name="publications" referenced-type="Publication"/>
@@ -800,8 +800,8 @@
     </class>
     <class name="SilentMatingTypeCassetteArray" extends="SequenceFeature" is-interface="true"/>
     <class name="SmallMolecule" extends="BioEntity" is-interface="true"/>
-    <class name="SnRNAGene" extends="NcRNAGene" is-interface="true"/>
-    <class name="SnoRNAGene" extends="NcRNAGene" is-interface="true"/>
+    <class name="SnRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001268"/>
+    <class name="SnoRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001267"/>
     <class name="ScaRNAGene" extends="NcRNAGene" is-interface="true"/>
     <class name="UnconfirmedTranscript" extends="SequenceFeature" is-interface="true"/>
 
@@ -815,9 +815,9 @@
     <class name="TFBindingSite" extends="BindingSite RegulatoryRegion" is-interface="true">
         <attribute name="type" type="java.lang.String"/>
     </class>
-    <class name="TRNAGene" extends="NcRNAGene" is-interface="true"> </class>
+    <class name="TRNAGene" extends="NcRNAGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001272"> </class>
     <class name="TelomeraseRNAGene" extends="NcRNAGene" is-interface="true"/>
-    <class name="Telomere" extends="BiologicalRegion" is-interface="true">
+    <class name="Telomere" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000624">
         <collection name="XElementCombinatorialRepeats" referenced-type="XElementCombinatorialRepeat" reverse-reference="telomere"/>
         <collection name="telomericRepeats" referenced-type="TelomericRepeat" reverse-reference="telomere"/>
         <collection name="YPrimeElements" referenced-type="YPrimeElement" reverse-reference="telomere"/>
@@ -827,8 +827,8 @@
         <reference name="orf" referenced-type="ORF" reverse-reference="telomericRepeats"/>
         <reference name="telomere" referenced-type="Telomere" reverse-reference="telomericRepeats"/>
     </class>
-    <class name="ThreePrimeUTR" extends="UTR" is-interface="true"/>
-    <class name="Transcript" extends="SequenceFeature" is-interface="true">
+    <class name="ThreePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000205"/>
+    <class name="Transcript" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000673">
         <reference name="gene" referenced-type="Gene" reverse-reference="transcripts"/>
         <reference name="protein" referenced-type="Protein" reverse-reference="transcripts"/>
         <collection name="introns" referenced-type="Intron" reverse-reference="transcripts"/>
@@ -839,7 +839,7 @@
     <class name="TransposableElementGene" extends="ProteinCodingGene" is-interface="true">
         <collection name="plus1translationalframeshifts" referenced-type="Plus1TranslationalFrameshift" reverse-reference="transposableelementgene"/>
     </class>
-    <class name="UTR" extends="SequenceFeature" is-interface="true">
+    <class name="UTR" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000203">
         <reference name="gene" referenced-type="Gene" reverse-reference="UTRs"/>
         <collection name="transcripts" referenced-type="Transcript" reverse-reference="UTRs"/>
     </class>
