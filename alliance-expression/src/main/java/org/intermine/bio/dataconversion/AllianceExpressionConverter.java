@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -12,9 +12,10 @@ package org.intermine.bio.dataconversion;
 import java.io.Reader;
 import java.util.*;
 
-import org.intermine.metadata.Model;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
@@ -25,13 +26,15 @@ import org.intermine.xml.full.Item;
  */
 public class AllianceExpressionConverter extends BioFileConverter {
 
+    private static final Logger LOG = Logger.getLogger(AllianceExpressionConverter.class);
+
     private static final String DATASET_TITLE = "Alliance WT Expression data set";
     private static final String DATA_SOURCE_NAME = "Alliance WT Expression";
     private String licence;
-    private Map<String, Item> genes = new HashMap();
-    private Map<Item, Item> expannotations = new HashMap();
-    private Map<String, Item> ontoTerms = new HashMap();
-    private Map<String, Item> publications = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<Item, Item> expannotations = new HashMap<Item, Item>();
+    private Map<String, Item> ontoTerms = new HashMap<String, Item>();
+    private Map<String, Item> publications = new HashMap<String, Item>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -57,7 +60,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Expression...");
+        LOG.info("Processing Expression...");
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if(count < 15 ) { count++; continue;}
@@ -77,7 +80,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
             processExpressionAnnotation(geneId, org, location, stageterm, assayID, cellularcomponentID, substructureID,
                     anatomyID, sourceUrl, source, reference);
         }
-        System.out.println("size of expannots genes:  " + genes.size());
+        LOG.info("size of expannots genes: " + genes.size());
         storeOntologyTerms();
         storeExpAnnotations();
         storeGenes();
@@ -184,7 +187,6 @@ public class AllianceExpressionConverter extends BioFileConverter {
             }else{
                 term = createItem("OntologyTerm");
             }
-            //System.out.println(" term.. " + identifier);
             term.setAttribute("identifier", identifier);
         }
         ontoTerms.put(identifier, term);

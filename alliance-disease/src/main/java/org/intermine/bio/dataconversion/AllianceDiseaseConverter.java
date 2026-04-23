@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2009 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -72,7 +72,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
 
     private static final String DATASET_TITLE = "Alliance Disease data";
     private static final String DATA_SOURCE_NAME = "Alliance Disease data";
-    private Map<String, Item> genes = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
     private static final Integer TAXON_ID = 4932;
     private static final Integer HUMAN_TAXON_ID = 9606;
 
@@ -103,7 +103,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing DiseaseCombined.tsv...");
+        LOG.info("Processing DiseaseCombined.tsv...");
         while (lineIter.hasNext()) {
             count++;
             if (count < 15) { continue;}
@@ -410,25 +410,6 @@ public class AllianceDiseaseConverter extends BioFileConverter {
 
     private void storeEvidenceCode(String code, String inferredFrom, String withText, String expCondition, String modifier) throws ObjectStoreException {
 
-        /*String combinationcode = "";
-        if(withText.isEmpty() && inferredFrom.isEmpty()) {
-            combinationcode = code;
-        }else {
-            if(!withText.isEmpty()){
-                combinationcode = code+":"+withText;
-            }else if(!inferredFrom.isEmpty()) {
-                combinationcode = code + ":"+ inferredFrom;
-            }
-        }
-        if (evidenceCodes.get(combinationcode) == null) {
-            Item item = createItem("DiseaseEvidenceCode");
-            item.setAttribute("code", code);
-            if(StringUtils.isNotEmpty(withText)) item.setAttribute("withText", withText);
-            if(StringUtils.isNotEmpty(inferredFrom)) item.setAttribute("inferredFrom", inferredFrom);
-            store(item);
-            System.out.println("Evidence codes is..." + combinationcode + "   "+ code);
-            evidenceCodes.put(combinationcode, item.getIdentifier());
-        }*/
         if (evidenceCodes.get(code) == null) {
             Item item = createItem("DiseaseEvidenceCode");
             item.setAttribute("code", code);

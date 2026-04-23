@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2021 AllianceMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -13,12 +13,14 @@ import java.io.Reader;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import org.intermine.metadata.Model;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
-import org.apache.commons.lang.StringUtils;
 
 /*
  *
@@ -26,14 +28,16 @@ import org.apache.commons.lang.StringUtils;
  */
 public class AllianceAllelesConverter extends BioFileConverter {
 
+    private static final Logger LOG = Logger.getLogger(AllianceAllelesConverter.class);
+
     private static final String DATASET_TITLE = "Alliance Alleles data set";
     private static final String DATA_SOURCE_NAME = "DiOPT";
     private String licence;
-    private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> alleles = new HashMap();
-    private Map<String, Item> variants = new HashMap();
-    private Map<String, Item> variantdetails = new HashMap();
-    private Map<String, Item> alleleNames = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<String, Item> alleles = new HashMap<String, Item>();
+    private Map<String, Item> variants = new HashMap<String, Item>();
+    private Map<String, Item> variantdetails = new HashMap<String, Item>();
+    private Map<String, Item> alleleNames = new HashMap<String, Item>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -61,7 +65,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Variant-Alleles...");
+        LOG.info("Processing Variant-Alleles...");
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
@@ -106,7 +110,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
                 gene.addToCollection("alleles", allele);
             }
         }
-        System.out.println("size of alleles:  " + alleles.size());
+        LOG.info("size of alleles: " + alleles.size());
 
         storeVariants();
         storeAlleles();
@@ -221,7 +225,6 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
         Item gene  = genes.get(g);
         if(gene == null) {
-            //System.out.println("creating new  ..." + g);
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);

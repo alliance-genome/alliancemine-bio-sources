@@ -399,7 +399,6 @@
         <reference name="gene" referenced-type="Gene"/>
         <reference name="ontologyTerm" referenced-type="OntologyTerm"/>
         <reference name="interaction" referenced-type="InteractionDetail" reverse-reference="interactingRegions"/>
-        <reference name="locations" referenced-type="Location"/>
         <collection name="locations" referenced-type="Location"/>
     </class>
     <class name="InteractionTerm" extends="OntologyTerm" is-interface="true"/>

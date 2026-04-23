@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -14,9 +14,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.intermine.metadata.Model;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
@@ -27,16 +28,38 @@ import org.intermine.xml.full.Item;
  */
 public class AllianceGenesConverter extends BioFileConverter {
 
+    private static final Logger LOG = Logger.getLogger(AllianceGenesConverter.class);
+
     private static final String DATASET_TITLE = "Alliance Gene data set";
     private static final String DATA_SOURCE_NAME = "AGR";
+
+    // TSV column layout:
+    // Id  SecondaryID  Synonyms  CrossRefs  Name  Symbol  MOD-Description
+    // Auto-Description  Species  Chromosome  Start  End  Strand  SoTerm
+    private static final int COL_PRIMARY_ID = 0;
+    private static final int COL_SECONDARY_ID = 1;
+    private static final int COL_SYNONYMS = 2;
+    private static final int COL_CROSSREFS = 3;
+    private static final int COL_NAME = 4;
+    private static final int COL_SYMBOL = 5;
+    private static final int COL_DESCRIPTION = 6;
+    private static final int COL_AUTO_DESCRIPTION = 7;
+    private static final int COL_SPECIES = 8;
+    private static final int COL_CHROMOSOME = 9;
+    private static final int COL_START = 10;
+    private static final int COL_END = 11;
+    private static final int COL_STRAND = 12;
+    private static final int COL_FEATURE_TYPE = 13;
+    private static final int COL_COUNT = 14;
+
     private String licence;
-    private Map<String, String> chromosomes = new HashMap();
-    private Map<String, String> plasmids = new HashMap();
-    private Map<String, String> sequences = new HashMap();
-    private Map<String, Item> genes = new HashMap();
-    private Map <String, String> geneschromosomes = new HashMap();
-    private Map<Item, String> synonyms = new HashMap();
-    private Map<Item, String> crossrefs = new HashMap();
+    private Map<String, String> chromosomes = new HashMap<String, String>();
+    private Map<String, String> plasmids = new HashMap<String, String>();
+    private Map<String, String> sequences = new HashMap<String, String>();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<String, String> geneschromosomes = new HashMap<String, String>();
+    private Map<Item, String> synonyms = new HashMap<Item, String>();
+    private Map<Item, String> crossrefs = new HashMap<Item, String>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -52,11 +75,10 @@ public class AllianceGenesConverter extends BioFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws Exception, ObjectStoreException {
-        //Id	SecondaryID	CrossRefs Name	Symbol	MOD Description	Auto Description	Species	Chromosome	Start	End	 Strand	  SoTerm
 
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Genes...");
+        LOG.info("Processing Genes...");
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
@@ -64,29 +86,27 @@ public class AllianceGenesConverter extends BioFileConverter {
                 count++;
                 continue;
             }
-            String primaryIdentifier = line[0].trim();
-            if (line.length < 14) {
-                //System.out.println("Gene line problem: " + primaryIdentifier);
+            if (line.length < COL_COUNT) {
                 continue;
             }
-            String secondaryIdentifier = line[1].trim();
-            String synonyms = line[2].trim();
-            String crossrefs = line[3].trim();
-            String name = line[4].trim();
-            String symbol = line[5].trim();
-            String description = line[6].trim();
-            String autoDescription = line[7].trim();
-            String origspecies = line[8].trim();
+            String primaryIdentifier = line[COL_PRIMARY_ID].trim();
+            String secondaryIdentifier = line[COL_SECONDARY_ID].trim();
+            String synonyms = line[COL_SYNONYMS].trim();
+            String crossrefs = line[COL_CROSSREFS].trim();
+            String name = line[COL_NAME].trim();
+            String symbol = line[COL_SYMBOL].trim();
+            String description = line[COL_DESCRIPTION].trim();
+            String autoDescription = line[COL_AUTO_DESCRIPTION].trim();
+            String origspecies = line[COL_SPECIES].trim();
             if (!origspecies.startsWith("NCBITaxon:")) {
-                //System.out.println("Taxon problem new line in MOD description: " + primaryIdentifier);
                 continue;
             }
             String species = origspecies.replace("NCBITaxon:", "");
-            String chromosome = line[9].trim();
-            String start = line[10].trim();
-            String end = line[11].trim();
-            String strand = line[12].trim();
-            String feature_type = line[13].trim();
+            String chromosome = line[COL_CHROMOSOME].trim();
+            String start = line[COL_START].trim();
+            String end = line[COL_END].trim();
+            String strand = line[COL_STRAND].trim();
+            String feature_type = line[COL_FEATURE_TYPE].trim();
 
             String chr = "";
             if (species.equals("559292")) {
@@ -105,7 +125,6 @@ public class AllianceGenesConverter extends BioFileConverter {
 
             Item g = genes.get(primaryIdentifier);
             if (g != null) {
-                //System.out.println("Is a duplicate line.." + primaryIdentifier);
                 String mcm = geneschromosomes.get(primaryIdentifier);
                 if (!mcm.equals(chrId)) {
                     g.setReference("chromosome", mcm);
@@ -242,7 +261,6 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item = createItem("YRNA");
             }
             if (item == null) {
-                //System.out.println("null FT..." + feature_type);
                 continue;
             }
 
@@ -287,7 +305,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             geneschromosomes.put(primaryIdentifier, chrId);
 
         }
-        System.out.println("size of genes:  " + genes.size());
+        LOG.info("size of genes: " + genes.size());
         storeSynonyms();
         storeCrossrefs();
         storeGenes();

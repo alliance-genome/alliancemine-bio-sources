@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2015 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
@@ -26,7 +27,9 @@ import org.intermine.xml.full.Item;
  * @author
  */
 public class SgdComplementationConverter extends BioFileConverter {
-	//
+
+	private static final Logger LOG = Logger.getLogger(SgdComplementationConverter.class);
+
 	private static final String DATASET_TITLE = "Yeast Complementation";
 	private static final String DATA_SOURCE_NAME = "SGD-BioGRID curated complementation";
 	private final Map<String, Item> genes = new HashMap<String, Item>();
@@ -87,8 +90,7 @@ public class SgdComplementationConverter extends BioFileConverter {
 			Source 
  			Note 
 		 */
-		System.out
-		.println("Processing SGD-BioGRID complementation data file...."); 
+		LOG.info("Processing SGD-BioGRID complementation data file....");
 
 		BufferedReader br = new BufferedReader(preader);
 		String line = null;
@@ -112,7 +114,7 @@ public class SgdComplementationConverter extends BioFileConverter {
 				 notes = array[8].trim();
 			}
 		    
-			System.out.println("Processing line..." + yeastGene + "   "+ entrezId);
+			LOG.debug("Processing line..." + yeastGene + "   "+ entrezId);
 
 			Item ygene = getGeneItem(yeastGene, "secondaryIdentifier", yorganism);
 			Item hgene = getGeneItem(entrezId, "primaryIdentifier", horganism);		

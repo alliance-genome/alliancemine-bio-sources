@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -16,10 +16,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
-import org.intermine.xml.full.Item;
 import org.intermine.objectstore.ObjectStoreException;
+import org.intermine.xml.full.Item;
 
 
 /**
@@ -29,11 +30,13 @@ import org.intermine.objectstore.ObjectStoreException;
 public class SgdDbUtrConverter extends BioFileConverter
 {
 
+    private static final Logger LOG = Logger.getLogger(SgdDbUtrConverter.class);
+
     private static final String DATASET_TITLE = "SGD UTRs from DB";
     private static final String DATA_SOURCE_NAME = "SGD UTRs from DB";
     private final Map<String, Item> genes = new HashMap<String, Item>();
     private final Map<String, Item> transcripts = new HashMap<String, Item>();
-    private Map<String, String> chromosomes = new HashMap();
+    private Map<String, String> chromosomes = new HashMap<String, String>();
     private static final String TAXON_ID = "559292"; //4932
     private Item organism;
 
@@ -78,7 +81,7 @@ public class SgdDbUtrConverter extends BioFileConverter
 		Gene.transcripts.chromosomeLocation.end
 		Gene.chromosomeLocation.strand
 		 */
-        System.out.println("Processing SGD transcript info data file exported from YeastMine....");
+        LOG.info("Processing SGD transcript info data file exported from YeastMine....");
 
         BufferedReader br = new BufferedReader(preader);
         String line = null;
@@ -103,12 +106,12 @@ public class SgdDbUtrConverter extends BioFileConverter
             String strand = array[8].trim();
 
             if(geneStart.equalsIgnoreCase(transcriptStart)) {
-                System.out.println("TS and GS are same : "+ geneId + "   "+ transcriptId);
+                LOG.warn("TS and GS are same : "+ geneId + "   "+ transcriptId);
                 continue;
             }
 
             if(geneEnd.equalsIgnoreCase(transcriptEnd)) {
-                System.out.println("TE and GE are same : "+ geneId + "   "+ transcriptId);
+                LOG.warn("TE and GE are same : "+ geneId + "   "+ transcriptId);
                 continue;
             }
 

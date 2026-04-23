@@ -1,6 +1,6 @@
 package org.intermine.bio.dataconversion;
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -16,12 +16,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 
-import org.intermine.objectstore.ObjectStoreException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
+import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.sql.Database;
 import org.intermine.xml.full.Item;
-import org.apache.commons.lang.StringUtils;
 
 
 /**
@@ -29,7 +30,9 @@ import org.apache.commons.lang.StringUtils;
  * @author
  */
 public class SgdComplementationDbConverter extends BioDBConverter {
-    //
+
+    private static final Logger LOG = Logger.getLogger(SgdComplementationDbConverter.class);
+
     private static final String DATASET_TITLE = "Yeast Complementation";
     private static final String DATA_SOURCE_NAME = "SGD-BioGRID curated complementation";
     private final Map<String, Item> genes = new HashMap<String, Item>();
@@ -85,7 +88,7 @@ public class SgdComplementationDbConverter extends BioDBConverter {
             String notes = res.getString("curator_comment");
             String source= res.getString("format_name");
 
-            System.out.println("Processing line..." + yeastGene + "   "+ dbxref_id);
+            LOG.info("Processing line..." + yeastGene + "   "+ dbxref_id);
 
             Item ygene = getGeneItem(yeastGene, "secondaryIdentifier", yorganism);
             Item hgene = getGeneItem(dbxref_id, "secondaryIdentifier", horganism);

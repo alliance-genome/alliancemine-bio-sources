@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2018 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -32,16 +32,16 @@ public class AllianceGeneticInteractionsConverter extends BioFileConverter
     private static final String DATASET_TITLE = "Alliance Genetic Interactions data set";
     private static final String DATA_SOURCE_NAME = "Alliance Genetic Interactions";
     private String licence;
-    private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> publications = new HashMap();
-    private Map<String, Item> interactions = new HashMap();
-    private Map<String, String> interactionitems = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<String, Item> publications = new HashMap<String, Item>();
+    private Map<String, Item> interactions = new HashMap<String, Item>();
+    private Map<String, String> interactionitems = new HashMap<String, String>();
     private Map<String, String> interactionterms = new HashMap<String, String>();
-    private Map<String, Item> interactiontype = new HashMap();
-    private Map<String, Item> interactiondetail = new HashMap();
-    private Map<String, Item> experimenttype = new HashMap();
-    private Map<String, Item> interactiondetectionmethods = new HashMap();
-    private Map<String, Item> psiTerms = new HashMap();
+    private Map<String, Item> interactiontype = new HashMap<String, Item>();
+    private Map<String, Item> interactiondetail = new HashMap<String, Item>();
+    private Map<String, Item> experimenttype = new HashMap<String, Item>();
+    private Map<String, Item> interactiondetectionmethods = new HashMap<String, Item>();
+    private Map<String, Item> psiTerms = new HashMap<String, Item>();
 
     /**
      * Constructor
@@ -75,7 +75,6 @@ public class AllianceGeneticInteractionsConverter extends BioFileConverter
 
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Interactions...");
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             count++;
@@ -115,7 +114,6 @@ public class AllianceGeneticInteractionsConverter extends BioFileConverter
                         year, issue, abbreviation, dsId, firstAuthor, dbxrefid, note);
             }
         }
-        System.out.println("size of genetic interaction genes:  " + genes.size());
         storeInteractionTypes();
         storeInteractionExperiments();
         //storeInteractionDetails(); <--keep commented

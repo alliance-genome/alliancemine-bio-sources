@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -11,20 +11,19 @@ package org.intermine.bio.dataconversion;
  */
 import java.io.Reader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 
-import org.intermine.metadata.Model;
+import org.apache.commons.collections.keyvalue.MultiKey;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
-
-import org.apache.commons.collections.keyvalue.MultiKey;
-import org.apache.commons.collections.map.MultiKeyMap;
 
 /*
  *
@@ -32,12 +31,13 @@ import org.apache.commons.collections.map.MultiKeyMap;
  */
 public class AllianceOrthologsConverter extends BioFileConverter {
 
+    private static final Logger LOG = Logger.getLogger(AllianceOrthologsConverter.class);
+
     private static final String DATASET_TITLE = "Alliance Orthologs data set";
     private static final String DATA_SOURCE_NAME = "DiOPT";
     private String licence;
-    private Map<String, Item> genes = new HashMap();
-    private Map<String, Item> homologues = new HashMap();
-    //private Map<String, Item> organisms = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<String, Item> homologues = new HashMap<String, Item>();
     private Set<MultiKey> homologuePairs = new HashSet<MultiKey>();
 
     /**
@@ -61,7 +61,7 @@ public class AllianceOrthologsConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Orthologs...");
+        LOG.info("Processing Orthologs...");
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
@@ -83,7 +83,7 @@ public class AllianceOrthologsConverter extends BioFileConverter {
             processHomologues(gene1id, org1, gene2id, org2, algorithms, matchCount, totalCount, bestScore, revScore);
 
             }
-        System.out.println("size of orthologs:  " + genes.size());
+        LOG.info("size of orthologs: " + genes.size());
         storeGenes();
         storeHomologues();
 
@@ -135,7 +135,6 @@ public class AllianceOrthologsConverter extends BioFileConverter {
 
         Item gene  = genes.get(g);
         if(gene == null) {
-            //System.out.println("creating new gene..." + g);
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", g);
             gene.setReference("organism", org);

@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2011 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
@@ -29,7 +30,8 @@ import org.intermine.xml.full.Item;
  */
 public class CgobHomologsConverter extends BioFileConverter
 {
-    //
+    private static final Logger LOG = Logger.getLogger(CgobHomologsConverter.class);
+
     private static final String DATASET_TITLE = "CGD/CGOB file download";
     private static final String DATA_SOURCE_NAME = "CGD";
     private Map<String, String> genes = new HashMap<String, String>();
@@ -73,7 +75,7 @@ public class CgobHomologsConverter extends BioFileConverter
             String gene5 = line[4];
 
             if(gene1.equals("---") &&  gene2.equals("---") && gene3.equals("---") && gene4.equals("---") && gene5.equals("---")){
-            	System.out.println("all columns empty");
+            	LOG.warn("all columns empty");
             	continue;
             }
   

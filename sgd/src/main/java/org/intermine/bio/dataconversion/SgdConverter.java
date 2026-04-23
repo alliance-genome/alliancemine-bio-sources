@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2010 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -21,7 +21,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.collections.keyvalue.MultiKey;
-import org.apache.commons.lang.StringUtils; 
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 //import org.biojava.bio.program.homologene.OrthoPairSet.Iterator;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
@@ -39,39 +40,39 @@ import java.util.Iterator;
  */
 public class SgdConverter extends BioDBConverter {
 
-	// private static final Logger LOG = Logger.getLogger(SgdConverter.class);
+	private static final Logger LOG = Logger.getLogger(SgdConverter.class);
 	private static final String DATASET_TITLE = "SGD data set";
 	private static final String DATA_SOURCE_NAME = "SGD";
-	private Map<String, String> chromosomes = new HashMap();
-	private Map<String, String> plasmids = new HashMap();
-	private Map<String, String> sequences = new HashMap();
-	private Map<String, Item> interactions = new HashMap();
-	private Map<String, String> interactionitems = new HashMap();
+	private Map<String, String> chromosomes = new HashMap<>();
+	private Map<String, String> plasmids = new HashMap<>();
+	private Map<String, String> sequences = new HashMap<>();
+	private Map<String, Item> interactions = new HashMap<>();
+	private Map<String, String> interactionitems = new HashMap<>();
 	private Map<String, String> interactionterms = new HashMap<String, String>();
 	private Map<MultiKey, Item> interactionsnew = new HashMap<MultiKey, Item>();
 	private final Map<String, Item> ecoMap = new HashMap<String, Item>(); //regulation data
-	private Map<String, String> literatureTopics = new HashMap();
-	private Map<String, Item> genes = new HashMap();
-	private Map<String, Item> hgncgenes = new HashMap();
-	private Map<String, Item> alleles = new HashMap();
-	private Map<String, Item> transcripts = new HashMap();
-	private Map<String, Item> proteins = new HashMap();
-	private Map<String, Item> genesName = new HashMap();
-	private Map<String, String> genesChromosomes = new HashMap();
-	private Map<String, Item> allelesName = new HashMap();
-	private Map<String, String> genesAliases = new HashMap();
-	private Map<String, String> alleleAliases = new HashMap();
-	private Map<String, String> synonyms = new HashMap();
-	private Map<String, Item> publications = new HashMap();
-	private Map<String, Item> interactiontype = new HashMap();
-	private Map<String, Item> interactiondetail = new HashMap();
-	private Map<String, Item> experimenttype = new HashMap();
-	private Map<String, Item> interactiondetectionmethods = new HashMap();
-	private Map<String, Item> pathways = new HashMap();
-	private Map<String, Item> pathwaysummarys = new HashMap();
-	private Map<String, Item> phenotypes = new HashMap();
-	private Map<String, HashMap<String, String>> phenotypeannots = new HashMap();
-	private Map<String, String> datasources = new HashMap();
+	private Map<String, String> literatureTopics = new HashMap<>();
+	private Map<String, Item> genes = new HashMap<>();
+	private Map<String, Item> hgncgenes = new HashMap<>();
+	private Map<String, Item> alleles = new HashMap<>();
+	private Map<String, Item> transcripts = new HashMap<>();
+	private Map<String, Item> proteins = new HashMap<>();
+	private Map<String, Item> genesName = new HashMap<>();
+	private Map<String, String> genesChromosomes = new HashMap<>();
+	private Map<String, Item> allelesName = new HashMap<>();
+	private Map<String, String> genesAliases = new HashMap<>();
+	private Map<String, String> alleleAliases = new HashMap<>();
+	private Map<String, String> synonyms = new HashMap<>();
+	private Map<String, Item> publications = new HashMap<>();
+	private Map<String, Item> interactiontype = new HashMap<>();
+	private Map<String, Item> interactiondetail = new HashMap<>();
+	private Map<String, Item> experimenttype = new HashMap<>();
+	private Map<String, Item> interactiondetectionmethods = new HashMap<>();
+	private Map<String, Item> pathways = new HashMap<>();
+	private Map<String, Item> pathwaysummarys = new HashMap<>();
+	private Map<String, Item> phenotypes = new HashMap<>();
+	private Map<String, HashMap<String, String>> phenotypeannots = new HashMap<>();
+	private Map<String, String> datasources = new HashMap<>();
 	private Map<String, Item> proteinDomains = new HashMap<String, Item>();
 	private Map<String, Item> interproDomains = new HashMap<String, Item>();
 	private Map<String, Item> proteinAbundance = new HashMap<String, Item>();
@@ -80,7 +81,7 @@ public class SgdConverter extends BioDBConverter {
 	private static final String TAXON_ID = "559292"; //4932
 	private static final String H_TAXON_ID = "9606";
 	private Item organism;
-	private Map<String, String> featureMap = new HashMap();
+	private Map<String, String> featureMap = new HashMap<>();
 	private static final boolean LOCAL = false;
 	private String licence;
 
@@ -183,7 +184,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processGenes(Connection connection) throws SQLException,
 	ObjectStoreException {
 
-		System.out.println("Processing Genes...");
+		LOG.info("Processing Genes...");
 		ResultSet res = PROCESSOR.getChromosomalFeatureResults(connection);
 
 		while (res.next()) {
@@ -295,7 +296,7 @@ public class SgdConverter extends BioDBConverter {
 				getSynonym(refId, "identifier", secondaryIdentifier);
 			}
 		}
-		System.out.println("size of genes:  " + genes.size());
+		LOG.info("size of genes:  " + genes.size());
 	}
 
 	/**
@@ -308,7 +309,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processNISS(Connection connection) throws SQLException,
 	ObjectStoreException {
 
-		System.out.println("Processing NISS 55 features...");
+		LOG.info("Processing NISS 55 features...");
 		ResultSet res = PROCESSOR.getNISS(connection);
 
 		while (res.next()) {
@@ -369,7 +370,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processAlleles(Connection connection) throws SQLException,
 			ObjectStoreException {
 
-		System.out.println("Processing Alleles...");
+		LOG.info("Processing Alleles...");
 		ResultSet res = PROCESSOR.getAlleleResults(connection);
 
 		while (res.next()) {
@@ -377,7 +378,7 @@ public class SgdConverter extends BioDBConverter {
 			String alleleNo = res.getString("allele");
 			String featureNo = res.getString("locus");
 
-			System.out.println(alleleNo + "\t"+featureNo);
+			LOG.info(alleleNo + "\t"+featureNo);
 
 			Item gene = genes.get(featureNo);
 			Item allele = alleles.get(alleleNo);
@@ -432,7 +433,7 @@ public class SgdConverter extends BioDBConverter {
 		  }//gene
 
 		}//while
-		System.out.println("size of alleles:  " + alleles.size());
+		LOG.info("size of alleles:  " + alleles.size());
 	}
 
 	/**
@@ -445,7 +446,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processTranscripts(Connection connection) throws SQLException,
 			ObjectStoreException {
 
-		System.out.println("Processing Transcripts...");
+		LOG.info("Processing Transcripts...");
 		ResultSet res = PROCESSOR.getTranscriptResults(connection);
 
 		while (res.next()) {
@@ -522,7 +523,7 @@ public class SgdConverter extends BioDBConverter {
 				}
 			} //gene
 		}//while
-		System.out.println("size of transcripts:  " + transcripts.size());
+		LOG.info("size of transcripts:  " + transcripts.size());
 	}
 
 
@@ -536,7 +537,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processParalogs(Connection connection) throws SQLException,
 	ObjectStoreException {
 
-		System.out.println("Processing Paralog pairs...");
+		LOG.info("Processing Paralog pairs...");
 		ResultSet res = PROCESSOR.getParalogs(connection); // ordered by featureNo
 
 		while (res.next()) {
@@ -573,7 +574,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processRegulation(Connection connection) throws SQLException,
 	ObjectStoreException {
 
-		System.out.println("Processing Regulation data...");
+		LOG.info("Processing Regulation data...");
 		ResultSet res = PROCESSOR.getRegulationData(connection); // ordered by featureNo
 
 		while (res.next()) {
@@ -738,7 +739,7 @@ public class SgdConverter extends BioDBConverter {
 
 		ResultSet res = PROCESSOR.getAliases(connection); // ordered by featureNo
 
-		System.out.println("Processing ALiases...");
+		LOG.info("Processing ALiases...");
 		while (res.next()) {
 
 			String geneFeatureNo = res.getString("dbentity_id");
@@ -785,7 +786,7 @@ public class SgdConverter extends BioDBConverter {
 
 		ResultSet res = PROCESSOR.getAlleleAliasesResults(connection);
 
-		System.out.println("Processing Alleles ALiases...");
+		LOG.info("Processing Alleles ALiases...");
 		while (res.next()) {
 			String alleleFeatureNo = res.getString("allele");
 			String allele_name = res.getString("allele_name");
@@ -815,7 +816,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processAllPathways(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing ALL Pathways...");
+		LOG.info("Processing ALL Pathways...");
 		ResultSet res = PROCESSOR.getAllPathways(connection); // ordered by featureNo
 
 		while (res.next()) {
@@ -900,7 +901,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processGenePathways(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Pathways...");
+		LOG.info("Processing Pathways...");
 		ResultSet res = PROCESSOR.getGenePathways(connection); // ordered by featureNo
 
 		while (res.next()) {
@@ -965,7 +966,7 @@ public class SgdConverter extends BioDBConverter {
 	 */
 	private void processCrossReferences(Connection connection) throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing DbXRefs...");
+		LOG.info("Processing DbXRefs...");
 		ResultSet res = PROCESSOR.getCrossReferences(connection); // ordered by featureNo
 
 		while (res.next()) {
@@ -1139,7 +1140,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processGeneLocations(Connection connection)
 			throws SQLException, ObjectStoreException, Exception {
 
-		System.out.println("Processing GeneLocations...");
+		LOG.info("Processing GeneLocations...");
 		ResultSet res = PROCESSOR.getChromosomalFeatureLocationResults(connection);
 
 		while (res.next()) {
@@ -1190,7 +1191,7 @@ public class SgdConverter extends BioDBConverter {
 
 		}
 		res.close();
-		System.out.println("size of genes:  " + genes.size());
+		LOG.info("size of genes:  " + genes.size());
 	}
 
 	/**
@@ -1205,7 +1206,7 @@ public class SgdConverter extends BioDBConverter {
 			throws SQLException, ObjectStoreException, Exception {
 
 		ResultSet res = PROCESSOR.getChromosomeLocationResults(connection);
-		System.out.println("Processing ChrLocations...");
+		LOG.info("Processing ChrLocations...");
 		while (res.next()) {
 			String featureNo = res.getString("feature_no");
 			String geneFeatureNo = res.getString("gene_feature_no");
@@ -1241,7 +1242,7 @@ public class SgdConverter extends BioDBConverter {
 
 	private void processGeneChildrenLocations(Connection connection) throws SQLException, ObjectStoreException, Exception {
 
-		System.out.println("Processing GeneChildrenLocations...");
+		LOG.info("Processing GeneChildrenLocations...");
 		ResultSet res = PROCESSOR.getChildrenFeatureLocationResults(connection);
 
 		while (res.next()) {
@@ -1447,7 +1448,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processProteins(Connection connection) throws SQLException,
 	ObjectStoreException, Exception {
 
-		System.out.println("Processing Proteins...");
+		LOG.info("Processing Proteins...");
 		ResultSet res = PROCESSOR.getProteinResults(connection);
 		
 		while (res.next()) {
@@ -1493,7 +1494,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processProteinHalfLife(Connection connection) throws SQLException,
 	ObjectStoreException, Exception {
 
-		System.out.println("Processing Proteins Half-life data...");
+		LOG.info("Processing Proteins Half-life data...");
 		ResultSet res = PROCESSOR.getProteinHalfLifeResults(connection);
 
 		while (res.next()) {
@@ -1543,7 +1544,7 @@ public class SgdConverter extends BioDBConverter {
 
 	private void processProteinDomains(Connection connection) throws SQLException, ObjectStoreException, Exception {
 
-		System.out.println("Processing Proteins Domains data...");
+		LOG.info("Processing Proteins Domains data...");
 		ResultSet res = PROCESSOR.getProteinDomainsResults(connection);
 
 		while (res.next()) {
@@ -1585,7 +1586,7 @@ public class SgdConverter extends BioDBConverter {
 
 	private void processProteinModifications(Connection connection) throws SQLException, ObjectStoreException, Exception {
 		
-		System.out.println("Processing Proteins Modification data...");
+		LOG.info("Processing Proteins Modification data...");
 		ResultSet res = PROCESSOR.getProteinModificationResults(connection);
 		while (res.next()) {
 			String featureNo = res.getString("dbentity_id");
@@ -1685,7 +1686,7 @@ public class SgdConverter extends BioDBConverter {
 
 	private void processProteinInfo(Connection connection) throws SQLException, ObjectStoreException, Exception {
 
-		System.out.println("Processing Proteins Info data...");
+		LOG.info("Processing Proteins Info data...");
 		ResultSet res = PROCESSOR.getProteinInfoResults(connection);
 
 		while (res.next()) {
@@ -1785,7 +1786,7 @@ public class SgdConverter extends BioDBConverter {
 	ObjectStoreException, Exception {
 
 									
-		System.out.println("Processing Proteins Abundance data...");
+		LOG.info("Processing Proteins Abundance data...");
 		ResultSet res = PROCESSOR.getProteinAbundanceResults(connection);
 		while (res.next()) {
 
@@ -2014,7 +2015,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processChromosomeSequences(Connection connection)
 			throws SQLException, ObjectStoreException, Exception {
 
-		System.out.println("Processing ChromosomeSequence...");
+		LOG.info("Processing ChromosomeSequence...");
 		ResultSet res = PROCESSOR.getChromosomeSequenceResults(connection);
 
 		while (res.next()) {
@@ -2302,7 +2303,7 @@ public class SgdConverter extends BioDBConverter {
 		Item gene = null;
 		boolean firstrow = true;
 
-		System.out.println("Processing All Publications with Topics...");
+		LOG.info("Processing All Publications with Topics...");
 		ResultSet res = PROCESSOR.getPubAllResults(connection);
 
 		while (res.next()) {
@@ -2387,7 +2388,7 @@ public class SgdConverter extends BioDBConverter {
 
 		Item gene = null;
 		boolean firstrow = true;
-		System.out.println("Processing Publications With Chromosomal Features...");
+		LOG.info("Processing Publications With Chromosomal Features...");
 		ResultSet res = PROCESSOR.getPubWithFeaturesResults(connection);
 
 		while (res.next()) {
@@ -2475,7 +2476,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processPhenotypeSummary(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Phenotype Summary....");
+		LOG.info("Processing Phenotype Summary....");
 		ResultSet res = PROCESSOR.getPhenotypeSummary(connection);	
 
 		while (res.next()) {
@@ -2497,7 +2498,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processFunctionSummary(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Function Summary....");
+		LOG.info("Processing Function Summary....");
 		ResultSet res = PROCESSOR.getFunctionSummary(connection);	
 
 		while (res.next()) {
@@ -2519,7 +2520,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processGeneSummary(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Gene Summary....");
+		LOG.info("Processing Gene Summary....");
 		ResultSet res = PROCESSOR.getGeneSummary(connection);	
 
 		while (res.next()) {
@@ -2542,7 +2543,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processRegulationSummary(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Regulation Summary....");
+		LOG.info("Processing Regulation Summary....");
 		ResultSet res = PROCESSOR.getRegulationSummary(connection);	
 		while (res.next()) {
 			String featureNo = res.getString("dbentity_id");
@@ -2597,7 +2598,7 @@ public class SgdConverter extends BioDBConverter {
 		String dsId = getBioGridDataSet();
 		int count = 0;
 		
-		System.out.println("Processing Physical Interactions...");
+		LOG.info("Processing Physical Interactions...");
 		ResultSet res = PROCESSOR.getPhysicalInteractionResults(connection);
 
 		while (res.next()) {
@@ -2655,7 +2656,7 @@ public class SgdConverter extends BioDBConverter {
 					year, issue, abbreviation, dsId, firstAuthor, dbxrefid, note);*/
 
 		}
-		System.out.println("physical interaction count is : " + count);
+		LOG.info("physical interaction count is : " + count);
 	}
 
 	/**
@@ -2671,7 +2672,7 @@ public class SgdConverter extends BioDBConverter {
 		String dsId = getBioGridDataSet();
 		int count = 0;
 
-		System.out.println("Processing Genetic Interactions...");
+		LOG.info("Processing Genetic Interactions...");
 		ResultSet res = PROCESSOR.getGeneticInteractionResults(connection);
 
 		while (res.next()) {
@@ -2736,7 +2737,7 @@ public class SgdConverter extends BioDBConverter {
 					year, issue, abbreviation, dsId, firstAuthor, dbxrefid, note);*/
 
 		}
-		System.out.println("genetic interaction count is : " + count);
+		LOG.info("genetic interaction count is : " + count);
 	}
 
 	/**
@@ -2749,7 +2750,7 @@ public class SgdConverter extends BioDBConverter {
 	private void processGeneticInteractionsWithAlleles(Connection connection)
 			throws SQLException, ObjectStoreException {
 
-		System.out.println("Processing Genetic Interactions with Alleles.....");
+		LOG.info("Processing Genetic Interactions with Alleles.....");
 		ResultSet res = PROCESSOR.getGeneticInteractionWithAllelesResults(connection);
 		int count = 0;
 
@@ -2823,14 +2824,14 @@ public class SgdConverter extends BioDBConverter {
 			}
 
 		}
-		System.out.println("genetic allele interaction count is : " + count);
+		LOG.info("genetic allele interaction count is : " + count);
 	}
 
 	private void processPhenotypes(Connection connection) throws SQLException,
 	ObjectStoreException {
 
 		ResultSet res = PROCESSOR.getPhenotypeResults(connection);
-		System.out.println("Processing Phenotypes...");
+		LOG.info("Processing Phenotypes...");
 		while (res.next()) {
 			
 			String geneFeatureNo = res.getString("dbentity_id");
@@ -2888,7 +2889,7 @@ public class SgdConverter extends BioDBConverter {
 			String chemical = "";
 			String condition = "";
 			String chemcond = getPhenotypeCondition(str_cond_class, str_cond_name, str_cond_value, str_cond_unit);
-			//System.out.println("chemcond is...." + chemcond);
+			//LOG.info("chemcond is...." + chemcond);
 			String cc[] = chemcond.split("_");
 			chemical = cc[0];
 			condition = cc[1];				
@@ -3044,7 +3045,7 @@ public class SgdConverter extends BioDBConverter {
 		 * startCoord : stopCoord); //was C for crick
 		 * 
 		 * if(strand.equals("-")){ start = stopCoord; end = startCoord;
-		 * System.out.println("start and stop should be reveresed.. " + start +
+		 * LOG.info("start and stop should be reveresed.. " + start +
 		 * "  " + end); }else{ end = stopCoord; start = startCoord; }
 		 */
 
