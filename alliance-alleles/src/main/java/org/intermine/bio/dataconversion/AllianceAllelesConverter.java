@@ -184,9 +184,18 @@ public class AllianceAllelesConverter extends BioFileConverter {
             if (StringUtils.isNotEmpty(mostSevere)) variantdetail.setAttribute("mostSevereConsequenceName", mostSevere);
             if (StringUtils.isNotEmpty(variantReference))
                 variantdetail.setAttribute("variantInformationReference", variantReference);
-            if (StringUtils.isNotEmpty(hasDisease)) variantdetail.setAttribute("hasDiseaseAnnotations", hasDisease);
-            if (StringUtils.isNotEmpty(hasPhenotype))
-                variantdetail.setAttribute("hasPhenotypeAnnotations", hasPhenotype);
+            // FMS data encodes boolean as "yes" / "-" where "-" means "no data" (absent).
+            // Only set the attribute when the source explicitly asserts yes or no.
+            if ("yes".equalsIgnoreCase(hasDisease)) {
+                variantdetail.setAttribute("hasDiseaseAnnotations", "true");
+            } else if ("no".equalsIgnoreCase(hasDisease)) {
+                variantdetail.setAttribute("hasDiseaseAnnotations", "false");
+            }
+            if ("yes".equalsIgnoreCase(hasPhenotype)) {
+                variantdetail.setAttribute("hasPhenotypeAnnotations", "true");
+            } else if ("no".equalsIgnoreCase(hasPhenotype)) {
+                variantdetail.setAttribute("hasPhenotypeAnnotations", "false");
+            }
 
             variant.addToCollection("variantdetails", variantdetail);
             variant.setReference("allele", allele);  //<---missed and wasted many hours!!??!!??!!

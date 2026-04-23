@@ -138,8 +138,8 @@
         <attribute name="sequenceOfVariant" type="java.lang.String"/>
         <attribute name="mostSevereConsequenceName" type="java.lang.String"/>
         <attribute name="variantInformationReference" type="java.lang.String"/>
-        <attribute name="hasDiseaseAnnotations" type="java.lang.String"/>
-        <attribute name="hasPhenotypeAnnotations" type="java.lang.String"/>
+        <attribute name="hasDiseaseAnnotations" type="java.lang.Boolean"/>
+        <attribute name="hasPhenotypeAnnotations" type="java.lang.Boolean"/>
     </class>
 
 
@@ -342,8 +342,8 @@
         <attribute name="algorithms" type="java.lang.String"/>
         <attribute name="algorithmsMatch" type="java.lang.String"/>
         <attribute name="algorithmsAttempted" type="java.lang.String"/>
-        <attribute name="isBestScore" type="java.lang.String"/>
-        <attribute name="isBestReverseScore" type="java.lang.String"/>
+        <attribute name="isBestScore" type="java.lang.Boolean"/>
+        <attribute name="isBestReverseScore" type="java.lang.Boolean"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="homologues"/>
         <reference name="publication" referenced-type="Publication"/>
         <reference name="homologue" referenced-type="Gene"/>

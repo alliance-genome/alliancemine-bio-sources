@@ -118,8 +118,17 @@ public class AllianceOrthologsConverter extends BioFileConverter {
         homologue.setAttribute("algorithms", algorithm);
         homologue.setAttribute("algorithmsMatch", match);
         homologue.setAttribute("algorithmsAttempted", total);
-        homologue.setAttribute("isBestScore", best);
-        homologue.setAttribute("isBestReverseScore", reverse);
+        // DiOPT encodes boolean as "Yes" / "No"; translate to canonical true/false.
+        if ("Yes".equalsIgnoreCase(best)) {
+            homologue.setAttribute("isBestScore", "true");
+        } else if ("No".equalsIgnoreCase(best)) {
+            homologue.setAttribute("isBestScore", "false");
+        }
+        if ("Yes".equalsIgnoreCase(reverse)) {
+            homologue.setAttribute("isBestReverseScore", "true");
+        } else if ("No".equalsIgnoreCase(reverse)) {
+            homologue.setAttribute("isBestReverseScore", "false");
+        }
         homologues.put(homologue.getIdentifier(), homologue);
         homologuePairs.add(new MultiKey(gene1, gene2));
     }
