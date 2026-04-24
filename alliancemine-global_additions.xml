@@ -316,6 +316,9 @@
         <attribute name="phenotypeSummary" type="java.lang.String"/>
         <attribute name="functionSummary" type="java.lang.String"/>
         <attribute name="cytoLocation" type="java.lang.String"/>
+        <attribute name="dateProduced" type="java.util.Date"/>
+        <attribute name="dataProvider" type="java.lang.String"/>
+        <attribute name="modCrossRefCompleteUrl" type="java.lang.String"/>
         <reference name="upstreamIntergenicRegion" referenced-type="IntergenicRegion"/>
         <reference name="downstreamIntergenicRegion" referenced-type="IntergenicRegion"/>
         <reference name="plasmid" referenced-type="Plasmid" reverse-reference="genes"/>

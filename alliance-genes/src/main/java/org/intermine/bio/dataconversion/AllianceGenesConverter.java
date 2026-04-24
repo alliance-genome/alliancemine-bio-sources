@@ -10,6 +10,8 @@ package org.intermine.bio.dataconversion;
  *
  */
 import java.io.Reader;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -33,9 +35,12 @@ public class AllianceGenesConverter extends BioFileConverter {
     private static final String DATASET_TITLE = "Alliance Gene data set";
     private static final String DATA_SOURCE_NAME = "AGR";
 
-    // TSV column layout:
+    // TSV column layout (first 14 columns are the legacy schema; columns 14-16
+    // are appended by scripts/fetch_genes.py and stay optional so legacy
+    // FMS-produced TSVs still load unchanged):
     // Id  SecondaryID  Synonyms  CrossRefs  Name  Symbol  MOD-Description
     // Auto-Description  Species  Chromosome  Start  End  Strand  SoTerm
+    // [DateProduced  DataProvider  ModCrossRefCompleteUrl]
     private static final int COL_PRIMARY_ID = 0;
     private static final int COL_SECONDARY_ID = 1;
     private static final int COL_SYNONYMS = 2;
@@ -51,6 +56,10 @@ public class AllianceGenesConverter extends BioFileConverter {
     private static final int COL_STRAND = 12;
     private static final int COL_FEATURE_TYPE = 13;
     private static final int COL_COUNT = 14;
+    // Optional API-enrichment columns appended by the Python fetcher.
+    private static final int COL_DATE_PRODUCED = 14;
+    private static final int COL_DATA_PROVIDER = 15;
+    private static final int COL_MOD_URL = 16;
 
     private String licence;
     private Map<String, String> chromosomes = new HashMap<String, String>();
@@ -284,6 +293,30 @@ public class AllianceGenesConverter extends BioFileConverter {
             }
             if (StringUtils.isNotEmpty(autoDescription)) {
                 item.setAttribute("automatedDescription", autoDescription);
+            }
+            // Optional API-enrichment columns (absent in legacy FMS-produced TSVs).
+            if (line.length > COL_DATE_PRODUCED) {
+                String dateProduced = line[COL_DATE_PRODUCED].trim();
+                if (StringUtils.isNotEmpty(dateProduced)) {
+                    try {
+                        Date d = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").parse(dateProduced);
+                        item.setAttribute("dateProduced", new SimpleDateFormat("yyyy-MM-dd").format(d));
+                    } catch (java.text.ParseException e) {
+                        LOG.warn("Could not parse dateProduced '" + dateProduced + "': " + e.getMessage());
+                    }
+                }
+            }
+            if (line.length > COL_DATA_PROVIDER) {
+                String dataProvider = line[COL_DATA_PROVIDER].trim();
+                if (StringUtils.isNotEmpty(dataProvider)) {
+                    item.setAttribute("dataProvider", dataProvider);
+                }
+            }
+            if (line.length > COL_MOD_URL) {
+                String modUrl = line[COL_MOD_URL].trim();
+                if (StringUtils.isNotEmpty(modUrl)) {
+                    item.setAttribute("modCrossRefCompleteUrl", modUrl);
+                }
             }
             item.setReference("organism", organism);
             item.setReference("chromosome", chrId);
