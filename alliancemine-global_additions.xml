@@ -22,6 +22,9 @@
         <attribute name="description" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <attribute name="aliasName" type="java.lang.String"/>
+        <attribute name="alterationType" type="java.lang.String"/>
+        <attribute name="apiCategory" type="java.lang.String"/>
+        <attribute name="apiCrossReference" type="java.lang.String"/>
         <reference name="publication" referenced-type="Publication"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="alleles"/>
         <reference name="centromere" referenced-type="Centromere" reverse-reference="alleles"/>
