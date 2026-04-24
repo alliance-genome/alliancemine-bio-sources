@@ -341,6 +341,7 @@
         <collection name="diseases" referenced-type="Disease" reverse-reference="genes"/>
         <collection name="goAnnotation" referenced-type="GOAnnotation"/>
         <collection name="paralogues" referenced-type="Paralogue" reverse-reference="gene"/>
+        <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="subject"/>
     </class>
     <class name="Paralogue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000858">
         <attribute name="identity" type="java.lang.Integer"/>
@@ -352,6 +353,14 @@
         <attribute name="predictionMethodsNotCalled" type="java.lang.String"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="paralogues"/>
         <reference name="paralogue" referenced-type="Gene"/>
+    </class>
+    <class name="PhenotypeAnnotation" is-interface="true">
+        <attribute name="phenotypeStatement" type="java.lang.String"/>
+        <attribute name="relation" type="java.lang.String"/>
+        <attribute name="category" type="java.lang.String"/>
+        <attribute name="uniqueId" type="java.lang.String"/>
+        <reference name="subject" referenced-type="Gene" reverse-reference="phenotypeAnnotations"/>
+        <collection name="publications" referenced-type="Publication"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>
