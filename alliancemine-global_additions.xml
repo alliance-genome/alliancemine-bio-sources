@@ -241,6 +241,11 @@
         <collection name="dataSets" referenced-type="DataSet"/>
     </class>
     <class name="DiseaseAnnotation" extends="OntologyAnnotation" is-interface="true">
+        <attribute name="generatedRelationString" type="java.lang.String"/>
+        <attribute name="diseaseQualifiers" type="java.lang.String"/>
+        <attribute name="parentSlimIds" type="java.lang.String"/>
+        <attribute name="viaOrthologyOrder" type="java.lang.Integer"/>
+        <attribute name="uniqueId" type="java.lang.String"/>
     </class>
     <class name="DiseaseEvidence" extends="OntologyEvidence" is-interface="true">
         <collection name="with" referenced-type="BioEntity"/>
@@ -252,6 +257,7 @@
         <attribute name="dateAssigned" type="java.util.Date"/>
         <reference name="code" referenced-type="DiseaseEvidenceCode"/>
         <collection name="publications" referenced-type="Publication"/>
+        <collection name="evidenceCodes" referenced-type="ECOTerm"/>
     </class>
     <class name="DiseaseEvidenceCode" extends="OntologyAnnotationEvidenceCode" is-interface="true">
         <attribute name="withText" type="java.lang.String"/>
