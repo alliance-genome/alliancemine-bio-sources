@@ -340,6 +340,18 @@
         <collection name="diseaseAnnotation" referenced-type="DiseaseAnnotation"/>
         <collection name="diseases" referenced-type="Disease" reverse-reference="genes"/>
         <collection name="goAnnotation" referenced-type="GOAnnotation"/>
+        <collection name="paralogues" referenced-type="Paralogue" reverse-reference="gene"/>
+    </class>
+    <class name="Paralogue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000858">
+        <attribute name="identity" type="java.lang.Integer"/>
+        <attribute name="similarity" type="java.lang.Integer"/>
+        <attribute name="length" type="java.lang.Integer"/>
+        <attribute name="rank" type="java.lang.Integer"/>
+        <attribute name="predictionMethodsMatched" type="java.lang.String"/>
+        <attribute name="predictionMethodsNotMatched" type="java.lang.String"/>
+        <attribute name="predictionMethodsNotCalled" type="java.lang.String"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="paralogues"/>
+        <reference name="paralogue" referenced-type="Gene"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>

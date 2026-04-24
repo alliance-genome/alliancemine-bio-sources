@@ -13,6 +13,8 @@ include ':bio-source-go-annotation'
 project(':bio-source-go-annotation').projectDir = new File(settingsDir, './go-annotation')
 include ':bio-source-alliance-orthologs'
 project(':bio-source-alliance-orthologs').projectDir = new File(settingsDir, './alliance-orthologs')
+include ':bio-source-alliance-paralogs'
+project(':bio-source-alliance-paralogs').projectDir = new File(settingsDir, './alliance-paralogs')
 include ':bio-source-alliance-alleles'
 project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
 include ':bio-source-alliance-expression'
