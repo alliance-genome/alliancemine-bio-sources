@@ -1,0 +1,26 @@
+# Gradle / Java build output
+/bin/
+/build/
+*/bin/
+*/build/
+.gradle/
+
+# Local IDE / editor
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_Store
+
+# Runtime logs from InterMine builds
+intermine.log
+query.log
+
+# Python fetcher artefacts
+scripts/.cache/
+scripts/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Locally generated fetcher output — these are build inputs, not source
+/data/
