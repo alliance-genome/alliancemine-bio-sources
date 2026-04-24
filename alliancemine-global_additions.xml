@@ -342,6 +342,7 @@
         <collection name="goAnnotation" referenced-type="GOAnnotation"/>
         <collection name="paralogues" referenced-type="Paralogue" reverse-reference="gene"/>
         <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="subject"/>
+        <collection name="diseaseModels" referenced-type="DiseaseModel" reverse-reference="gene"/>
     </class>
     <class name="Paralogue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000858">
         <attribute name="identity" type="java.lang.Integer"/>
@@ -361,6 +362,19 @@
         <attribute name="uniqueId" type="java.lang.String"/>
         <reference name="subject" referenced-type="Gene" reverse-reference="phenotypeAnnotations"/>
         <collection name="publications" referenced-type="Publication"/>
+    </class>
+    <class name="DiseaseModel" is-interface="true">
+        <attribute name="modelId" type="java.lang.String"/>
+        <attribute name="modelName" type="java.lang.String"/>
+        <attribute name="modelSubtype" type="java.lang.String"/>
+        <attribute name="associationType" type="java.lang.String"/>
+        <attribute name="associatedPhenotypes" type="java.lang.String"/>
+        <attribute name="modifierRelationshipTypes" type="java.lang.String"/>
+        <attribute name="dataProvider" type="java.lang.String"/>
+        <attribute name="hasDiseaseAnnotations" type="java.lang.Boolean"/>
+        <attribute name="hasPhenotypeAnnotations" type="java.lang.Boolean"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="diseaseModels"/>
+        <reference name="disease" referenced-type="DOTerm"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>

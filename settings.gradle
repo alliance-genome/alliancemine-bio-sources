@@ -17,6 +17,8 @@ include ':bio-source-alliance-paralogs'
 project(':bio-source-alliance-paralogs').projectDir = new File(settingsDir, './alliance-paralogs')
 include ':bio-source-alliance-phenotypes'
 project(':bio-source-alliance-phenotypes').projectDir = new File(settingsDir, './alliance-phenotypes')
+include ':bio-source-alliance-disease-models'
+project(':bio-source-alliance-disease-models').projectDir = new File(settingsDir, './alliance-disease-models')
 include ':bio-source-alliance-alleles'
 project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
 include ':bio-source-alliance-expression'

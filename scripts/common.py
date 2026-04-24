@@ -276,23 +276,82 @@ def enumerate_yeast_genes() -> list[str]:
     First tries the FMS BGI SGD JSON file (while FMS is up). If that fails we
     fall back to parsing SGD's public gene list. For a multi-MOD build extend
     this with per-MOD seeders."""
+    return enumerate_mod_genes(["SGD"])
+
+
+def _resolve_bgi_urls(mods: list[str]) -> dict[str, str]:
+    """Use the FMS snapshot API to find the current BGI URL for each MOD.
+
+    Different MODs may have fallen back to older releases in any given snapshot
+    (e.g. WB/MGI pinning to 8.3.0 even when the active release is 9.0.0), so we
+    ask the snapshot API to tell us which version is current rather than
+    hardcoding a release-specific URL."""
+    release = get_current_release()
+    url = f"https://fms.alliancegenome.org/api/snapshot/release/{release}"
+    data = json.loads(urllib.request.urlopen(url, timeout=30).read())
+    bgi_by_mod: dict[str, str] = {}
+    for f in data.get("snapShot", {}).get("dataFiles", []):
+        if f.get("dataType", {}).get("name") != "BGI":
+            continue
+        if not f.get("s3Path", "").endswith(".json.gz"):
+            continue
+        sub = f.get("dataSubType", {}).get("name", "")
+        if sub in mods:
+            bgi_by_mod[sub] = f["s3Url"]
+    return bgi_by_mod
+
+
+# MOD abbreviation -> curie prefix that its gene CURIEs carry.
+_MOD_PREFIX = {
+    "SGD": "SGD:",
+    "MGI": "MGI:",
+    "RGD": "RGD:",
+    "ZFIN": "ZFIN:",
+    "FB": "FB:",
+    "WB": "WB:",
+    "XBXL": "Xenbase:",
+    "XBXT": "Xenbase:",
+    "HUMAN": "HGNC:",
+}
+
+
+def enumerate_mod_genes(mods: list[str]) -> list[str]:
+    """Return gene CURIEs across one or more MODs by parsing each MOD's BGI
+    JSON from FMS. Mods are abbreviations like "SGD", "MGI", "RGD", "ZFIN",
+    "FB", "WB", "XBXL", "XBXT", "HUMAN"."""
+    import gzip
     try:
-        import gzip
-        url = "https://download.alliancegenome.org/9.0.0/BGI/SGD/1.0.2.5_BGI_SGD_0.json.gz"
-        with urllib.request.urlopen(url, timeout=60) as resp:
-            raw = resp.read()
-        text = gzip.decompress(raw).decode("utf-8")
-        d = json.loads(text)
-        ids = []
+        urls = _resolve_bgi_urls(mods)
+    except Exception as e:
+        log.error("Could not resolve BGI URLs via snapshot API: %s", e)
+        raise
+    missing = [m for m in mods if m not in urls]
+    if missing:
+        log.warning("No BGI file found in snapshot for MOD(s): %s", missing)
+
+    combined: list[str] = []
+    for mod in mods:
+        if mod not in urls:
+            continue
+        url = urls[mod]
+        try:
+            with urllib.request.urlopen(url, timeout=120) as resp:
+                raw = resp.read()
+            text = gzip.decompress(raw).decode("utf-8")
+            d = json.loads(text)
+        except Exception as e:
+            log.error("Failed to fetch BGI for %s: %s", mod, e)
+            continue
+        prefix = _MOD_PREFIX.get(mod)
+        added = 0
         for gene in d.get("data", []):
             xrefs = gene.get("basicGeneticEntity", {}).get("crossReferences", [])
             for x in xrefs:
                 xid = x.get("id", "")
-                if xid.startswith("SGD:"):
-                    ids.append(xid)
+                if prefix and xid.startswith(prefix):
+                    combined.append(xid)
+                    added += 1
                     break
-        log.info("Enumerated %d yeast genes from FMS BGI", len(ids))
-        return ids
-    except Exception as e:
-        log.error("Could not enumerate yeast genes from FMS BGI: %s", e)
-        raise
+        log.info("Enumerated %d %s genes from FMS BGI", added, mod)
+    log.info("Total across MODs: %d genes", len(combined))
+    return combined
