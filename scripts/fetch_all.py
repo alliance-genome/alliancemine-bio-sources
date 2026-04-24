@@ -34,12 +34,16 @@ log = logging.getLogger("alliance.fetch.orchestrator")
 
 # Run order matters: genes first, since everything else joins to gene primary
 # identifiers; interactions next (biggest volume, longest runtime); then the
-# smaller feeds.
+# smaller feeds and the *-detail enrichment passes.
 FETCHERS = [
-    ("genes",        "fetch_genes.py"),
-    ("interactions", "fetch_interactions.py"),
-    ("paralogs",     "fetch_paralogs.py"),
-    ("phenotypes",   "fetch_phenotypes.py"),
+    ("genes",               "fetch_genes.py"),
+    ("interactions",        "fetch_interactions.py"),
+    ("orthologs",           "fetch_orthologs.py"),
+    ("paralogs",            "fetch_paralogs.py"),
+    ("allele_detail",       "fetch_allele_detail.py"),
+    ("disease_annotations", "fetch_disease_annotations.py"),
+    ("disease_models",      "fetch_disease_models.py"),
+    ("phenotypes",          "fetch_phenotypes.py"),
 ]
 
 

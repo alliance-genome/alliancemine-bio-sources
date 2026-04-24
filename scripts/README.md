@@ -42,8 +42,18 @@ paralogs → phenotypes` and exits non-zero if any fetcher failed.
 
 | Script | Endpoint(s) | Output |
 |---|---|---|
-| `fetch_all.py` | orchestrator | — |
+| `fetch_all.py` | orchestrator (runs every fetcher below in order) | — |
 | `fetch_genes.py` | `/gene/{id}` | `data/alliance-genes.tsv` |
 | `fetch_interactions.py` | `/gene/{id}/molecular-interactions` + `/gene/{id}/genetic-interactions` | `data/molecular-interactions.tsv` + `data/genetic-interactions.tsv` |
+| `fetch_orthologs.py` | `/gene/{id}/orthologs` | `data/orthologs.tsv` |
 | `fetch_paralogs.py` | `/gene/{id}/paralogs` | `data/paralogs.tsv` |
+| `fetch_allele_detail.py` | `/allele/{id}` | `data/allele-detail.tsv` |
+| `fetch_disease_annotations.py` | `/disease/{id}/genes` | `data/disease-annotations-detail.tsv` |
+| `fetch_disease_models.py` | `/gene/{id}/models` (non-yeast MODs) | `data/disease-models.tsv` |
 | `fetch_phenotypes.py` | `/gene/{id}/phenotypes` | `data/phenotypes.tsv` |
+
+Several of the above feed **enrichment** bio-source modules (names ending in
+`-detail`). Those modules emit partial InterMine items that the integration
+engine merges into items from the primary source via shared integration keys
+(`Allele.key_alleleid`, `Homologue.key_pair`,
+`DiseaseAnnotation.key_subject_term`).

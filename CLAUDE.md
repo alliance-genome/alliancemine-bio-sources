@@ -72,8 +72,14 @@ Today's API-backed sources (all driven by a paired `fetch_*.py` script):
 | `alliance-molecular-interactions` | `fetch_interactions.py` | `/gene/{id}/molecular-interactions` | `molecular-interactions.tsv` |
 | `alliance-paralogs` | `fetch_paralogs.py` | `/gene/{id}/paralogs` | `paralogs.tsv` |
 | `alliance-phenotypes` | `fetch_phenotypes.py` | `/gene/{id}/phenotypes` | `phenotypes.tsv` |
+| `alliance-disease-models` | `fetch_disease_models.py` | `/gene/{id}/models` | `disease-models.tsv` |
+| `alliance-allele-detail` | `fetch_allele_detail.py` | `/allele/{id}` | `allele-detail.tsv` |
+| `alliance-ortholog-detail` | `fetch_orthologs.py` | `/gene/{id}/orthologs` | `orthologs.tsv` |
+| `alliance-disease-detail` | `fetch_disease_annotations.py` | `/disease/{id}/genes` | `disease-annotations-detail.tsv` |
 
 **Column-schema coupling**: each Python fetcher's `COLUMNS` list and each Java converter's `COL_*` constants must stay in lockstep. When adding a new column, update both.
+
+**Enrichment-merge pattern**: the `*-detail` bio-source modules don't own their target class. They emit *partial* items keyed on a shared integration key (e.g. `Allele.key_alleleid`, `Homologue.key_pair`, `DiseaseAnnotation.key_subject_term`) so InterMine's integration engine merges them into the items produced by the primary source. This keeps each fetcher + converter focused on one API endpoint without forcing the primary converter to know about all enrichment columns.
 
 **Seed gene-ID lists**: `scripts/common.enumerate_yeast_genes()` currently pulls from the FMS BGI SGD export (still functional). Once FMS is fully deprecated we'll need a replacement source — a plausible future home is the API itself if a paginated `/gene` list lands, or MOD-specific exports (SGD publishes a `chromosomal_feature.tab`).
 
