@@ -13,14 +13,23 @@ FMS (the old file-distribution service) is retired.
 ## Running
 
 ```
-python3 scripts/fetch_interactions.py          # yeast genome by default
+python3 scripts/fetch_all.py                   # run every fetcher in order
+python3 scripts/fetch_all.py --only interactions,phenotypes
+python3 scripts/fetch_all.py --limit 100       # smoke test all fetchers on 100 genes
+
+# or invoke a single fetcher directly:
+python3 scripts/fetch_interactions.py
 python3 scripts/fetch_interactions.py --ids 'SGD:S000004103,SGD:S000002429'
-python3 scripts/fetch_interactions.py --limit 100     # smoke test first 100 genes
+python3 scripts/fetch_interactions.py --limit 100
 ```
 
 Each fetcher writes its TSVs under `data/` relative to the repo root (override
 with `--out-dir`). A SQLite cache lives at `scripts/.cache/<fetcher>.sqlite`
 so reruns skip API calls that already succeeded.
+
+`fetch_all.py` is the entry point the Docker pipeline should call as a single
+pre-build step — it runs the fetchers in the order `genes → interactions →
+paralogs → phenotypes` and exits non-zero if any fetcher failed.
 
 ## Environment
 
@@ -33,7 +42,8 @@ so reruns skip API calls that already succeeded.
 
 | Script | Endpoint(s) | Output |
 |---|---|---|
+| `fetch_all.py` | orchestrator | — |
+| `fetch_genes.py` | `/gene/{id}` | `data/alliance-genes.tsv` |
 | `fetch_interactions.py` | `/gene/{id}/molecular-interactions` + `/gene/{id}/genetic-interactions` | `data/molecular-interactions.tsv` + `data/genetic-interactions.tsv` |
-
-More fetchers will land in subsequent phases (paralogs, phenotypes,
-gene-metadata enrichment).
+| `fetch_paralogs.py` | `/gene/{id}/paralogs` | `data/paralogs.tsv` |
+| `fetch_phenotypes.py` | `/gene/{id}/phenotypes` | `data/phenotypes.tsv` |
