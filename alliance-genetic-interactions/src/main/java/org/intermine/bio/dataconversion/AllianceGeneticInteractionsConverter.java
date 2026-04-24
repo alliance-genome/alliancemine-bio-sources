@@ -12,290 +12,218 @@ package org.intermine.bio.dataconversion;
 
 import java.io.Reader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
 
-
 /**
- * 
+ * Reads the TSV emitted by scripts/fetch_interactions.py (genetic-interactions.tsv)
+ * and produces Interaction + InteractionDetail items, plus an extra
+ * phenotypesOrTraits attribute specific to genetic interactions.
+ *
+ * TSV columns mirror the molecular converter's with phenotypesOrTraits appended
+ * (see GENETIC_COLUMNS in fetch_interactions.py).
+ *
  * @author
  */
 public class AllianceGeneticInteractionsConverter extends BioFileConverter
 {
-    private static final String DATASET_TITLE = "Alliance Genetic Interactions data set";
-    private static final String DATA_SOURCE_NAME = "Alliance Genetic Interactions";
-    private String licence;
-    private Map<String, Item> genes = new HashMap<String, Item>();
-    private Map<String, Item> publications = new HashMap<String, Item>();
-    private Map<String, Item> interactions = new HashMap<String, Item>();
-    private Map<String, String> interactionitems = new HashMap<String, String>();
-    private Map<String, String> interactionterms = new HashMap<String, String>();
-    private Map<String, Item> interactiontype = new HashMap<String, Item>();
-    private Map<String, Item> interactiondetail = new HashMap<String, Item>();
-    private Map<String, Item> experimenttype = new HashMap<String, Item>();
-    private Map<String, Item> interactiondetectionmethods = new HashMap<String, Item>();
-    private Map<String, Item> psiTerms = new HashMap<String, Item>();
+    private static final Logger LOG = Logger.getLogger(AllianceGeneticInteractionsConverter.class);
 
-    /**
-     * Constructor
-     * @param writer the ItemWriter used to handle the resultant items
-     * @param model the Model
-     */
+    private static final String DATASET_TITLE = "Alliance Genetic Interactions";
+    private static final String DATA_SOURCE_NAME = "Alliance of Genome Resources";
+
+    // TSV column positions - must match scripts/fetch_interactions.py GENETIC_COLUMNS
+    private static final int COL_GENE_ID                    = 0;
+    private static final int COL_GENE_SYMBOL                = 1;
+    private static final int COL_GENE_TAXON                 = 2;
+    private static final int COL_PARTNER_GENE_ID            = 3;
+    private static final int COL_PARTNER_SYMBOL             = 4;
+    private static final int COL_PARTNER_TAXON              = 5;
+    private static final int COL_INTERACTION_TYPE           = 6;
+    private static final int COL_INTERACTION_TYPE_NAME      = 7;
+    private static final int COL_INTERACTOR_A_TYPE          = 8;
+    private static final int COL_INTERACTOR_A_TYPE_NAME     = 9;
+    private static final int COL_INTERACTOR_B_TYPE          = 10;
+    private static final int COL_INTERACTOR_B_TYPE_NAME     = 11;
+    private static final int COL_INTERACTOR_A_ROLE          = 12;
+    private static final int COL_INTERACTOR_A_ROLE_NAME     = 13;
+    private static final int COL_INTERACTOR_B_ROLE          = 14;
+    private static final int COL_INTERACTOR_B_ROLE_NAME     = 15;
+    private static final int COL_INTERACTION_SOURCE         = 16;
+    private static final int COL_INTERACTION_SOURCE_NAME    = 17;
+    private static final int COL_RELATION                   = 18;
+    private static final int COL_INTERACTION_ID             = 19;
+    private static final int COL_UNIQUE_ID                  = 20;
+    private static final int COL_PUBMED_ID                  = 21;
+    private static final int COL_REFERENCE_ID               = 22;
+    private static final int COL_SHORT_CITATION             = 23;
+    private static final int COL_CROSSREFS                  = 24;
+    private static final int COL_PHENOTYPES_OR_TRAITS       = 25;
+    private static final int MIN_COLUMNS                    = 26;
+
+    private final Map<String, String> genes = new HashMap<String, String>();
+    private final Map<String, String> publications = new HashMap<String, String>();
+    private final Map<String, String> terms = new HashMap<String, String>();
+    private final Set<String> storedInteractionUids = new HashSet<String>();
+
     public AllianceGeneticInteractionsConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
     }
 
     /**
-     * 
-     *
      * {@inheritDoc}
      */
-    public void process(Reader reader) throws Exception, ObjectStoreException {
-
-        /*ID(s) interactor A     ID(s) interactor B      Alt. ID(s) interactor A Alt. ID(s) interactor B Alias(es)
-        interactor A  Alias(es) interactor B  Interaction detection method(s) Publication 1st author(s)
-        Publication Identifier(s)       Taxid interactor A      Taxid interactor B      Interaction type(s)
-        Source database(s)      Interaction identifier(s)       Confidence value(s)     Expansion method(s)
-        Biological role(s) interactor A Biological role(s) interactor B Experimental role(s) interactor A
-        Experimental role(s) interactor B       Type(s) interactor A    Type(s) interactor B    Xref(s) interactor A
-        Xref(s) interactor B    Interaction Xref(s)     Annotation(s) interactor A      Annotation(s) interactor B
-        Interaction annotation(s)       Host organism(s)        Interaction parameter(s)
-        Creation date   Update date     Checksum(s) interactor A        Checksum(s) interactor B
-        Interaction Checksum(s) Negative        Feature(s) interactor A Feature(s)
-         interactor B Stoichiometry(s) interactor A   Stoichiometry(s) interactor B
-         Identification method participant A     Identification method participant B
-
-
+    public void process(Reader reader) throws Exception {
+        LOG.info("Processing genetic interactions...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
-        int count = 0;
+        int rows = 0;
+        int skippedHeader = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
-            count++;
-            String geneFeatureName = res.getString("dbentity1_id");
-            Item gene = genes.get(geneFeatureName);
-
-            String interactionNo = res.getString("annotation_id");
-            String referenceNo = res.getString("reference_id");
-            String interactionType = "physical interactions";
-            String experimentType = res.getString("biogrid_experimental_system");
-            String annotationType = res.getString("annotation_type");
-            String modification = res.getString("modification");
-
-            String interactingGeneFeatureName = res.getString("dbentity2_id");
-            Item interactingGene = genes.get(interactingGeneFeatureName);
-
-            String action = res.getString("bait_hit");
-            String[] a = action.split("-");
-            String role1 = a[0];
-            String role2 = a[1];
-            String source = res.getString("display_name");
-            String phenotype = ""; //res.getString("phenotype");
-            String citation = res.getString("citation");
-            String pubmed = res.getString("pmid");
-
-            String interactionRefId = getInteraction(interactionNo,
-                    referenceNo, interactionType, experimentType,
-                    annotationType, modification, interactingGene, role1, source,
-                    phenotype, citation, gene, pubmed);
-
-            store the reverse relationship so that template changes do not have to be made
-            if(!geneFeatureName.equals(interactingGeneFeatureName)) {
-                String interactionRefId2 = getInteraction(interactionNo,
-                        referenceNo, interactionType, experimentType,
-                        annotationType, modification, gene, role2, source,
-                        phenotype, citation, interactingGene, pubmed, title, volume, page,
-                        year, issue, abbreviation, dsId, firstAuthor, dbxrefid, note);
+            if (line.length < MIN_COLUMNS) {
+                continue;
             }
+            String first = line[COL_GENE_ID];
+            if ("geneId".equals(first)) {
+                skippedHeader++;
+                continue;
+            }
+            processRow(line);
+            rows++;
         }
-        storeInteractionTypes();
-        storeInteractionExperiments();
-        //storeInteractionDetails(); <--keep commented
-        storeInteractions();
-        storeGenes();
-        */
-
+        LOG.info("Genetic: processed " + rows + " rows, skipped " + skippedHeader + " header row(s), unique interactions=" + storedInteractionUids.size());
     }
 
+    private void processRow(String[] line) throws ObjectStoreException {
+        String uniqueId = line[COL_UNIQUE_ID].trim();
+        if (uniqueId.isEmpty() || storedInteractionUids.contains(uniqueId)) {
+            return;
+        }
+        storedInteractionUids.add(uniqueId);
 
-    /*
-    private String getInteraction(String interactionNo, String referenceNo,
-                                  String interactionType, String experimentType,
-                                  String annotationType, String modification, Item interactingGene, String action,
-                                  String source, String phenotype, String citation, Item gene,
-                                  String pubMedId)
-            throws ObjectStoreException {
+        String geneId = line[COL_GENE_ID].trim();
+        String partnerGeneId = line[COL_PARTNER_GENE_ID].trim();
+        if (geneId.isEmpty() || partnerGeneId.isEmpty()) {
+            return;
+        }
 
-        Item item = getInteractionItem(gene.getIdentifier(), interactingGene.getIdentifier());
+        String geneRef = getGene(geneId, line[COL_GENE_TAXON].trim());
+        String partnerRef = getGene(partnerGeneId, line[COL_PARTNER_TAXON].trim());
+
+        Item interaction = createItem("Interaction");
+        interaction.setReference("participant1", geneRef);
+        interaction.setReference("participant2", partnerRef);
+        setIfPresent(interaction, "relation", line[COL_RELATION]);
+        setReferenceIfPresent(interaction, "interactionSource",
+                getInteractionTerm(line[COL_INTERACTION_SOURCE], line[COL_INTERACTION_SOURCE_NAME]));
+        store(interaction);
+
         Item detail = createItem("InteractionDetail");
-
-        detail.setAttribute("type", interactionType);
-        detail.setAttribute("annotationType", annotationType);
-        if (StringUtils.isNotEmpty(modification)) detail.setAttribute("modification", modification);
-        if (StringUtils.isNotEmpty(phenotype)) detail.setAttribute("phenotype", phenotype);
-        detail.setAttribute("role1", action);
-        detail.addToCollection("allInteractors", interactingGene.getIdentifier());
-        detail.addToCollection("dataSets", dsetIdentifier);
-
-        String shortType = interactionType.substring(0, interactionType.indexOf(' '));
-        detail.setAttribute("relationshipType", shortType); //interactionType
-        String unqName = firstAuthor+"-"+pubMedId+"-"+experimentType;
-        if (StringUtils.isNotEmpty(note)) detail.setAttribute("note", note);
-
-        //add publication as experiment type
-        Item storedExperimentType = experimenttype.get(unqName);
-        if(storedExperimentType == null) {
-
-            storedExperimentType = createItem("InteractionExperiment");
-            storedExperimentType.setAttribute("name", unqName);
-            experimenttype.put(unqName, storedExperimentType);
-
-            String storedTermId = interactionterms.get(experimentType);
-            if (storedTermId != null) {
-                storedExperimentType.addToCollection("interactionDetectionMethods", storedTermId );
-            } else {
-                storedTermId = getInteractionTerm(experimentType);
-                storedExperimentType.addToCollection("interactionDetectionMethods", storedTermId );
-            }
+        detail.setReference("interaction", interaction);
+        setIfPresent(detail, "type", line[COL_INTERACTION_TYPE]);
+        setIfPresent(detail, "shortName", line[COL_INTERACTION_TYPE_NAME]);
+        setIfPresent(detail, "name", uniqueId);
+        setIfPresent(detail, "relationshipType", line[COL_RELATION]);
+        setIfPresent(detail, "role1", line[COL_INTERACTOR_A_ROLE]);
+        setIfPresent(detail, "role1Name", line[COL_INTERACTOR_A_ROLE_NAME]);
+        setIfPresent(detail, "role2", line[COL_INTERACTOR_B_ROLE]);
+        setIfPresent(detail, "role2Name", line[COL_INTERACTOR_B_ROLE_NAME]);
+        setIfPresent(detail, "phenotypesOrTraits", line[COL_PHENOTYPES_OR_TRAITS]);
+        setReferenceIfPresent(detail, "participant1Type",
+                getInteractionTerm(line[COL_INTERACTOR_A_TYPE], line[COL_INTERACTOR_A_TYPE_NAME]));
+        setReferenceIfPresent(detail, "participant2Type",
+                getInteractionTerm(line[COL_INTERACTOR_B_TYPE], line[COL_INTERACTOR_B_TYPE_NAME]));
+        String pubRef = getPublication(line[COL_PUBMED_ID], line[COL_REFERENCE_ID], line[COL_SHORT_CITATION]);
+        if (pubRef != null) {
+            Item experiment = createItem("InteractionExperiment");
+            experiment.setReference("publication", pubRef);
+            experiment.setAttribute("name", line[COL_SHORT_CITATION].trim());
+            store(experiment);
+            detail.setReference("experiment", experiment);
         }
+        store(detail);
+    }
 
-        //add publication as reference on experiment
-        Item storedRef = publications.get(referenceNo);
+    private String getGene(String primaryId, String taxon) throws ObjectStoreException {
+        String ref = genes.get(primaryId);
+        if (ref != null) {
+            return ref;
+        }
+        Item gene = createItem("Gene");
+        gene.setAttribute("primaryIdentifier", primaryId);
+        if (StringUtils.isNotEmpty(taxon)) {
+            String taxonId = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
+            gene.setReference("organism", getOrganism(taxonId));
+        }
+        store(gene);
+        genes.put(primaryId, gene.getIdentifier());
+        return gene.getIdentifier();
+    }
 
-        if (storedRef != null) {
-            storedExperimentType.setReference("publication", storedRef.getIdentifier());
+    private String getPublication(String pubmedId, String referenceId, String shortCitation) throws ObjectStoreException {
+        String p = StringUtils.isNotEmpty(pubmedId) ? pubmedId.trim() : referenceId.trim();
+        if (p.isEmpty()) {
+            return null;
+        }
+        String ref = publications.get(p);
+        if (ref != null) {
+            return ref;
+        }
+        Item pub = createItem("Publication");
+        if (p.startsWith("PMID:")) {
+            pub.setAttribute("pubMedId", p.substring("PMID:".length()));
         } else {
-
-            Item pub = createItem("Publication");
-
-            if (StringUtils.isNotEmpty(pubMedId)) {
-                pub.setAttribute("pubMedId", pubMedId);
-            }
-            publications.put(referenceNo, pub);
-            storedExperimentType.setReference("publication", pub.getIdentifier());
+            pub.setAttribute("pubXrefId", p);
         }
-
-        detail.setReference("experiment", storedExperimentType.getIdentifier());
-        detail.setReference("interaction", item);
-
-        try {
-            store(detail);
-        } catch (ObjectStoreException e) {
-            throw new ObjectStoreException(e);
+        if (StringUtils.isNotEmpty(shortCitation)) {
+            pub.setAttribute("citation", shortCitation.trim());
         }
-
-        interactions.put(item.getIdentifier(), item);
-        //interactionitems.put(interactionNo, item);
-        String refId = item.getIdentifier();
-        return refId;
-
+        store(pub);
+        publications.put(p, pub.getIdentifier());
+        return pub.getIdentifier();
     }
 
-
-
-    private Item getInteractionItem(String refId, String gene2RefId) throws ObjectStoreException {
-        MultiKey key = new MultiKey(refId, gene2RefId);
-        Item interaction = interactionsnew.get(key);
-        if (interaction == null) {
-            interaction = createItem("Interaction");
-            interaction.setReference("participant1", refId); //gene1
-            interaction.setReference("participant2", gene2RefId); //gene2
+    private String getInteractionTerm(String curie, String name) throws ObjectStoreException {
+        String c = curie == null ? "" : curie.trim();
+        if (c.isEmpty()) {
+            return null;
         }
-        return interaction;
+        String ref = terms.get(c);
+        if (ref != null) {
+            return ref;
+        }
+        Item term = createItem("InteractionTerm");
+        term.setAttribute("identifier", c);
+        if (StringUtils.isNotEmpty(name)) {
+            term.setAttribute("name", name.trim());
+        }
+        store(term);
+        terms.put(c, term.getIdentifier());
+        return term.getIdentifier();
     }
 
-
-    private Item getGene(String g, String org) throws ObjectStoreException {
-
-        Item gene  = genes.get(g);
-        if(gene == null) {
-            gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", g);
-            gene.setReference("organism", org);
-        }
-        String geneId = gene.getIdentifier();
-        genes.put(g, gene);
-        return gene;
-    }
-
-
-    private String getPublication(String pubMedId)
-            throws ObjectStoreException {
-        Item item = publications.get(pubMedId);
-        if (item == null) {
-            item = createItem("Publication");
-            if (StringUtils.isNotEmpty(pubMedId)) {
-                item.setAttribute("pubMedId", pubMedId);
-            }
-            try {
-                store(item);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-            publications.put(pubMedId, item);
-        }
-        return item.getIdentifier();
-    }
-
-
-    private void storeInteractionTypes() throws ObjectStoreException {
-        for (Item type : interactiontype.values()) {
-            try {
-                store(type);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
+    private static void setIfPresent(Item item, String attrName, String value) {
+        if (value != null) {
+            String v = value.trim();
+            if (!v.isEmpty() && !"-".equals(v)) {
+                item.setAttribute(attrName, v);
             }
         }
     }
 
-
-    private void storeInteractionExperiments() throws ObjectStoreException {
-        for (Item exp : experimenttype.values()) {
-            try {
-                store(exp);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
+    private static void setReferenceIfPresent(Item item, String refName, String refId) {
+        if (refId != null && !refId.isEmpty()) {
+            item.setReference(refName, refId);
         }
     }
-
-
-    private void storeInteractionDetails() throws ObjectStoreException {
-        for (Item det : interactiondetail.values()) {
-            try {
-                store(det);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-        }
-    }
-
-    private void storeInteractions() throws ObjectStoreException {
-        for (Item intact : interactions.values()) {
-            try {
-                store(intact);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-        }
-    }
-
-
-    private void storeGenes() throws ObjectStoreException {
-        for (Item gene : genes.values()) {
-            try {
-                store(gene);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-        }
-    }
-*/
-
 }

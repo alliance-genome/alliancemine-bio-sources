@@ -367,15 +367,21 @@
         <reference name="orf" referenced-type="ORF" reverse-reference="inteinencodingregions"/>
     </class>
     <class name="Interaction" is-interface="true" term="http://semanticscience.org/resource/SIO_000897">
+        <attribute name="relation" type="java.lang.String"/>
+        <attribute name="aggregationDatabase" type="java.lang.String"/>
         <reference name="participant1" referenced-type="BioEntity" reverse-reference="interactions"/>
         <reference name="participant2" referenced-type="BioEntity"/>
         <reference name="complex" referenced-type="Complex"/>
+        <reference name="detectionMethod" referenced-type="InteractionTerm"/>
+        <reference name="interactionSource" referenced-type="InteractionTerm"/>
         <collection name="details" referenced-type="InteractionDetail" reverse-reference="interaction"/>
         <collection name="alleleinteractions" referenced-type="AlleleInteraction"/>
     </class>
     <class name="InteractionDetail" is-interface="true">
         <attribute name="phenotype" type="java.lang.String"/>
         <attribute name="role2" type="java.lang.String"/>
+        <attribute name="role1Name" type="java.lang.String"/>
+        <attribute name="role2Name" type="java.lang.String"/>
         <attribute name="type" type="java.lang.String"/>
         <attribute name="note" type="java.lang.String"/>
         <attribute name="confidenceText" type="java.lang.String"/>
@@ -386,8 +392,11 @@
         <attribute name="relationshipType" type="java.lang.String"/>
         <attribute name="shortName" type="java.lang.String"/>
         <attribute name="modification" type="java.lang.String"/>
+        <attribute name="phenotypesOrTraits" type="java.lang.String"/>
         <reference name="experiment" referenced-type="InteractionExperiment" reverse-reference="interactions"/>
         <reference name="interaction" referenced-type="Interaction" reverse-reference="details"/>
+        <reference name="participant1Type" referenced-type="InteractionTerm"/>
+        <reference name="participant2Type" referenced-type="InteractionTerm"/>
         <collection name="interactingRegions" referenced-type="InteractionRegion" reverse-reference="interaction"/>
         <collection name="allInteractors" referenced-type="Interactor"/>
         <collection name="dataSets" referenced-type="DataSet"/>
@@ -416,6 +425,7 @@
         <attribute name="type" type="java.lang.String"/>
         <attribute name="stoichiometry" type="java.lang.Integer"/>
         <attribute name="biologicalRole" type="java.lang.String"/>
+        <attribute name="roleName" type="java.lang.String"/>
         <reference name="participant" referenced-type="BioEntity"/>
         <collection name="interactions" referenced-type="Interaction"/>
     </class>
