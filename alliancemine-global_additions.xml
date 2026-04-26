@@ -710,11 +710,44 @@
         <attribute name="median" type="java.lang.Float"/>
         <attribute name="MAD" type="java.lang.Float"/>
         <attribute name="units" type="java.lang.String"/>
+        <!-- UniProt-derived attributes (populated by the uniprot bio-source). -->
+        <attribute name="primaryAccession" type="java.lang.String"/>
+        <attribute name="uniprotAccession" type="java.lang.String"/>
+        <attribute name="uniprotName" type="java.lang.String"/>
+        <attribute name="isUniprotCanonical" type="java.lang.Boolean"/>
+        <attribute name="isFragment" type="java.lang.Boolean"/>
+        <attribute name="length" type="java.lang.Integer"/>
+        <attribute name="md5checksum" type="java.lang.String"/>
+        <attribute name="ecNumber" type="java.lang.String"/>
+        <reference name="canonicalProtein" referenced-type="Protein" reverse-reference="isoforms"/>
+        <reference name="sequence" referenced-type="Sequence"/>
         <collection name="proteinHalfLife" referenced-type="ProteinHalfLife" reverse-reference="proteins"/>
         <collection name="proteinAbundance" referenced-type="ProteinAbundance" reverse-reference="proteins"/>
         <collection name="proteinProperties" referenced-type="ProteinProperty" reverse-reference="proteins"/>
         <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="proteins"/>
+        <collection name="proteinDomainRegions" referenced-type="ProteinDomainRegion" reverse-reference="protein"/>
         <collection name="proteinModificationSites" referenced-type="ProteinModificationSite" reverse-reference="proteins"/>
+        <collection name="features" referenced-type="UniProtFeature" reverse-reference="protein"/>
+        <collection name="keywords" referenced-type="OntologyTerm"/>
+        <collection name="isoforms" referenced-type="Protein" reverse-reference="canonicalProtein"/>
+        <collection name="pathways" referenced-type="Pathway"/>
+        <collection name="comments" referenced-type="Comment"/>
+    </class>
+    <class name="UniProtFeature" is-interface="true">
+        <attribute name="begin" type="java.lang.Integer"/>
+        <attribute name="end" type="java.lang.Integer"/>
+        <attribute name="type" type="java.lang.String"/>
+        <attribute name="description" type="java.lang.String"/>
+        <reference name="feature" referenced-type="OntologyTerm"/>
+        <reference name="protein" referenced-type="Protein" reverse-reference="features"/>
+    </class>
+    <class name="ProteinDomainRegion" is-interface="true">
+        <attribute name="identifier" type="java.lang.String"/>
+        <attribute name="start" type="java.lang.Integer"/>
+        <attribute name="end" type="java.lang.Integer"/>
+        <attribute name="database" type="java.lang.String"/>
+        <reference name="protein" referenced-type="Protein" reverse-reference="proteinDomainRegions"/>
+        <reference name="proteinDomain" referenced-type="ProteinDomain"/>
     </class>
     <class name="ProteinAbundance" extends="BioEntity" is-interface="true">
         <attribute name="abundance" type="java.lang.Float"/>
