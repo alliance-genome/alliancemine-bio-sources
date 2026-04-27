@@ -287,6 +287,9 @@
         <reference name="cellularcomponent" referenced-type="OntologyTerm"/>
         <reference name="substructure" referenced-type="OntologyTerm"/>
         <reference name="anatomy" referenced-type="OntologyTerm"/>
+        <reference name="sample" referenced-type="Sample"/>
+        <reference name="tissue" referenced-type="Tissue"/>
+        <collection name="treatments" referenced-type="Treatment"/>
         <collection name="publications" referenced-type="Publication"/>
         <attribute name="source" type="java.lang.String"/>
         <attribute name="sourceURL" type="java.lang.String"/>
@@ -370,7 +373,46 @@
         <attribute name="category" type="java.lang.String"/>
         <attribute name="uniqueId" type="java.lang.String"/>
         <reference name="subject" referenced-type="Gene" reverse-reference="phenotypeAnnotations"/>
+        <reference name="sample" referenced-type="Sample"/>
+        <collection name="treatments" referenced-type="Treatment"/>
         <collection name="publications" referenced-type="Publication"/>
+    </class>
+    <!-- ============================================================
+         Phase 6c: experimental-context infrastructure (lifted from
+         FlyMine's model). Sample, SampleCharacteristic, Treatment,
+         TreatmentParameter, Protocol, Tissue. Used by ExpressionAnnotation,
+         PhenotypeAnnotation, and any future high-throughput sources.
+         ============================================================ -->
+    <class name="Sample" extends="BioEntity" is-interface="true">
+        <attribute name="materialType" type="java.lang.String"/>
+        <attribute name="description" type="java.lang.String"/>
+        <attribute name="primaryCharacteristic" type="java.lang.String"/>
+        <attribute name="primaryCharacteristicType" type="java.lang.String"/>
+        <collection name="treatments" referenced-type="Treatment"/>
+        <collection name="characteristics" referenced-type="SampleCharacteristic"/>
+    </class>
+    <class name="SampleCharacteristic" is-interface="true">
+        <attribute name="type" type="java.lang.String"/>
+        <attribute name="value" type="java.lang.String"/>
+        <reference name="ontologyTerm" referenced-type="OntologyTerm"/>
+    </class>
+    <class name="Treatment" is-interface="true">
+        <attribute name="action" type="java.lang.String"/>
+        <collection name="protocols" referenced-type="Protocol"/>
+        <collection name="parameters" referenced-type="TreatmentParameter" reverse-reference="treatment"/>
+    </class>
+    <class name="TreatmentParameter" is-interface="true">
+        <attribute name="units" type="java.lang.String"/>
+        <attribute name="type" type="java.lang.String"/>
+        <attribute name="value" type="java.lang.String"/>
+        <reference name="treatment" referenced-type="Treatment" reverse-reference="parameters"/>
+    </class>
+    <class name="Protocol" is-interface="true">
+        <attribute name="name" type="java.lang.String"/>
+        <attribute name="description" type="java.lang.String"/>
+    </class>
+    <class name="Tissue" is-interface="true">
+        <attribute name="name" type="java.lang.String"/>
     </class>
     <class name="DiseaseModel" is-interface="true">
         <attribute name="modelId" type="java.lang.String"/>
