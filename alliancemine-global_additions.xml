@@ -626,8 +626,12 @@
     <class name="Pathway" is-interface="true" term="http://purl.obolibrary.org/obo/GO:0008150">
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
+        <attribute name="shortName" type="java.lang.String"/>
+        <attribute name="description" type="java.lang.String"/>
+        <attribute name="curated" type="java.lang.Boolean"/>
         <reference name="summary" referenced-type="PathwaySummary"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
+        <collection name="proteins" referenced-type="Protein"/>
         <collection name="dataSets" referenced-type="DataSet"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="pathways"/>
     </class>
