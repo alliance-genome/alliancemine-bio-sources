@@ -414,6 +414,30 @@
     <class name="Tissue" is-interface="true">
         <attribute name="name" type="java.lang.String"/>
     </class>
+    <!-- ============================================================
+         Phase 6d: cross-mine federation classes.
+         Strain (lifted from MouseMine) and RNAi (lifted from WormMine).
+         Populated by Python fetchers using each mine's PathQuery REST.
+         ============================================================ -->
+    <class name="Strain" extends="BioEntity" is-interface="true">
+        <attribute name="attributeString" type="java.lang.String"/>
+        <collection name="alleles" referenced-type="Allele"/>
+    </class>
+    <class name="RNAi" extends="BioEntity" is-interface="true">
+        <attribute name="remark" type="java.lang.String"/>
+        <attribute name="method" type="java.lang.String"/>
+        <attribute name="treatment" type="java.lang.String"/>
+        <attribute name="temperature" type="java.lang.String"/>
+        <attribute name="genotype" type="java.lang.String"/>
+        <attribute name="deliveredBy" type="java.lang.String"/>
+        <attribute name="phenotypeRemark" type="java.lang.String"/>
+        <attribute name="DNA" type="java.lang.String"/>
+        <reference name="reference" referenced-type="Publication"/>
+        <reference name="strain" referenced-type="Strain"/>
+        <collection name="genes" referenced-type="Gene"/>
+        <collection name="phenotypesObserved" referenced-type="Phenotype"/>
+        <collection name="phenotypesNotObserved" referenced-type="Phenotype"/>
+    </class>
     <class name="DiseaseModel" is-interface="true">
         <attribute name="modelId" type="java.lang.String"/>
         <attribute name="modelName" type="java.lang.String"/>

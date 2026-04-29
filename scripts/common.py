@@ -270,6 +270,95 @@ def get_current_release() -> str:
 # Gene-ID enumeration
 
 
+# ---------------------------------------------------------------------------
+# InterMine PathQuery REST client (for cross-mine federation in Phase 6d)
+
+
+def intermine_paginate(
+    base_url: str,
+    query_xml: str,
+    *,
+    page_size: int = 1000,
+    cache: sqlite3.Connection | None = None,
+    stats: FetchStats | None = None,
+) -> Iterator[list[Any]]:
+    """Yield each row from a paginated InterMine PathQuery REST call.
+
+    Each row is the JSON-array form: [val1, val2, ...] in the order the query's
+    view declares. The caller maps positional values to TSV columns.
+
+    base_url should NOT include /service - we append /service/query/results.
+    """
+    import urllib.parse
+    import urllib.error
+    base = base_url.rstrip("/")
+    if not base.endswith("/service"):
+        base = base + "/service"
+
+    start = 0
+    while True:
+        body = urllib.parse.urlencode({
+            "query": query_xml,
+            "format": "json",
+            "size": str(page_size),
+            "start": str(start),
+        }).encode()
+        url = f"{base}/query/results"
+
+        cache_key = _url_key(f"{url}|{start}|{page_size}|{query_xml}")
+        if cache is not None:
+            row = cache.execute("SELECT body FROM cache WHERE key = ?", (cache_key,)).fetchone()
+            if row is not None:
+                if stats is not None:
+                    stats.cache_hits += 1
+                data = json.loads(row[0])
+                results = data.get("results") or []
+                for r in results:
+                    yield r
+                if len(results) < page_size:
+                    return
+                start += page_size
+                continue
+
+        delay = 1.0
+        for attempt in range(5):
+            try:
+                req = urllib.request.Request(url, data=body)
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    text = resp.read().decode("utf-8", errors="replace")
+                if stats is not None:
+                    stats.requests += 1
+                if cache is not None:
+                    cache.execute(
+                        "INSERT OR REPLACE INTO cache (key, url, body, ts) VALUES (?, ?, ?, ?)",
+                        (cache_key, url, text, int(time.time())),
+                    )
+                break
+            except urllib.error.HTTPError as e:
+                if e.code in (429, 500, 502, 503, 504) and attempt + 1 < 5:
+                    if stats is not None:
+                        stats.retries += 1
+                    log.warning("HTTP %s on PathQuery, retry %d after %.1fs", e.code, attempt + 1, delay)
+                    time.sleep(delay)
+                    delay = min(delay * 2, 30.0)
+                    continue
+                if stats is not None:
+                    stats.errors += 1
+                raise
+        else:
+            raise RuntimeError(f"exhausted retries for {url}")
+
+        data = json.loads(text)
+        if not data.get("wasSuccessful", True):
+            raise RuntimeError(f"PathQuery error: {data.get('error', 'unknown')}")
+        results = data.get("results") or []
+        for r in results:
+            yield r
+        if len(results) < page_size:
+            return
+        start += page_size
+
+
 def enumerate_yeast_genes() -> list[str]:
     """Return SGD gene CURIEs for Saccharomyces cerevisiae S288C.
 

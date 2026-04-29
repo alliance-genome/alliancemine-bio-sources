@@ -44,6 +44,9 @@ FETCHERS = [
     ("disease_annotations", "fetch_disease_annotations.py"),
     ("disease_models",      "fetch_disease_models.py"),
     ("phenotypes",          "fetch_phenotypes.py"),
+    # Phase 6d: cross-mine federation via InterMine PathQuery REST.
+    ("mousemine_strains",   "fetch_mousemine_strains.py"),
+    ("wormmine_rnai",       "fetch_wormmine_rnai.py"),
 ]
 
 

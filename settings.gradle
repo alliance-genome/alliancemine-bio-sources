@@ -25,6 +25,10 @@ include ':bio-source-alliance-ortholog-detail'
 project(':bio-source-alliance-ortholog-detail').projectDir = new File(settingsDir, './alliance-ortholog-detail')
 include ':bio-source-alliance-disease-detail'
 project(':bio-source-alliance-disease-detail').projectDir = new File(settingsDir, './alliance-disease-detail')
+include ':bio-source-alliance-mouse-strains'
+project(':bio-source-alliance-mouse-strains').projectDir = new File(settingsDir, './alliance-mouse-strains')
+include ':bio-source-alliance-worm-rnai'
+project(':bio-source-alliance-worm-rnai').projectDir = new File(settingsDir, './alliance-worm-rnai')
 include ':bio-source-alliance-alleles'
 project(':bio-source-alliance-alleles').projectDir = new File(settingsDir, './alliance-alleles')
 include ':bio-source-alliance-expression'
