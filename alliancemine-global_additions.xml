@@ -30,6 +30,9 @@
         <reference name="centromere" referenced-type="Centromere" reverse-reference="alleles"/>
         <reference name="ori" referenced-type="OriginOfReplication" reverse-reference="alleles"/>
         <collection name="variants" referenced-type="Variant" reverse-reference="allele"/>
+        <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="alleleSubject"/>
+        <collection name="diseaseAnnotations" referenced-type="DiseaseAnnotation" reverse-reference="alleleSubject"/>
+        <collection name="transgenicAlleles" referenced-type="TransgenicAllele" reverse-reference="parentAllele"/>
     </class>
     
     <class name="AlleleInteraction" is-interface="true">
@@ -237,6 +240,7 @@
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="diseases"/>
+        <collection name="alleles" referenced-type="Allele"/>
         <collection name="publications" referenced-type="Publication"/>
         <collection name="dataSets" referenced-type="DataSet"/>
     </class>
@@ -246,6 +250,8 @@
         <attribute name="parentSlimIds" type="java.lang.String"/>
         <attribute name="viaOrthologyOrder" type="java.lang.Integer"/>
         <attribute name="uniqueId" type="java.lang.String"/>
+        <attribute name="evidenceType" type="java.lang.String"/>
+        <reference name="alleleSubject" referenced-type="Allele" reverse-reference="diseaseAnnotations"/>
     </class>
     <class name="DiseaseEvidence" extends="OntologyEvidence" is-interface="true">
         <collection name="with" referenced-type="BioEntity"/>
@@ -373,6 +379,7 @@
         <attribute name="category" type="java.lang.String"/>
         <attribute name="uniqueId" type="java.lang.String"/>
         <reference name="subject" referenced-type="Gene" reverse-reference="phenotypeAnnotations"/>
+        <reference name="alleleSubject" referenced-type="Allele" reverse-reference="phenotypeAnnotations"/>
         <reference name="sample" referenced-type="Sample"/>
         <collection name="treatments" referenced-type="Treatment"/>
         <collection name="publications" referenced-type="Publication"/>
@@ -450,6 +457,14 @@
         <attribute name="hasPhenotypeAnnotations" type="java.lang.Boolean"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="diseaseModels"/>
         <reference name="disease" referenced-type="DOTerm"/>
+    </class>
+    <class name="TransgenicAllele" extends="Allele" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001218">
+        <attribute name="constructIdentifier" type="java.lang.String"/>
+        <attribute name="constructName" type="java.lang.String"/>
+        <attribute name="reporterTag" type="java.lang.String"/>
+        <attribute name="expresses" type="java.lang.String"/>
+        <reference name="parentAllele" referenced-type="Allele" reverse-reference="transgenicAlleles"/>
+        <collection name="targetGenes" referenced-type="Gene"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>
