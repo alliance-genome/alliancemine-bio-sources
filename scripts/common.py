@@ -60,8 +60,13 @@ def _cache_path(cache_name: str) -> Path:
 
 @contextmanager
 def open_cache(cache_name: str) -> Iterator[sqlite3.Connection]:
-    """Open the SQLite cache for a fetcher. Keyed by URL hash."""
-    conn = sqlite3.connect(_cache_path(cache_name))
+    """Open the SQLite cache for a fetcher. Keyed by URL hash.
+    WAL + busy_timeout so multiple ThreadPool workers can write concurrently
+    without hitting "database is locked" / "readonly database" errors."""
+    conn = sqlite3.connect(_cache_path(cache_name), timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cache ("
         " key TEXT PRIMARY KEY,"
@@ -104,7 +109,10 @@ def http_get_json(
     delay = 1.0
     for attempt in range(max_retries):
         try:
-            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            req = urllib.request.Request(url, headers={
+                "Accept": "application/json",
+                "User-Agent": "AllianceMine-fetcher/1.0 (+https://github.com/alliance-genome/alliancemine-bio-sources)",
+            })
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
             if stats is not None:
@@ -116,12 +124,14 @@ def http_get_json(
                 )
             return json.loads(body)
         except urllib.error.HTTPError as e:
-            if e.code in (429, 500, 502, 503, 504) and attempt + 1 < max_retries:
+            # 405 + HTML body = Cloudflare/WAF bot-protection page when concurrency
+            # exceeds origin tolerance. Treat as retryable with longer backoff.
+            if e.code in (405, 429, 500, 502, 503, 504) and attempt + 1 < max_retries:
                 if stats is not None:
                     stats.retries += 1
                 log.warning("HTTP %s on %s, retry %d after %.1fs", e.code, path, attempt + 1, delay)
                 time.sleep(delay)
-                delay = min(delay * 2, 30.0)
+                delay = min(delay * 2, 60.0)
                 continue
             if stats is not None:
                 stats.errors += 1

@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -85,6 +86,12 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=20,
+        help="ThreadPool size for parallel per-gene API calls (default 20)",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -105,37 +112,53 @@ def main() -> None:
     release = get_current_release()
     out_dir = Path(args.out_dir)
 
-    try:
-        from tqdm import tqdm
-        iterator = tqdm(gene_ids, desc="genes", unit="gene")
-    except ImportError:
-        iterator = gene_ids
-
     stats = FetchStats()
     seen_alleles: set = set()
 
-    with open_cache("transgenic_alleles") as cache, \
-         TsvWriter(
-             out_dir / "transgenic-alleles.tsv",
-             COLUMNS,
-             release=release,
-             source="/gene/*/transgenic-alleles",
-         ) as writer:
-        total_rows = 0
-        for gid in iterator:
-            try:
+    def fetch_one(gid: str) -> tuple[str, list[dict], Exception | None]:
+        rows: list[dict] = []
+        try:
+            # Per-worker sqlite connection — sqlite3.Connection is not safe
+            # to share across threads even in WAL mode.
+            with open_cache("transgenic_alleles") as cache:
                 for result in paginate(
                     f"/gene/{gid}/transgenic-alleles", cache=cache, stats=stats
                 ):
-                    row = _row(gid, result)
+                    rows.append(_row(gid, result))
+            return gid, rows, None
+        except Exception as e:
+            return gid, [], e
+
+    with TsvWriter(
+            out_dir / "transgenic-alleles.tsv",
+            COLUMNS,
+            release=release,
+            source="/gene/*/transgenic-alleles",
+         ) as writer:
+        total_rows = 0
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            futures = {pool.submit(fetch_one, gid): gid for gid in gene_ids}
+            try:
+                from tqdm import tqdm
+                pbar = tqdm(total=len(futures), desc="genes", unit="gene")
+            except ImportError:
+                pbar = None
+            for fut in as_completed(futures):
+                gid, rows, err = fut.result()
+                if pbar:
+                    pbar.update(1)
+                if err is not None:
+                    log.warning("Transgenic-allele fetch failed for %s: %s", gid, err)
+                    continue
+                for row in rows:
                     key = row["transgenicAlleleId"]
                     if not key or key in seen_alleles:
                         continue
                     seen_alleles.add(key)
                     writer.write_row(**row)
                     total_rows += 1
-            except Exception as e:
-                log.warning("Transgenic-allele fetch failed for %s: %s", gid, e)
+            if pbar:
+                pbar.close()
 
     log.info("Done. rows=%d  API stats: %s", total_rows, stats)
 
