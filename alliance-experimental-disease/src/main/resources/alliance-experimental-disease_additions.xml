@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- DiseaseAnnotation.experimentalGene reference + Gene.experimentalDiseaseAnnotations
+     reverse collection are declared in alliancemine-global_additions.xml; this
+     file is intentionally empty so the dbmodel plugin still has an additions
+     file to merge. -->
+
+<classes>
+</classes>

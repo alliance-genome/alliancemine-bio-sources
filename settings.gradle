@@ -41,6 +41,8 @@ include ':bio-source-alliance-transgenic-alleles'
 project(':bio-source-alliance-transgenic-alleles').projectDir = new File(settingsDir, './alliance-transgenic-alleles')
 include ':bio-source-alliance-disease-alleles'
 project(':bio-source-alliance-disease-alleles').projectDir = new File(settingsDir, './alliance-disease-alleles')
+include ':bio-source-alliance-experimental-disease'
+project(':bio-source-alliance-experimental-disease').projectDir = new File(settingsDir, './alliance-experimental-disease')
 include ':bio-source-mmo'
 project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
 include ':bio-source-zfa'

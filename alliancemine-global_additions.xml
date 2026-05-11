@@ -252,6 +252,7 @@
         <attribute name="uniqueId" type="java.lang.String"/>
         <attribute name="evidenceType" type="java.lang.String"/>
         <reference name="alleleSubject" referenced-type="Allele" reverse-reference="diseaseAnnotations"/>
+        <reference name="experimentalGene" referenced-type="Gene" reverse-reference="experimentalDiseaseAnnotations"/>
     </class>
     <class name="DiseaseEvidence" extends="OntologyEvidence" is-interface="true">
         <collection name="with" referenced-type="BioEntity"/>
@@ -361,6 +362,7 @@
         <collection name="paralogues" referenced-type="Paralogue" reverse-reference="gene"/>
         <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="subject"/>
         <collection name="diseaseModels" referenced-type="DiseaseModel" reverse-reference="gene"/>
+        <collection name="experimentalDiseaseAnnotations" referenced-type="DiseaseAnnotation" reverse-reference="experimentalGene"/>
     </class>
     <class name="Paralogue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000858">
         <attribute name="identity" type="java.lang.Integer"/>
