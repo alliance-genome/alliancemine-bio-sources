@@ -33,6 +33,7 @@ from common import (  # noqa: E402
     get_current_release,
     get_nested,
     join_pipe,
+    normalize_taxon,
     open_cache,
     paginate,
 )
@@ -64,7 +65,7 @@ def _row(seed_id: str, result: dict) -> dict:
     return {
         "geneId": get_nested(gene, "primaryExternalId", default=seed_id),
         "geneSymbol": get_nested(gene, "geneSymbol", "displayText", default=""),
-        "geneTaxon": get_nested(gene, "taxon", "curie", default=""),
+        "geneTaxon": normalize_taxon(get_nested(gene, "taxon", "curie", default="")),
         "transgenicAlleleId": get_nested(allele, "primaryExternalId", default=""),
         "transgenicAlleleSymbol": get_nested(allele, "alleleSymbol", "displayText", default=""),
         "constructIds": construct_ids,

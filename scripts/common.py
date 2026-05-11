@@ -259,6 +259,28 @@ def join_pipe(values: Iterable[Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Track D4: collapse legacy/ambiguous taxon IDs to AllianceMine canonical IDs.
+# Without this, sources tagging yeast to 4932 produce ghost Organism rows
+# alongside the canonical S288C (559292) row, splitting yeast genes/alleles
+# across two organisms.
+
+LEGACY_TAXON_REMAP: dict[str, str] = {
+    "4932": "559292",                      # S. cerevisiae generic -> S288C reference
+    "NCBITaxon:4932": "NCBITaxon:559292",
+    "taxon:4932": "taxon:559292",
+}
+
+
+def normalize_taxon(taxon_id: str | None) -> str:
+    """Map legacy/ambiguous taxon IDs to canonical AllianceMine IDs.
+    Idempotent — returns input unchanged if no remap rule applies, or "" if
+    the input is None."""
+    if taxon_id is None:
+        return ""
+    return LEGACY_TAXON_REMAP.get(taxon_id, taxon_id)
+
+
+# ---------------------------------------------------------------------------
 # Release discovery
 
 

@@ -397,6 +397,10 @@ public class SgdConverter extends BioDBConverter {
 
 					allele = createItem("Allele");
 					allele.setAttribute("featureType", "Allele");
+					// D2: primaryIdentifier must be set so the integration engine can
+					// merge SGD-source alleles with AGR-source alleles via the unified
+					// Allele.key_primaryidentifier = primaryIdentifier, organism key.
+					if (StringUtils.isNotEmpty(alleleSgdid)) allele.setAttribute("primaryIdentifier", alleleSgdid);
 					if (StringUtils.isNotEmpty(name)) allele.setAttribute("name", name);
 					if (StringUtils.isNotEmpty(description)) allele.setAttribute("description", description);
 					if (StringUtils.isNotEmpty(aclass)) allele.setAttribute("alleleClass", aclass);

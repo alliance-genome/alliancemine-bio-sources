@@ -36,6 +36,7 @@ from common import (  # noqa: E402
     get_current_release,
     get_nested,
     join_pipe,
+    normalize_taxon,
     open_cache,
     paginate,
 )
@@ -104,7 +105,7 @@ def _row(disease_id: str, result: dict) -> dict | None:
         "diseaseName": get_nested(obj, "name", default=""),
         "alleleId": allele_id,
         "alleleSymbol": get_nested(subj, "alleleSymbol", "displayText", default=""),
-        "alleleTaxon": get_nested(subj, "taxon", "curie", default=""),
+        "alleleTaxon": normalize_taxon(get_nested(subj, "taxon", "curie", default="")),
         "relationName": get_nested(result, "relation", "name", default=""),
         "evidenceCodes": eco_codes,
         "evidencePmids": pmids,
