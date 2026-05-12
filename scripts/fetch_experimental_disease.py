@@ -28,6 +28,7 @@ import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
@@ -38,11 +39,69 @@ from common import (  # noqa: E402
     enumerate_yeast_genes,
     get_current_release,
     get_nested,
+    iter_fms_datatype,
     join_pipe,
     normalize_taxon,
     open_cache,
     paginate,
 )
+
+DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
+
+
+# MOD-prefix → NCBI taxon. Used because DAF rows do not carry taxon — must
+# infer from data provider (MOD-curated DAF is always single-organism).
+MOD_TAXON = {
+    "MGI": "NCBITaxon:10090",
+    "RGD": "NCBITaxon:10116",
+    "ZFIN": "NCBITaxon:7955",
+    "FB": "NCBITaxon:7227",
+    "WB": "NCBITaxon:6239",
+    "SGD": "NCBITaxon:559292",
+    "HUMAN": "NCBITaxon:9606",
+    "XBXL": "NCBITaxon:8355",
+    "XBXT": "NCBITaxon:8364",
+}
+
+
+def _fms_rows(mods: list[str]) -> Iterator[dict]:
+    """Yield TSV-row dicts for DAF records where objectType=='gene' AND
+    primaryGeneticEntityIDs is non-empty — that combination marks
+    experimental evidence (a gene-level disease annotation backed by an
+    allele or AGM, vs orthology-inferred annotations which lack the
+    genetic entity reference).
+    """
+    for mod in mods:
+        log.info("FMS DAF extraction (experimental gene rows): %s", mod)
+        taxon = MOD_TAXON.get(mod, "")
+        for _sub, rec in iter_fms_datatype("DAF", sub_filter=mod):
+            rel = rec.get("objectRelation") or {}
+            if rel.get("objectType") != "gene":
+                continue
+            entities = rec.get("primaryGeneticEntityIDs") or []
+            if not entities:
+                continue
+            gene_id = rec.get("objectId", "")
+            disease_id = rec.get("DOid", "")
+            if not gene_id or not disease_id:
+                continue
+            evidence = rec.get("evidence") or {}
+            eco_codes = join_pipe(evidence.get("evidenceCodes") or [])
+            pub = evidence.get("publication") or {}
+            pmid = pub.get("publicationId", "")
+            yield {
+                "geneId": gene_id,
+                "geneTaxon": taxon,
+                "diseaseId": disease_id,
+                "diseaseName": "",
+                "relationName": rel.get("associationType", ""),
+                "evidenceCodes": eco_codes,
+                "evidenceAbbrs": "",          # not encoded in DAF; abbr is API-only
+                "evidencePmids": pmid,
+                "evidenceCurie": "",
+                "negated": "",
+                "dataProvider": mod,
+            }
 
 log = logging.getLogger("alliance.fetch.experimental_disease")
 
@@ -111,11 +170,19 @@ def _row(seed_id: str, result: dict) -> dict | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance experimental disease annotations into TSV")
-    parser.add_argument("--ids", help="Comma-separated gene CURIEs")
+    parser.add_argument(
+        "--source",
+        choices=["fms", "api"],
+        default="fms",
+        help="Backend: 'fms' (bulk DAF JSON.gz, filter to rows with primaryGeneticEntityIDs; "
+             "default — the API endpoint /gene/{id}/diseases-by-experiment returns total:0 "
+             "across all probed MODs as of 2026-05-11) or 'api' (per-gene fan-out).",
+    )
+    parser.add_argument("--ids", help="Comma-separated gene CURIEs (api path)")
     parser.add_argument(
         "--mods",
-        default="MGI,ZFIN,FB,WB,RGD,SGD,XBXL,XBXT,HUMAN",
-        help="Comma-separated MOD prefixes for seed enumeration",
+        default=",".join(DEFAULT_MODS),
+        help="Comma-separated MOD prefixes",
     )
     parser.add_argument("--limit", type=int, help="Process at most N genes")
     parser.add_argument(
@@ -134,6 +201,32 @@ def main() -> None:
 
     configure_logging(args.verbose)
 
+    release = get_current_release()
+    out_dir = Path(args.out_dir)
+    stats = FetchStats()
+    seen_triples: set = set()
+
+    if args.source == "fms":
+        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+        total = 0
+        with TsvWriter(
+            out_dir / "experimental-disease.tsv",
+            COLUMNS,
+            release=release,
+            source=f"FMS DAF (gene rows w/ primaryGeneticEntityIDs; {','.join(mods)})",
+        ) as writer:
+            for row in _fms_rows(mods):
+                triple = (row["geneId"], row["diseaseId"], row["evidenceCodes"])
+                if triple in seen_triples:
+                    continue
+                seen_triples.add(triple)
+                writer.write_row(**row)
+                total += 1
+                if args.limit is not None and total >= args.limit:
+                    break
+        log.info("FMS Done. rows=%d", total)
+        return
+
     if args.ids:
         gene_ids = [g.strip() for g in args.ids.split(",") if g.strip()]
     else:
@@ -146,11 +239,6 @@ def main() -> None:
         gene_ids = gene_ids[: args.limit]
 
     log.info("Processing %d genes", len(gene_ids))
-    release = get_current_release()
-    out_dir = Path(args.out_dir)
-
-    stats = FetchStats()
-    seen_triples: set = set()
 
     def fetch_one(gid: str) -> tuple[str, list[dict], Exception | None]:
         rows: list[dict] = []

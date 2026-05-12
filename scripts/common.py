@@ -27,7 +27,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
 API_BASE = os.environ.get("ALLIANCE_API_BASE", "https://www.alliancegenome.org/api")
+FMS_BASE = os.environ.get("ALLIANCE_FMS_BASE", "https://fms.alliancegenome.org/api")
 CACHE_DIR = Path(os.environ.get("ALLIANCE_FETCH_CACHE", Path(__file__).parent / ".cache"))
+FMS_CACHE_DIR = Path(os.environ.get("ALLIANCE_FMS_CACHE", Path(__file__).parent / ".fms_cache"))
 
 log = logging.getLogger("alliance.fetch")
 
@@ -476,3 +478,123 @@ def enumerate_mod_genes(mods: list[str]) -> list[str]:
         log.info("Enumerated %d %s genes from FMS BGI", added, mod)
     log.info("Total across MODs: %d genes", len(combined))
     return combined
+
+
+# ---------------------------------------------------------------------------
+# FMS (file management system) bulk extraction
+#
+# AGR ships per-MOD bulk JSON dumps on a "release" cadence via FMS. Some
+# datatypes are populated in FMS but empty on the live REST API (notably
+# /gene/{id}/diseases-by-experiment as of 2026-05-11), so fetchers default to
+# the FMS path when available and fall back to the API only when explicitly
+# requested. FMS is itself slated for sunset; the long-term replacement is
+# direct AGR Postgres access — keep fetcher code source-agnostic.
+
+
+def _fms_file_list_url(release: str) -> str:
+    return f"{FMS_BASE}/datafile/by/release/{release}?onlyCurrent=true"
+
+
+def fms_list_files(
+    datatype: str,
+    *,
+    release: str | None = None,
+    sub_filter: str | None = None,
+) -> list[dict]:
+    """Return FMS file manifests for the given datatype (e.g. 'DAF',
+    'CONSTRUCT', 'ALLELE', 'PHENOTYPE'). sub_filter narrows by dataSubType
+    name (a MOD prefix like 'MGI' or a NCBITaxon ID like 'NCBITaxon10090').
+    """
+    if release is None:
+        release = get_current_release()
+    if release == "unknown":
+        raise RuntimeError("Cannot list FMS files: release is unknown")
+    manifest = http_get_json(_fms_file_list_url(release))
+    out: list[dict] = []
+    for row in manifest or []:
+        dt = (row.get("dataType") or {}).get("name", "")
+        if dt != datatype:
+            continue
+        sub = (row.get("dataSubType") or {}).get("name", "")
+        if sub_filter and sub != sub_filter:
+            continue
+        url = row.get("s3Url") or row.get("s3Path") or ""
+        if not url.startswith("http"):
+            url = "https://" + url.lstrip("/")
+        out.append({
+            "url": url,
+            "datatype": dt,
+            "subType": sub,
+            "release": release,
+        })
+    return out
+
+
+def fms_download_gz(url: str) -> Path:
+    """Download a gzipped FMS payload to FMS_CACHE_DIR keyed on the URL.
+    Returns the local cached path. Idempotent — uses HEAD ETag matching
+    when possible, otherwise size-stat. Caller deals with gunzip + JSON
+    parsing (use fms_iter_json_records)."""
+    import urllib.request as _u
+    FMS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]
+    suffix = ".json.gz" if url.endswith(".gz") else ".bin"
+    target = FMS_CACHE_DIR / f"{key}{suffix}"
+    if target.exists() and target.stat().st_size > 0:
+        log.debug("FMS cache HIT %s -> %s", url, target.name)
+        return target
+    log.info("FMS download %s", url)
+    req = _u.Request(url, headers={"User-Agent": "AllianceMine-fetcher/1.0"})
+    with _u.urlopen(req, timeout=300) as resp, target.open("wb") as fh:
+        while True:
+            chunk = resp.read(1 << 16)
+            if not chunk:
+                break
+            fh.write(chunk)
+    return target
+
+
+def fms_iter_json_records(
+    path: Path,
+    *,
+    key: str = "data",
+) -> Iterator[dict]:
+    """Stream records from a downloaded FMS JSON.gz file. Most AGR FMS files
+    are wrapped {metaData, data: [...]} with a single top-level array under
+    the 'data' key. Loaded in-memory because gzip is small enough (<200MB
+    decompressed) for the volumes involved — switch to ijson if a single
+    file grows past memory budget."""
+    import gzip
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", encoding="utf-8") as fh:
+        try:
+            doc = json.load(fh)
+        except json.JSONDecodeError as e:
+            log.error("FMS file %s parse error: %s", path, e)
+            return
+    records = doc.get(key) if isinstance(doc, dict) else doc
+    if not isinstance(records, list):
+        log.warning("FMS file %s has no '%s' array", path, key)
+        return
+    for r in records:
+        if isinstance(r, dict):
+            yield r
+
+
+def iter_fms_datatype(
+    datatype: str,
+    *,
+    release: str | None = None,
+    sub_filter: str | None = None,
+) -> Iterator[tuple[str, dict]]:
+    """High-level: enumerate every record across every shard of an FMS
+    datatype. Yields (subType, record) tuples so the caller can tag rows
+    with the MOD without re-parsing the URL."""
+    files = fms_list_files(datatype, release=release, sub_filter=sub_filter)
+    if not files:
+        log.warning("No FMS files for datatype=%s sub_filter=%s", datatype, sub_filter)
+        return
+    for fi in files:
+        local = fms_download_gz(fi["url"])
+        for rec in fms_iter_json_records(local):
+            yield fi["subType"], rec

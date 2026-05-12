@@ -27,6 +27,7 @@ import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
@@ -35,11 +36,46 @@ from common import (  # noqa: E402
     configure_logging,
     get_current_release,
     get_nested,
+    iter_fms_datatype,
     join_pipe,
     normalize_taxon,
     open_cache,
     paginate,
 )
+
+DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
+
+
+def _fms_rows(mods: list[str]) -> Iterator[dict]:
+    """Yield TSV-row dicts for each DAF record with objectType=='allele'.
+    Disease + evidence + PMID + ECO are all in-line on the DAF record."""
+    for mod in mods:
+        log.info("FMS DAF extraction: %s", mod)
+        for _sub, rec in iter_fms_datatype("DAF", sub_filter=mod):
+            rel = rec.get("objectRelation") or {}
+            if rel.get("objectType") != "allele":
+                continue
+            allele_id = rec.get("objectId", "")
+            disease_id = rec.get("DOid", "")
+            if not allele_id or not disease_id:
+                continue
+            evidence = rec.get("evidence") or {}
+            eco_codes = join_pipe(evidence.get("evidenceCodes") or [])
+            pub = evidence.get("publication") or {}
+            pmid = pub.get("publicationId", "")
+            yield {
+                "diseaseId": disease_id,
+                "diseaseName": "",                          # DAF lacks DOID name; converter keys by DOid alone
+                "alleleId": allele_id,
+                "alleleSymbol": rec.get("objectName", ""),  # DAF objectName == subject's symbol (allele here)
+                "alleleTaxon": "",                          # not in DAF; converter relies on integration merge
+                "relationName": rel.get("associationType", ""),
+                "evidenceCodes": eco_codes,
+                "evidencePmids": pmid,
+                "evidenceCurie": "",
+                "negated": "",
+                "dataProvider": mod,
+            }
 
 log = logging.getLogger("alliance.fetch.disease_alleles")
 
@@ -117,8 +153,20 @@ def _row(disease_id: str, result: dict) -> dict | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance per-disease alleles into TSV")
-    parser.add_argument("--ids", help="Comma-separated DOID CURIEs")
-    parser.add_argument("--limit", type=int, help="Process at most N diseases")
+    parser.add_argument(
+        "--source",
+        choices=["fms", "api"],
+        default="fms",
+        help="Backend: 'fms' (bulk DAF JSON.gz from download.alliancegenome.org; default) or "
+             "'api' (per-disease /disease/{id}/alleles).",
+    )
+    parser.add_argument(
+        "--mods",
+        default=",".join(DEFAULT_MODS),
+        help="Comma-separated MOD prefixes (FMS path)",
+    )
+    parser.add_argument("--ids", help="Comma-separated DOID CURIEs (api path)")
+    parser.add_argument("--limit", type=int, help="Process at most N diseases / rows")
     parser.add_argument(
         "--out-dir",
         default=str(Path(__file__).parent.parent / "data"),
@@ -135,6 +183,32 @@ def main() -> None:
 
     configure_logging(args.verbose)
 
+    release = get_current_release()
+    out_dir = Path(args.out_dir)
+    stats = FetchStats()
+    seen_pairs: set = set()
+
+    if args.source == "fms":
+        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+        total = 0
+        with TsvWriter(
+            out_dir / "disease-alleles.tsv",
+            COLUMNS,
+            release=release,
+            source=f"FMS DAF ({','.join(mods)})",
+        ) as writer:
+            for row in _fms_rows(mods):
+                key = (row["alleleId"], row["diseaseId"])
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
+                writer.write_row(**row)
+                total += 1
+                if args.limit is not None and total >= args.limit:
+                    break
+        log.info("FMS Done. rows=%d", total)
+        return
+
     if args.ids:
         disease_ids = [d.strip() for d in args.ids.split(",") if d.strip()]
     else:
@@ -143,11 +217,6 @@ def main() -> None:
         disease_ids = disease_ids[: args.limit]
 
     log.info("Processing %d diseases", len(disease_ids))
-    release = get_current_release()
-    out_dir = Path(args.out_dir)
-
-    stats = FetchStats()
-    seen_pairs: set = set()
 
     def fetch_one(did: str) -> tuple[str, list[dict], Exception | None]:
         rows: list[dict] = []
