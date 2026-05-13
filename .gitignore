@@ -25,3 +25,4 @@ scripts/__pycache__/
 # Locally generated fetcher output — these are build inputs, not source
 /data/
 scripts/.fms_cache/
+scripts/.string_cache/

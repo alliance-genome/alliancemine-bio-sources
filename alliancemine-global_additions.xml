@@ -778,9 +778,19 @@
         <attribute name="description" type="java.lang.String"/>
         <collection name="proteins" referenced-type="Protein" reverse-reference="ecNumbers"/>
     </class>
+    <class name="STRINGInteraction" is-interface="true">
+        <attribute name="stringIdA" type="java.lang.String"/>
+        <attribute name="stringIdB" type="java.lang.String"/>
+        <attribute name="combinedScore" type="java.lang.Integer"/>
+        <reference name="proteinA" referenced-type="Protein"/>
+        <reference name="proteinB" referenced-type="Protein"/>
+        <reference name="organism" referenced-type="Organism"/>
+    </class>
     <class name="Protein" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000104">
         <attribute name="symbol" type="java.lang.String"/>
         <attribute name="ecNumber" type="java.lang.String"/>
+        <attribute name="alphaFoldId" type="java.lang.String"/>
+        <attribute name="alphaFoldUrl" type="java.lang.String"/>
         <collection name="ecNumbers" referenced-type="ECNumber" reverse-reference="proteins"/>
         <attribute name="pI" type="java.lang.Float"/>
         <attribute name="molecularWeight" type="java.lang.Double"/>

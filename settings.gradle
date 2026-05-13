@@ -55,6 +55,10 @@ include ':bio-source-alliance-gene-crossrefs'
 project(':bio-source-alliance-gene-crossrefs').projectDir = new File(settingsDir, './alliance-gene-crossrefs')
 include ':bio-source-alliance-htp'
 project(':bio-source-alliance-htp').projectDir = new File(settingsDir, './alliance-htp')
+include ':bio-source-alliance-alphafold'
+project(':bio-source-alliance-alphafold').projectDir = new File(settingsDir, './alliance-alphafold')
+include ':bio-source-alliance-string'
+project(':bio-source-alliance-string').projectDir = new File(settingsDir, './alliance-string')
 include ':bio-source-mmo'
 project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
 include ':bio-source-zfa'
