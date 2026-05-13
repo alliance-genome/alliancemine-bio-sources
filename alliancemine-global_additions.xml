@@ -400,6 +400,7 @@
         <attribute name="uniqueId" type="java.lang.String"/>
         <reference name="subject" referenced-type="Gene" reverse-reference="phenotypeAnnotations"/>
         <reference name="alleleSubject" referenced-type="Allele" reverse-reference="phenotypeAnnotations"/>
+        <reference name="ontologyTerm" referenced-type="OntologyTerm"/>
         <reference name="sample" referenced-type="Sample"/>
         <collection name="treatments" referenced-type="Treatment"/>
         <collection name="publications" referenced-type="Publication"/>
