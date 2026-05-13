@@ -136,6 +136,15 @@
         <!--<collection name="synonyms" referenced-type="Synonym"/>-->
         <!--<collection name="crossreferences" referenced-type="CrossReference" reverse-reference="variant"/>-->
         <collection name="variantdetails" referenced-type="VariantDetails"/>
+        <collection name="consequences" referenced-type="VariantConsequence" reverse-reference="variant"/>
+    </class>
+    <class name="VariantConsequence" is-interface="true">
+        <attribute name="consequenceCode" type="java.lang.String"/>
+        <attribute name="impact" type="java.lang.String"/>
+        <attribute name="aminoAcidChange" type="java.lang.String"/>
+        <reference name="variant" referenced-type="Variant" reverse-reference="consequences"/>
+        <reference name="gene" referenced-type="Gene"/>
+        <reference name="transcript" referenced-type="Transcript"/>
     </class>
     <class name="VariantDetails" extends="SequenceCollection SequenceFeature" is-interface="true">
         <attribute name="assembly" type="java.lang.String"/>
@@ -334,6 +343,15 @@
         <attribute name="geneSummary" type="java.lang.String"/>
         <attribute name="phenotypeSummary" type="java.lang.String"/>
         <attribute name="functionSummary" type="java.lang.String"/>
+        <!-- AGR auto-generated description fields (GENE-DESCRIPTION-JSON pipeline). -->
+        <attribute name="autoDescription" type="java.lang.String"/>
+        <attribute name="goDescription" type="java.lang.String"/>
+        <attribute name="goFunctionDescription" type="java.lang.String"/>
+        <attribute name="goProcessDescription" type="java.lang.String"/>
+        <attribute name="goComponentDescription" type="java.lang.String"/>
+        <attribute name="doDescription" type="java.lang.String"/>
+        <attribute name="expressionDescription" type="java.lang.String"/>
+        <attribute name="orthologyDescription" type="java.lang.String"/>
         <attribute name="cytoLocation" type="java.lang.String"/>
         <attribute name="dateProduced" type="java.util.Date"/>
         <attribute name="dataProvider" type="java.lang.String"/>
@@ -754,8 +772,15 @@
         <reference name="pseudogene" referenced-type="Pseudogene" reverse-reference="plus1translationalframeshifts"/>
         <reference name="orf" referenced-type="ORF" reverse-reference="plus1translationalframeshifts"/>
     </class>
+    <class name="ECNumber" is-interface="true">
+        <attribute name="identifier" type="java.lang.String"/>
+        <attribute name="description" type="java.lang.String"/>
+        <collection name="proteins" referenced-type="Protein" reverse-reference="ecNumbers"/>
+    </class>
     <class name="Protein" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000104">
         <attribute name="symbol" type="java.lang.String"/>
+        <attribute name="ecNumber" type="java.lang.String"/>
+        <collection name="ecNumbers" referenced-type="ECNumber" reverse-reference="proteins"/>
         <attribute name="pI" type="java.lang.Float"/>
         <attribute name="molecularWeight" type="java.lang.Double"/>
         <attribute name="fopScore" type="java.lang.Float"/>

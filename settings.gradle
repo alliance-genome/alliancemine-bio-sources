@@ -43,6 +43,12 @@ include ':bio-source-alliance-disease-alleles'
 project(':bio-source-alliance-disease-alleles').projectDir = new File(settingsDir, './alliance-disease-alleles')
 include ':bio-source-alliance-experimental-disease'
 project(':bio-source-alliance-experimental-disease').projectDir = new File(settingsDir, './alliance-experimental-disease')
+include ':bio-source-alliance-variants'
+project(':bio-source-alliance-variants').projectDir = new File(settingsDir, './alliance-variants')
+include ':bio-source-alliance-gene-descriptions'
+project(':bio-source-alliance-gene-descriptions').projectDir = new File(settingsDir, './alliance-gene-descriptions')
+include ':bio-source-alliance-agms'
+project(':bio-source-alliance-agms').projectDir = new File(settingsDir, './alliance-agms')
 include ':bio-source-mmo'
 project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
 include ':bio-source-zfa'

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!-- Gene class attribute additions (autoDescription, goDescription, etc.)
+     are declared in alliancemine-global_additions.xml. This file is
+     intentionally empty so the dbmodel plugin has an additions file to
+     merge. -->
+<classes>
+</classes>

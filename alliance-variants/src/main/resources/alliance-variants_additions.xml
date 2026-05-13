@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!-- Variant + VariantConsequence classes are declared in
+     alliancemine-global_additions.xml (Track M1). This module's additions
+     are empty; integration uses the existing class shape. -->
+<classes>
+</classes>
