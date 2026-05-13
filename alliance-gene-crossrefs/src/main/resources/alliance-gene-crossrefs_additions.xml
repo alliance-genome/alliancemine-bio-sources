@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<!-- CrossReference and Gene classes are in the core genomic model. This
+     module emits enrichment rows; additions file intentionally empty. -->
+<classes>
+</classes>
