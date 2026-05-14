@@ -63,6 +63,8 @@ include ':bio-source-alliance-crispr-screens'
 project(':bio-source-alliance-crispr-screens').projectDir = new File(settingsDir, './alliance-crispr-screens')
 include ':bio-source-alliance-molecules'
 project(':bio-source-alliance-molecules').projectDir = new File(settingsDir, './alliance-molecules')
+include ':bio-source-alliance-chembl'
+project(':bio-source-alliance-chembl').projectDir = new File(settingsDir, './alliance-chembl')
 include ':bio-source-mmo'
 project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
 include ':bio-source-zfa'
