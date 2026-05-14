@@ -32,24 +32,53 @@ from common import configure_logging  # noqa: E402
 log = logging.getLogger("alliance.fetch.orchestrator")
 
 
-# Run order matters: genes first, since everything else joins to gene primary
-# identifiers; interactions next (biggest volume, longest runtime); then the
-# smaller feeds and the *-detail enrichment passes.
+# Run order:
+#   1. Primary identifiers (genes) first — all downstream feeds join on Gene.
+#   2. Per-gene API enrichment (interactions, orthologs, paralogs, phenotypes,
+#      disease/models/annotations) — these still use the live API (per-entity).
+#   3. FMS-bulk loads (allele/transgenic/disease-alleles/experimental-disease/
+#      variants/gene-descriptions/agms/allele-phenotypes/htp). Default source
+#      is FMS where the fetcher accepts --source.
+#   4. Derived / external (gene_crossrefs → alphafold; string; crispr_screens;
+#      molecules; chembl). gene_crossrefs must run BEFORE alphafold because
+#      alphafold synthesises URLs from the UniProtKB rows it produces.
+#   5. Cross-mine PathQuery federation (mousemine, wormmine).
 FETCHERS = [
-    ("genes",               "fetch_genes.py"),
-    ("interactions",        "fetch_interactions.py"),
-    ("orthologs",           "fetch_orthologs.py"),
-    ("paralogs",            "fetch_paralogs.py"),
-    ("allele_detail",       "fetch_allele_detail.py"),
-    ("disease_annotations", "fetch_disease_annotations.py"),
-    ("disease_models",      "fetch_disease_models.py"),
-    ("phenotypes",          "fetch_phenotypes.py"),
-    ("transgenic_alleles",  "fetch_transgenic_alleles.py"),
-    ("disease_alleles",     "fetch_disease_alleles.py"),
+    # Primary
+    ("genes",                "fetch_genes.py"),
+
+    # API-driven per-gene enrichment
+    ("interactions",         "fetch_interactions.py"),
+    ("orthologs",            "fetch_orthologs.py"),
+    ("paralogs",             "fetch_paralogs.py"),
+    ("allele_detail",        "fetch_allele_detail.py"),
+    ("disease_annotations",  "fetch_disease_annotations.py"),
+    ("disease_models",       "fetch_disease_models.py"),
+    ("phenotypes",           "fetch_phenotypes.py"),
+
+    # FMS bulk loads (default --source fms; some take a long time)
+    ("transgenic_alleles",   "fetch_transgenic_alleles.py"),
+    ("disease_alleles",      "fetch_disease_alleles.py"),
     ("experimental_disease", "fetch_experimental_disease.py"),
-    # Phase 6d: cross-mine federation via InterMine PathQuery REST.
-    ("mousemine_strains",   "fetch_mousemine_strains.py"),
-    ("wormmine_rnai",       "fetch_wormmine_rnai.py"),
+    ("variants",             "fetch_variants.py"),
+    ("gene_descriptions",    "fetch_gene_descriptions.py"),
+    ("agms",                 "fetch_agms.py"),
+    ("allele_phenotypes",    "fetch_allele_phenotypes.py"),
+    ("htp",                  "fetch_htp.py"),
+
+    # Cross-reference + external (gene_crossrefs feeds alphafold)
+    ("gene_crossrefs",       "fetch_gene_crossrefs.py"),
+    ("alphafold",            "fetch_alphafold.py"),
+
+    # External data sources (independent of MOD pipeline)
+    ("string",               "fetch_string.py"),
+    ("crispr_screens",       "fetch_crispr_screens.py"),
+    ("molecules",            "fetch_molecules.py"),
+    ("chembl",               "fetch_chembl.py"),
+
+    # Cross-mine PathQuery REST federation
+    ("mousemine_strains",    "fetch_mousemine_strains.py"),
+    ("wormmine_rnai",        "fetch_wormmine_rnai.py"),
 ]
 
 

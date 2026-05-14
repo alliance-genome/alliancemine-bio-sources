@@ -67,21 +67,52 @@ Shared helpers in `scripts/common.py`: `http_get_json` (retry + sqlite cache), `
 
 **Not every fetcher hits the Alliance API.** Some MOD-curated entities (mouse strains, worm RNAi screens) live only in their MOD's own InterMine instance, so the corresponding fetchers run PathQuery REST against MouseMine / WormMine via `intermine_paginate`. They share the same TSV-output contract as the Alliance-API fetchers.
 
-Today's fetcher-backed sources (each driven by a paired `fetch_*.py` script):
+Today's fetcher-backed sources (each driven by a paired `fetch_*.py` script). The catalog grew substantially in May 2026 as FMS bulk replaced WAF-throttled API per-entity calls; see `scripts/README.md` for the full per-fetcher reference + output volumes.
 
-| Source module | Fetcher script | API endpoint(s) | Emitted TSV |
+**API-driven per-gene** (primary identifier + enrichment passes):
+
+| Source module | Fetcher script | Endpoint(s) | Emitted TSV |
 |---|---|---|---|
-| `alliance-genes` (enriched) | `fetch_genes.py` | `/gene/{id}` | `alliance-genes.tsv` |
+| `alliance-genes` | `fetch_genes.py` | `/gene/{id}` | `alliance-genes.tsv` |
 | `alliance-genetic-interactions` | `fetch_interactions.py` | `/gene/{id}/genetic-interactions` | `genetic-interactions.tsv` |
 | `alliance-molecular-interactions` | `fetch_interactions.py` | `/gene/{id}/molecular-interactions` | `molecular-interactions.tsv` |
+| `alliance-orthologs` / `alliance-ortholog-detail` | `fetch_orthologs.py` | `/gene/{id}/orthologs` | `orthologs.tsv` |
 | `alliance-paralogs` | `fetch_paralogs.py` | `/gene/{id}/paralogs` | `paralogs.tsv` |
 | `alliance-phenotypes` | `fetch_phenotypes.py` | `/gene/{id}/phenotypes` | `phenotypes.tsv` |
 | `alliance-disease-models` | `fetch_disease_models.py` | `/gene/{id}/models` | `disease-models.tsv` |
 | `alliance-allele-detail` | `fetch_allele_detail.py` | `/allele/{id}` | `allele-detail.tsv` |
-| `alliance-ortholog-detail` | `fetch_orthologs.py` | `/gene/{id}/orthologs` | `orthologs.tsv` |
 | `alliance-disease-detail` | `fetch_disease_annotations.py` | `/disease/{id}/genes` | `disease-annotations-detail.tsv` |
-| `alliance-mouse-strains` | `fetch_mousemine_strains.py` | MouseMine PathQuery (`/service/query/results`) | `mouse-strains.tsv` |
-| `alliance-worm-rnai` | `fetch_wormmine_rnai.py` | WormMine PathQuery (`/service/query/results`) | `worm-rnai.tsv` |
+
+**FMS bulk** (default `--source fms`, with `--source api` fallback where the API also serves the endpoint):
+
+| Source module | Fetcher script | FMS datatype | Emitted TSV |
+|---|---|---|---|
+| `alliance-transgenic-alleles` | `fetch_transgenic_alleles.py` | `CONSTRUCT` + `ALLELE` | `transgenic-alleles.tsv` |
+| `alliance-disease-alleles` | `fetch_disease_alleles.py` | `DAF` (objectType=allele) | `disease-alleles.tsv` |
+| `alliance-experimental-disease` | `fetch_experimental_disease.py` | `DAF` (objectType=gene + primaryGeneticEntityIDs) | `experimental-disease.tsv` |
+| `alliance-variants` | `fetch_variants.py` | `VARIANT-ALLELE-JSON` per taxon | `variants.tsv` |
+| `alliance-gene-descriptions` | `fetch_gene_descriptions.py` | `GENE-DESCRIPTION-JSON` | `gene-descriptions.tsv` |
+| `alliance-agms` | `fetch_agms.py` | `AGM` | `agms.tsv` (emits DiseaseModel + Strain when `subtype=strain`) |
+| `alliance-allele-phenotypes` | `fetch_allele_phenotypes.py` | `PHENOTYPE` (filtered to primaryGeneticEntityIDs) | `allele-phenotypes.tsv` |
+| `alliance-htp` | `fetch_htp.py` | `HTPDATASET` + `HTPDATASAMPLE` | `htp-datasets.tsv` + `htp-samples.tsv` |
+| `alliance-gene-crossrefs` | `fetch_gene_crossrefs.py` | `GENECROSSREFERENCEJSON` | `gene-crossrefs.tsv` |
+| `alliance-molecules` | `fetch_molecules.py` | `MOLECULE` | `molecules.tsv` |
+
+**External sources** (non-FMS, non-Alliance-API):
+
+| Source module | Fetcher script | Upstream | Emitted TSV |
+|---|---|---|---|
+| `alliance-alphafold` | `fetch_alphafold.py` | URL template against EBI AlphaFold (synthesised from `gene-crossrefs.tsv` UniProt rows — runs AFTER `fetch_gene_crossrefs.py`) | `alphafold.tsv` |
+| `alliance-string` | `fetch_string.py` | STRING DB v12 (`stringdb-downloads.org`) | `string-interactions.tsv` |
+| `alliance-crispr-screens` | `fetch_crispr_screens.py` | FMS `BIOGRID-ORCS` (streaming tar-extract, HIT=YES filter) | `crispr-screens.tsv` |
+| `alliance-chembl` | `fetch_chembl.py` | EBI FTP `chembl_uniprot_mapping.txt` | `chembl-targets.tsv` |
+
+**Cross-mine federation** (PathQuery REST):
+
+| Source module | Fetcher script | Upstream | Emitted TSV |
+|---|---|---|---|
+| `alliance-mouse-strains` | `fetch_mousemine_strains.py` | MouseMine PathQuery | `mouse-strains.tsv` |
+| `alliance-worm-rnai` | `fetch_wormmine_rnai.py` | WormMine PathQuery | `worm-rnai.tsv` |
 
 **Column-schema coupling**: each Python fetcher's `COLUMNS` list and each Java converter's `COL_*` constants must stay in lockstep. When adding a new column, update both.
 
@@ -107,6 +138,8 @@ Today's fetcher-backed sources (each driven by a paired `fetch_*.py` script):
 
 These belong in sibling repos, not here, but future sessions working on AllianceMine-wide issues should be aware:
 
-- **`alliancemine/project.xml` references `EXPRESSION-ALLIANCE_COMBINED.tsv`** which is header-only in FMS 9.0.0 (the populated data lives in the per-MOD files at `EXPRESSION-ALLIANCE_{MOD}_*.tsv`). Until that project.xml is updated, AllianceMine ingests zero expression data. Fix: point at the per-MOD glob, or (post-FMS) switch to a Python expression fetcher that emits the same schema.
+- **`alliancemine/project.xml` references `EXPRESSION-ALLIANCE_*.tsv`** (glob — was historically header-only `EXPRESSION-ALLIANCE_COMBINED.tsv`). Verified 2026-05-13 that FMS `EXPRESSION-ALLIANCE/COMBINED/` shards are POPULATED (1.77M rows in shard 0 alone), so the historical workaround note about per-MOD files is no longer accurate. Open gap: there's no Python fetcher for `EXPRESSION-ALLIANCE` — the docker pipeline pre-downloads it. See `docs/2026-05-13-fetcher-coverage-audit.md` for the recommended `fetch_expression.py` skeleton.
+- **`alliance-alleles` source points at `VARIANT-ALLELE_COMBINED.tsv`** which is **frozen at FMS release 4.0.0** — the file is no longer published for 9.0.0. The module currently won't integrate against a clean FMS pull. Two paths forward: retire `alliance-alleles` (other allele-flavoured sources cover the surface), or add `fetch_alleles.py` reading the FMS `ALLELE/{MOD}` datatype (we already use it in `fetch_transgenic_alleles.py`).
+- **`alliance-disease` relies on docker pre-pull** of `DISEASE-ALLIANCE_COMBINED.tsv`. Datatype is still in 9.0.0 (14 shards); a `fetch_disease.py` would make the local pipeline self-contained.
 - **`agr_intermine_builder/docker/alliancemine/`** Dockerfile currently drives the FMS pull via `legacy/alliancemine-unified/download_data.py`. Add a step to run `python3 scripts/fetch_all.py` before the gradle build so the new TSVs under `data/` exist by the time the converters run.
 - **AllianceGenesConverter's input path**: `project.xml` currently points at `/root/data/genes/` (a locally-built TSV). The new `scripts/fetch_genes.py` emits `data/alliance-genes.tsv` with the same 14-column schema + 3 enrichment columns. `project.xml` needs updating when the migration lands.
