@@ -38,6 +38,14 @@ public class AllianceAllelesConverter extends BioFileConverter {
     private Map<String, Item> variants = new HashMap<String, Item>();
     private Map<String, Item> variantdetails = new HashMap<String, Item>();
     private Map<String, Item> alleleNames = new HashMap<String, Item>();
+    // Synonym + CrossReference items reference a parent (Allele / Variant)
+    // via `subject`. The parents are not stored until the end of process();
+    // attempting to store the child inline (as the legacy code did) makes
+    // the items DB's ProxyReference lookup return null at loadSingleSource
+    // once the items DB grows beyond a few thousand rows. Buffer them and
+    // store after the parents are written.
+    private java.util.List<Item> pendingSynonyms = new java.util.ArrayList<Item>();
+    private java.util.List<Item> pendingCrossRefs = new java.util.ArrayList<Item>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -135,6 +143,20 @@ public class AllianceAllelesConverter extends BioFileConverter {
         storeVariants();
         storeAlleles();
         storeGenes();
+        // Flush pending Synonym + CrossReference items now that every parent
+        // (Allele / Variant / Gene) is in the items DB. Storing children
+        // inline above caused loadSingleSource to NPE on ProxyReference
+        // resolution once the items DB grew past ~5k rows.
+        LOG.info("flushing " + pendingSynonyms.size() + " synonyms + "
+                 + pendingCrossRefs.size() + " cross-references");
+        for (Item syn : pendingSynonyms) {
+            store(syn);
+        }
+        pendingSynonyms.clear();
+        for (Item cref : pendingCrossRefs) {
+            store(cref);
+        }
+        pendingCrossRefs.clear();
     }
 
     /**
@@ -189,74 +211,18 @@ public class AllianceAllelesConverter extends BioFileConverter {
             alleleNames.put(alleleId, allele);
         } //allele
 
-        if(alleleType.contains("with")) {
-
-            Item variant = createItem("Variant");
-            if (StringUtils.isNotEmpty(variantId)) variant.setAttribute("variantId", variantId);
-            if (StringUtils.isNotEmpty(variantSymbol)) variant.setAttribute("variantSymbol", variantSymbol);
-            // Variant.synonyms / crossReferences inherited from BioEntity; attach items with subject=variant.
-            createSynonyms(variant, variantSynonym);
-            createCrossReferences(variant, variantCrossRefs);
-            if (StringUtils.isNotEmpty(variantHgvsName)) variant.setAttribute("VariantsHgvsNames", variantHgvsName);
-            if (StringUtils.isNotEmpty(variantType)) variant.setAttribute("variantType", variantType);
-            if (StringUtils.isNotEmpty(variantsTypeId) && !"-".equals(variantsTypeId)) {
-                variant.setAttribute("variantsTypeId", variantsTypeId);
-            }
-            if (affectedGene != null) {
-                variant.setReference("affectedGene", affectedGene);
-            }
-
-            Item variantdetail = createItem("VariantDetails");
-            if (StringUtils.isNotEmpty(assembly)) variantdetail.setAttribute("assembly", assembly);
-            if (StringUtils.isNotEmpty(chr)) variantdetail.setAttribute("chr", chr);
-            // chrStart/chrEnd come in as digits-or-dash; filter the dash so the Integer cast succeeds.
-            if (StringUtils.isNotEmpty(chrStart) && !"-".equals(chrStart)) {
-                variantdetail.setAttribute("chrStartPosition", chrStart);
-            }
-            if (StringUtils.isNotEmpty(chrEnd) && !"-".equals(chrEnd)) {
-                variantdetail.setAttribute("chrEndPosition", chrEnd);
-            }
-            if (StringUtils.isNotEmpty(seqRef)) variantdetail.setAttribute("sequenceOfReference", seqRef);
-            if (StringUtils.isNotEmpty(seqVariant)) variantdetail.setAttribute("sequenceOfVariant", seqVariant);
-            if (StringUtils.isNotEmpty(mostSevere)) variantdetail.setAttribute("mostSevereConsequenceName", mostSevere);
-            if (StringUtils.isNotEmpty(variantReference))
-                variantdetail.setAttribute("variantInformationReference", variantReference);
-            // FMS data encodes boolean as "yes" / "-" where "-" means "no data" (absent).
-            // Only set the attribute when the source explicitly asserts yes or no.
-            if ("yes".equalsIgnoreCase(hasDisease)) {
-                variantdetail.setAttribute("hasDiseaseAnnotations", "true");
-            } else if ("no".equalsIgnoreCase(hasDisease)) {
-                variantdetail.setAttribute("hasDiseaseAnnotations", "false");
-            }
-            if ("yes".equalsIgnoreCase(hasPhenotype)) {
-                variantdetail.setAttribute("hasPhenotypeAnnotations", "true");
-            } else if ("no".equalsIgnoreCase(hasPhenotype)) {
-                variantdetail.setAttribute("hasPhenotypeAnnotations", "false");
-            }
-
-            variant.addToCollection("variantdetails", variantdetail);
-            variant.setReference("allele", allele);  //<---missed and wasted many hours!!??!!??!!
-
-            try {
-                store(variantdetail);
-            } catch (ObjectStoreException e) {
-                throw new ObjectStoreException(e);
-            }
-            /*if(pmrefNo != null ) {
-                Item publication = publications.get(pmrefNo);
-                if (publication == null) {
-                    publication = createItem("Publication");
-                    publication.setAttribute("pubMedId", pmid);
-                    publications.put(pmrefNo, publication);
-                }
-                allele.addToCollection("publications", publication);
-            }*/
-
-            allele.addToCollection("variants", variant);
-            variants.put(variantId, variant);
-
-        }
-
+        // Variant + VariantDetails emission removed 2026-05-14. The
+        // sibling `alliance-variants` source loads the same Variants
+        // from VARIANT-ALLELE-JSON via fetch_variants.py with the
+        // current model shape (Variant + VariantConsequence) and merges
+        // on Allele.primaryIdentifier. Emitting variants here too
+        // caused load-time ProxyReference failures
+        // ("Error retrieving object from Items database with identifier
+        // 7_1") once the items DB grew past ~30k rows: the Variant
+        // referenced from Allele.variants couldn't be resolved by
+        // ParallelBatchingFetcher. Letting the dedicated Variant
+        // source own that surface eliminates the conflict and the
+        // duplicate work.
         return allele;
     }
 
@@ -293,7 +259,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
             Item syn = createItem("Synonym");
             syn.setReference("subject", subject);
             syn.setAttribute("value", v);
-            store(syn);
+            pendingSynonyms.add(syn);
         }
     }
 
@@ -316,7 +282,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
             if (colon > 0 && colon < v.length() - 1) {
                 cref.setAttribute("dbxreftype", v.substring(0, colon));
             }
-            store(cref);
+            pendingCrossRefs.add(cref);
         }
     }
 
