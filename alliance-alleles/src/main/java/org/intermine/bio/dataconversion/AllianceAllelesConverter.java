@@ -64,13 +64,24 @@ public class AllianceAllelesConverter extends BioFileConverter {
         VariantInformationReference	HasDiseaseAnnotations	HasPhenotypeAnnotations
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
-        int count = 0;
+        boolean headerSeen = false;
         LOG.info("Processing Variant-Alleles...");
         while (lineIter.hasNext()) {
 
             String[] line = (String[]) lineIter.next();
-            if (count < 15) {
-                count++;
+            // Skip the FMS-shaped comment block (`#` rows) and the
+            // column-header line. The legacy implementation skipped a
+            // fixed 15 lines, which broke when the header block grew or
+            // shrank between FMS releases.
+            if (line.length == 0 || line[0].startsWith("#")) {
+                continue;
+            }
+            if (!headerSeen && "Taxon".equalsIgnoreCase(line[0])) {
+                headerSeen = true;
+                continue;
+            }
+            if (!headerSeen) {
+                // Pre-header padding line that isn't a comment — skip.
                 continue;
             }
             //allele information

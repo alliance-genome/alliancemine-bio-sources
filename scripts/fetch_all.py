@@ -57,6 +57,9 @@ FETCHERS = [
     ("phenotypes",           "fetch_phenotypes.py"),
 
     # FMS bulk loads (default --source fms; some take a long time)
+    ("alleles",              "fetch_alleles.py"),
+    ("disease",              "fetch_disease.py"),
+    ("expression",           "fetch_expression.py"),
     ("transgenic_alleles",   "fetch_transgenic_alleles.py"),
     ("disease_alleles",      "fetch_disease_alleles.py"),
     ("experimental_disease", "fetch_experimental_disease.py"),

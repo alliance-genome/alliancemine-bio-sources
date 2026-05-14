@@ -71,6 +71,9 @@ API path is the per-entity fallback. FMS is faster + immune to the WAF.
 
 | Script | FMS datatype | Output | Notes |
 |---|---|---|---|
+| `fetch_alleles.py` | `VARIANT-ALLELE-JSON` per taxon → legacy 27-col TSV | `data/alliance-alleles.tsv` | Replaces frozen 4.0.0 `VARIANT-ALLELE_COMBINED.tsv`; converter patched to skip `#` comment headers instead of fixed 15 lines |
+| `fetch_disease.py` | `DISEASE-ALLIANCE/COMBINED` (14 shards) | `data/disease-alliance.tsv` | Plain TSV concatenation; drops per-shard headers |
+| `fetch_expression.py` | `EXPRESSION-ALLIANCE/COMBINED` (13 shards) | `data/expression-alliance.tsv` | COMBINED shards populated (≥1.77M rows/shard verified 2026-05-13) |
 | `fetch_transgenic_alleles.py` | `CONSTRUCT` + `ALLELE` (`contains` relation) | `data/transgenic-alleles.tsv` | Filter alleles with construct ref |
 | `fetch_disease_alleles.py` | `DAF` (`objectType=allele`) | `data/disease-alleles.tsv` | |
 | `fetch_experimental_disease.py` | `DAF` (`objectType=gene` + non-empty `primaryGeneticEntityIDs`) | `data/experimental-disease.tsv` | API endpoint perpetually `total:0`; FMS rescues |
