@@ -59,6 +59,10 @@ include ':bio-source-alliance-alphafold'
 project(':bio-source-alliance-alphafold').projectDir = new File(settingsDir, './alliance-alphafold')
 include ':bio-source-alliance-string'
 project(':bio-source-alliance-string').projectDir = new File(settingsDir, './alliance-string')
+include ':bio-source-alliance-crispr-screens'
+project(':bio-source-alliance-crispr-screens').projectDir = new File(settingsDir, './alliance-crispr-screens')
+include ':bio-source-alliance-molecules'
+project(':bio-source-alliance-molecules').projectDir = new File(settingsDir, './alliance-molecules')
 include ':bio-source-mmo'
 project(':bio-source-mmo').projectDir = new File(settingsDir, './mmo')
 include ':bio-source-zfa'

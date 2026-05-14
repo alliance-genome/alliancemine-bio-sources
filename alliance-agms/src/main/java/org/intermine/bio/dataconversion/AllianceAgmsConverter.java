@@ -71,12 +71,34 @@ public class AllianceAgmsConverter extends BioFileConverter
         if (modelId.isEmpty()) {
             return;
         }
+        String subtype = line[COL_MODEL_SUBTYPE].trim();
+        String modelName = line[COL_MODEL_NAME].trim();
+        String taxon = line[COL_TAXON].trim();
+        String provider = line[COL_DATA_PROVIDER].trim();
+
         Item model = createItem("DiseaseModel");
         model.setAttribute("modelId", modelId);
-        setIfPresent(model, "modelName", line[COL_MODEL_NAME]);
-        setIfPresent(model, "modelSubtype", line[COL_MODEL_SUBTYPE]);
-        setIfPresent(model, "dataProvider", line[COL_DATA_PROVIDER]);
+        setIfPresent(model, "modelName", modelName);
+        setIfPresent(model, "modelSubtype", subtype);
+        setIfPresent(model, "dataProvider", provider);
         store(model);
+
+        // N4: AGM subtype=="strain" rows also represent physical biological
+        // stock lines, which the model carries as Strain (extends BioEntity)
+        // independent of disease modelling. Emit a paired Strain item keyed
+        // on the same primary identifier so cross-class traversals work.
+        if ("strain".equalsIgnoreCase(subtype)) {
+            Item strain = createItem("Strain");
+            strain.setAttribute("primaryIdentifier", modelId);
+            if (!modelName.isEmpty()) {
+                strain.setAttribute("name", modelName);
+            }
+            if (!taxon.isEmpty()) {
+                String tid = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
+                strain.setReference("organism", getOrganism(tid));
+            }
+            store(strain);
+        }
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {
