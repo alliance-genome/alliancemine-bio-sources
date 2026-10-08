@@ -7,8 +7,8 @@ against the public EBI AlphaFold viewer
 for AGR-target taxa since AlphaFoldDB v4 covers the entire UniProt
 proteome.
 
-Input: data/gene-crossrefs.tsv (must exist; produced by
-       scripts/fetch_gene_crossrefs.py)
+Input: <out-dir>/gene-crossrefs.tsv (must exist; produced by
+       scripts/fetch_gene_crossrefs.py into the same --out-dir)
 Output: data/alphafold.tsv
 """
 
@@ -62,8 +62,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Emit AlphaFold URLs from gene-crossrefs UniProtKB rows")
     parser.add_argument(
         "--crossrefs",
-        default=str(Path(__file__).parent.parent / "data" / "gene-crossrefs.tsv"),
-        help="Path to gene-crossrefs.tsv (defaults to ../data/gene-crossrefs.tsv)",
+        help="Path to gene-crossrefs.tsv (default: <out-dir>/gene-crossrefs.tsv)",
     )
     parser.add_argument(
         "--out-dir",
@@ -75,12 +74,12 @@ def main() -> None:
     args = parser.parse_args()
 
     configure_logging(args.verbose)
-    crossrefs = Path(args.crossrefs)
+    out_dir = Path(args.out_dir)
+    crossrefs = Path(args.crossrefs) if args.crossrefs else out_dir / "gene-crossrefs.tsv"
     if not crossrefs.exists():
         log.error("Missing %s — run scripts/fetch_gene_crossrefs.py first", crossrefs)
         sys.exit(1)
 
-    out_dir = Path(args.out_dir)
     release = get_current_release()
     seen: set = set()
     total = 0
