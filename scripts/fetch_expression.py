@@ -17,7 +17,6 @@ import argparse
 import gzip
 import logging
 import sys
-import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -47,7 +46,9 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(out_path.suffix + ".tmp")
 
-    files = fms_list_files("EXPRESSION-ALLIANCE", sub_filter=args.sub)
+    release = get_current_release()
+    log.info("Alliance release %s", release)
+    files = fms_list_files("EXPRESSION-ALLIANCE", release=release, sub_filter=args.sub)
     log.info("EXPRESSION-ALLIANCE shards: %d", len(files))
     if not files:
         log.error("No FMS files for EXPRESSION-ALLIANCE / %s", args.sub)

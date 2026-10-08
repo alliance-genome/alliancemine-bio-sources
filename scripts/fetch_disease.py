@@ -6,10 +6,11 @@ can read.
 
 The converter expects an 18-column TSV: taxon, species, productType,
 productId, productSymbol, qualifier, DOid, evidenceCode, withText,
-inferredFrom, ..., publication, dateAssigned, dataSource. FMS publishes
-one shard per ~500k rows; this fetcher pulls all 14 9.0.0 shards
-sequentially and emits a single concatenated TSV, dropping the
-per-shard comment headers but preserving the column header line.
+inferredFrom, ..., publication, dateAssigned, dataSource. The pinned
+release's manifest is read for the most recent upload of the subtype
+(--sub, default COMBINED); if it ever lists several shards they are
+concatenated, dropping repeated comment headers but keeping the column
+header line once.
 
 Output: data/disease-alliance.tsv
 """
@@ -20,12 +21,10 @@ import argparse
 import gzip
 import logging
 import sys
-import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
-    FMS_BASE,
     configure_logging,
     fms_download_gz,
     fms_list_files,
@@ -51,7 +50,9 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(out_path.suffix + ".tmp")
 
-    files = fms_list_files("DISEASE-ALLIANCE", sub_filter=args.sub)
+    release = get_current_release()
+    log.info("Alliance release %s", release)
+    files = fms_list_files("DISEASE-ALLIANCE", release=release, sub_filter=args.sub)
     log.info("DISEASE-ALLIANCE shards: %d", len(files))
     if not files:
         log.error("No FMS files for DISEASE-ALLIANCE / %s", args.sub)
