@@ -11,18 +11,22 @@ focused on the per-endpoint mapping from JSON to columns.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
 import os
 import sqlite3
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
@@ -53,6 +57,17 @@ class FetchStats:
     cache_hits: int = 0
     retries: int = 0
     errors: int = 0
+    throttled: int = 0
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
+
+    def incr(self, name: str, n: int = 1) -> None:
+        with self._lock:
+            setattr(self, name, getattr(self, name) + n)
+
+
+def _bump(stats: FetchStats | None, name: str) -> None:
+    if stats is not None:
+        stats.incr(name)
 
 
 def _cache_path(cache_name: str) -> Path:
@@ -60,12 +75,14 @@ def _cache_path(cache_name: str) -> Path:
     return CACHE_DIR / f"{cache_name}.sqlite"
 
 
-@contextmanager
-def open_cache(cache_name: str) -> Iterator[sqlite3.Connection]:
-    """Open the SQLite cache for a fetcher. Keyed by URL hash.
-    WAL + busy_timeout so multiple ThreadPool workers can write concurrently
-    without hitting "database is locked" / "readonly database" errors."""
-    conn = sqlite3.connect(_cache_path(cache_name), timeout=30.0)
+def connect_cache(cache_name: str) -> sqlite3.Connection:
+    """Open one SQLite cache connection in autocommit mode, so every cached
+    response is durable immediately (reruns resume from it) and no thread
+    holds the write lock between requests. WAL + busy_timeout let several
+    connections (one per worker thread) share the file."""
+    conn = sqlite3.connect(
+        _cache_path(cache_name), timeout=30.0, isolation_level=None, check_same_thread=False
+    )
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("PRAGMA synchronous=NORMAL")
@@ -77,10 +94,16 @@ def open_cache(cache_name: str) -> Iterator[sqlite3.Connection]:
         " ts INTEGER NOT NULL"
         ")"
     )
+    return conn
+
+
+@contextmanager
+def open_cache(cache_name: str) -> Iterator[sqlite3.Connection]:
+    """Open the SQLite cache for a fetcher. Keyed by URL hash."""
+    conn = connect_cache(cache_name)
     try:
         yield conn
     finally:
-        conn.commit()
         conn.close()
 
 
@@ -104,8 +127,7 @@ def http_get_json(
     if cache is not None:
         row = cache.execute("SELECT body FROM cache WHERE key = ?", (key,)).fetchone()
         if row is not None:
-            if stats is not None:
-                stats.cache_hits += 1
+            _bump(stats, "cache_hits")
             return json.loads(row[0])
 
     delay = 1.0
@@ -117,37 +139,35 @@ def http_get_json(
             })
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
-            if stats is not None:
-                stats.requests += 1
+            _bump(stats, "requests")
+            payload = json.loads(body)
             if cache is not None:
                 cache.execute(
                     "INSERT OR REPLACE INTO cache (key, url, body, ts) VALUES (?, ?, ?, ?)",
                     (key, url, body, int(time.time())),
                 )
-            return json.loads(body)
+            return payload
         except urllib.error.HTTPError as e:
             # 405 + HTML body = Cloudflare/WAF bot-protection page when concurrency
             # exceeds origin tolerance. Treat as retryable with longer backoff.
+            if e.code in (405, 429):
+                _bump(stats, "throttled")
             if e.code in (405, 429, 500, 502, 503, 504) and attempt + 1 < max_retries:
-                if stats is not None:
-                    stats.retries += 1
+                _bump(stats, "retries")
                 log.warning("HTTP %s on %s, retry %d after %.1fs", e.code, path, attempt + 1, delay)
                 time.sleep(delay)
                 delay = min(delay * 2, 60.0)
                 continue
-            if stats is not None:
-                stats.errors += 1
+            _bump(stats, "errors")
             raise
-        except (urllib.error.URLError, TimeoutError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
             if attempt + 1 < max_retries:
-                if stats is not None:
-                    stats.retries += 1
+                _bump(stats, "retries")
                 log.warning("URLError on %s (%s), retry %d after %.1fs", path, e, attempt + 1, delay)
                 time.sleep(delay)
                 delay = min(delay * 2, 30.0)
                 continue
-            if stats is not None:
-                stats.errors += 1
+            _bump(stats, "errors")
             raise
     raise RuntimeError(f"exhausted retries for {url}")
 
@@ -286,17 +306,41 @@ def normalize_taxon(taxon_id: str | None) -> str:
 # Release discovery
 
 
-def get_current_release() -> str:
-    """Fetch the current Alliance release version from the legacy FMS endpoint.
-    Used for provenance in the TSV header. Falls back to 'unknown' if FMS
-    is fully decommissioned by the time this runs."""
+@functools.lru_cache(maxsize=None)
+def get_api_release() -> str | None:
+    """Release the live Alliance API is serving (GET /releaseInfo)."""
     try:
-        data = http_get_json("https://fms.alliancegenome.org/api/releaseversion/all")
-        if isinstance(data, list) and data:
-            latest = sorted(data, key=lambda x: x.get("releaseDate", ""), reverse=True)[0]
-            return latest.get("releaseVersion", "unknown")
+        data = http_get_json("/releaseInfo", max_retries=3)
     except Exception as e:
-        log.debug("Could not fetch release version: %s", e)
+        log.warning("Could not read API releaseInfo: %s", e)
+        return None
+    version = data.get("releaseVersion") if isinstance(data, dict) else None
+    return version or None
+
+
+@functools.lru_cache(maxsize=None)
+def get_current_release() -> str:
+    """The Alliance release every fetcher works against.
+
+    ALLIANCE_RELEASE pins it (the build sets this so FMS file selection, gene
+    seeding and TSV provenance all agree). Unpinned runs follow what the API
+    serves, then FMS's own "current" release, never the newest release by
+    date: FMS lists the next release weeks before it goes live."""
+    pinned = os.environ.get("ALLIANCE_RELEASE", "").strip()
+    if pinned:
+        return pinned
+    api_release = get_api_release()
+    if api_release:
+        log.warning("ALLIANCE_RELEASE not set; using API release %s", api_release)
+        return api_release
+    try:
+        data = http_get_json(f"{FMS_BASE}/releaseversion/current", max_retries=3)
+        version = data.get("releaseVersion") if isinstance(data, dict) else None
+        if version:
+            log.warning("ALLIANCE_RELEASE not set; using FMS current release %s", version)
+            return version
+    except Exception as e:
+        log.warning("Could not read FMS current release: %s", e)
     return "unknown"
 
 
@@ -343,8 +387,7 @@ def intermine_paginate(
         if cache is not None:
             row = cache.execute("SELECT body FROM cache WHERE key = ?", (cache_key,)).fetchone()
             if row is not None:
-                if stats is not None:
-                    stats.cache_hits += 1
+                _bump(stats, "cache_hits")
                 data = json.loads(row[0])
                 results = data.get("results") or []
                 for r in results:
@@ -360,8 +403,7 @@ def intermine_paginate(
                 req = urllib.request.Request(url, data=body)
                 with urllib.request.urlopen(req, timeout=60) as resp:
                     text = resp.read().decode("utf-8", errors="replace")
-                if stats is not None:
-                    stats.requests += 1
+                _bump(stats, "requests")
                 if cache is not None:
                     cache.execute(
                         "INSERT OR REPLACE INTO cache (key, url, body, ts) VALUES (?, ?, ?, ?)",
@@ -370,14 +412,12 @@ def intermine_paginate(
                 break
             except urllib.error.HTTPError as e:
                 if e.code in (429, 500, 502, 503, 504) and attempt + 1 < 5:
-                    if stats is not None:
-                        stats.retries += 1
+                    _bump(stats, "retries")
                     log.warning("HTTP %s on PathQuery, retry %d after %.1fs", e.code, attempt + 1, delay)
                     time.sleep(delay)
                     delay = min(delay * 2, 30.0)
                     continue
-                if stats is not None:
-                    stats.errors += 1
+                _bump(stats, "errors")
                 raise
         else:
             raise RuntimeError(f"exhausted retries for {url}")
@@ -394,37 +434,11 @@ def intermine_paginate(
 
 
 def enumerate_yeast_genes() -> list[str]:
-    """Return SGD gene CURIEs for Saccharomyces cerevisiae S288C.
-
-    First tries the FMS BGI SGD JSON file (while FMS is up). If that fails we
-    fall back to parsing SGD's public gene list. For a multi-MOD build extend
-    this with per-MOD seeders."""
+    """Return SGD gene CURIEs for Saccharomyces cerevisiae S288C."""
     return enumerate_mod_genes(["SGD"])
 
 
-def _resolve_bgi_urls(mods: list[str]) -> dict[str, str]:
-    """Use the FMS snapshot API to find the current BGI URL for each MOD.
-
-    Different MODs may have fallen back to older releases in any given snapshot
-    (e.g. WB/MGI pinning to 8.3.0 even when the active release is 9.0.0), so we
-    ask the snapshot API to tell us which version is current rather than
-    hardcoding a release-specific URL."""
-    release = get_current_release()
-    url = f"https://fms.alliancegenome.org/api/snapshot/release/{release}"
-    data = json.loads(urllib.request.urlopen(url, timeout=30).read())
-    bgi_by_mod: dict[str, str] = {}
-    for f in data.get("snapShot", {}).get("dataFiles", []):
-        if f.get("dataType", {}).get("name") != "BGI":
-            continue
-        if not f.get("s3Path", "").endswith(".json.gz"):
-            continue
-        sub = f.get("dataSubType", {}).get("name", "")
-        if sub in mods:
-            bgi_by_mod[sub] = f["s3Url"]
-    return bgi_by_mod
-
-
-# MOD abbreviation -> curie prefix that its gene CURIEs carry.
+# MOD abbreviation (FMS BGI dataSubType) -> curie prefix of its gene CURIEs.
 _MOD_PREFIX = {
     "SGD": "SGD:",
     "MGI": "MGI:",
@@ -437,46 +451,126 @@ _MOD_PREFIX = {
     "HUMAN": "HGNC:",
 }
 
+ALL_MODS = ["SGD", "MGI", "RGD", "ZFIN", "FB", "WB", "XBXL", "XBXT", "HUMAN"]
+
+MOD_TAXON = {
+    "SGD": "NCBITaxon:559292",
+    "MGI": "NCBITaxon:10090",
+    "RGD": "NCBITaxon:10116",
+    "ZFIN": "NCBITaxon:7955",
+    "FB": "NCBITaxon:7227",
+    "WB": "NCBITaxon:6239",
+    "XBXL": "NCBITaxon:8355",
+    "XBXT": "NCBITaxon:8364",
+    "HUMAN": "NCBITaxon:9606",
+}
+
+
+def parse_mods(value: str | None) -> list[str]:
+    mods = [m.strip().upper() for m in (value or "").split(",") if m.strip()]
+    unknown = [m for m in mods if m not in _MOD_PREFIX]
+    if unknown:
+        raise ValueError(f"Unknown MOD(s) {unknown}; expected a subset of {ALL_MODS}")
+    return mods
+
+
+def selected_mods(defaults: list[str] | None = None, cli_value: str | None = None) -> list[str]:
+    """MODs a fetcher should cover. An explicit --mods wins; otherwise the
+    fetcher's own defaults, narrowed by ALLIANCE_MODS when that is set (so a
+    single env var scopes a whole fetch_all run without widening a fetcher
+    past the MODs its endpoint supports)."""
+    if cli_value:
+        return parse_mods(cli_value)
+    base = list(defaults) if defaults is not None else list(ALL_MODS)
+    env_mods = parse_mods(os.environ.get("ALLIANCE_MODS"))
+    if env_mods:
+        return [m for m in base if m in env_mods]
+    return base
+
+
+def resolve_gene_ids(
+    ids: str | None,
+    mods: str | None,
+    limit: int | None,
+    *,
+    default_mods: list[str] | None = None,
+) -> list[str]:
+    """Seed list for the per-gene fetchers: --ids if given, else every gene
+    of the selected MODs from the pinned release's BGI files."""
+    if ids:
+        gene_ids = [g.strip() for g in ids.split(",") if g.strip()]
+    else:
+        gene_ids = enumerate_mod_genes(selected_mods(default_mods, mods))
+    if limit:
+        gene_ids = gene_ids[:limit]
+    return gene_ids
+
+
+def _resolve_bgi_urls(mods: list[str]) -> dict[str, str]:
+    """BGI JSON URL per MOD for the pinned release. Different MODs carry
+    files from different upload releases (e.g. WB still on 8.3.0 in 9.x), so
+    the per-release manifest decides rather than a hardcoded path."""
+    bgi_by_mod: dict[str, str] = {}
+    for f in fms_list_files("BGI"):
+        if f["subType"] in mods and f["url"].endswith(".json.gz"):
+            bgi_by_mod[f["subType"]] = f["url"]
+    return bgi_by_mod
+
+
+def _bgi_gene_ids(path: Path, prefix: str) -> list[str]:
+    ids: list[str] = []
+    for gene in fms_iter_json_records(path):
+        entity = gene.get("basicGeneticEntity") or {}
+        primary = entity.get("primaryId", "")
+        if primary.startswith(prefix):
+            ids.append(primary)
+            continue
+        for x in entity.get("crossReferences") or []:
+            xid = x.get("id", "")
+            if xid.startswith(prefix):
+                ids.append(xid)
+                break
+    return ids
+
+
+def _gene_list_path(release: str, mod: str) -> Path:
+    return CACHE_DIR / "gene-ids" / release / f"{mod}.txt"
+
 
 def enumerate_mod_genes(mods: list[str]) -> list[str]:
     """Return gene CURIEs across one or more MODs by parsing each MOD's BGI
-    JSON from FMS. Mods are abbreviations like "SGD", "MGI", "RGD", "ZFIN",
-    "FB", "WB", "XBXL", "XBXT", "HUMAN"."""
-    import gzip
-    try:
-        urls = _resolve_bgi_urls(mods)
-    except Exception as e:
-        log.error("Could not resolve BGI URLs via snapshot API: %s", e)
-        raise
-    missing = [m for m in mods if m not in urls]
-    if missing:
-        log.warning("No BGI file found in snapshot for MOD(s): %s", missing)
-
+    JSON for the pinned release. The per-MOD lists are cached under
+    $ALLIANCE_FETCH_CACHE/gene-ids/<release>/ so the fetchers in one run
+    enumerate once instead of re-downloading every BGI file."""
+    release = get_current_release()
+    cacheable = release != "unknown"
     combined: list[str] = []
+    seen: set[str] = set()
+    urls: dict[str, str] | None = None
     for mod in mods:
-        if mod not in urls:
-            continue
-        url = urls[mod]
-        try:
-            with urllib.request.urlopen(url, timeout=120) as resp:
-                raw = resp.read()
-            text = gzip.decompress(raw).decode("utf-8")
-            d = json.loads(text)
-        except Exception as e:
-            log.error("Failed to fetch BGI for %s: %s", mod, e)
-            continue
-        prefix = _MOD_PREFIX.get(mod)
-        added = 0
-        for gene in d.get("data", []):
-            xrefs = gene.get("basicGeneticEntity", {}).get("crossReferences", [])
-            for x in xrefs:
-                xid = x.get("id", "")
-                if prefix and xid.startswith(prefix):
-                    combined.append(xid)
-                    added += 1
-                    break
-        log.info("Enumerated %d %s genes from FMS BGI", added, mod)
-    log.info("Total across MODs: %d genes", len(combined))
+        path = _gene_list_path(release, mod)
+        if cacheable and path.exists():
+            ids = [line.strip() for line in path.read_text().splitlines() if line.strip()]
+            log.info("Enumerated %d %s genes from %s", len(ids), mod, path)
+        else:
+            if urls is None:
+                urls = _resolve_bgi_urls(mods)
+            if mod not in urls:
+                raise RuntimeError(f"No BGI file for {mod} in FMS release {release}")
+            ids = _bgi_gene_ids(fms_download_gz(urls[mod]), _MOD_PREFIX[mod])
+            if not ids:
+                raise RuntimeError(f"BGI file for {mod} yielded no gene IDs: {urls[mod]}")
+            log.info("Enumerated %d %s genes from FMS BGI %s", len(ids), mod, urls[mod])
+            if cacheable:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(".tmp")
+                tmp.write_text("\n".join(ids) + "\n")
+                os.replace(tmp, path)
+        for gid in ids:
+            if gid not in seen:
+                seen.add(gid)
+                combined.append(gid)
+    log.info("Total across MODs %s: %d genes", ",".join(mods), len(combined))
     return combined
 
 
@@ -504,29 +598,73 @@ def fms_list_files(
     """Return FMS file manifests for the given datatype (e.g. 'DAF',
     'CONSTRUCT', 'ALLELE', 'PHENOTYPE'). sub_filter narrows by dataSubType
     name (a MOD prefix like 'MGI' or a NCBITaxon ID like 'NCBITaxon10090').
+
+    A release manifest lists every upload made during the release cycle, so
+    one subtype can appear several times (e.g. five ZFIN BGI files in 9.1.0).
+    Only the most recent upload per subtype is returned.
     """
     if release is None:
         release = get_current_release()
     if release == "unknown":
         raise RuntimeError("Cannot list FMS files: release is unknown")
-    manifest = http_get_json(_fms_file_list_url(release))
-    out: list[dict] = []
-    for row in manifest or []:
+    latest: dict[str, dict] = {}
+    for row in _fms_manifest(release):
         dt = (row.get("dataType") or {}).get("name", "")
         if dt != datatype:
             continue
         sub = (row.get("dataSubType") or {}).get("name", "")
         if sub_filter and sub != sub_filter:
             continue
+        if sub in latest and latest[sub].get("uploadDate", "") >= row.get("uploadDate", ""):
+            continue
+        latest[sub] = row
+    out: list[dict] = []
+    for sub, row in latest.items():
         url = row.get("s3Url") or row.get("s3Path") or ""
         if not url.startswith("http"):
             url = "https://" + url.lstrip("/")
         out.append({
             "url": url,
-            "datatype": dt,
+            "datatype": datatype,
             "subType": sub,
             "release": release,
+            "uploadDate": row.get("uploadDate", ""),
         })
+    return out
+
+
+@functools.lru_cache(maxsize=None)
+def _fms_manifest(release: str) -> list[dict]:
+    return http_get_json(_fms_file_list_url(release)) or []
+
+
+def fms_tsv_column(datatype: str, column: str, *, subtypes: list[str] | None = None) -> list[str]:
+    """Distinct values of one column across the release's FMS TSV files of
+    a datatype (optionally only the given dataSubTypes), in file order."""
+    import gzip
+    seen: set[str] = set()
+    out: list[str] = []
+    for fi in fms_list_files(datatype):
+        if subtypes is not None and fi["subType"] not in subtypes:
+            continue
+        local = fms_download_gz(fi["url"])
+        idx = None
+        with gzip.open(local, "rt", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if not line.strip() or line.startswith("#"):
+                    continue
+                cols = line.rstrip("\n").split("\t")
+                if idx is None:
+                    if column not in cols:
+                        raise RuntimeError(f"{fi['url']} has no {column} column")
+                    idx = cols.index(column)
+                    continue
+                if len(cols) > idx:
+                    value = cols[idx].strip()
+                    if value and value not in seen:
+                        seen.add(value)
+                        out.append(value)
+        log.info("%s %s: %d distinct %s so far", datatype, fi["subType"], len(out), column)
     return out
 
 
@@ -598,3 +736,158 @@ def iter_fms_datatype(
         local = fms_download_gz(fi["url"])
         for rec in fms_iter_json_records(local):
             yield fi["subType"], rec
+
+
+# ---------------------------------------------------------------------------
+# Bounded-parallel per-entity runner for the API fan-out fetchers
+
+DEFAULT_WORKERS = int(os.environ.get("ALLIANCE_FETCH_WORKERS", "6"))
+DEFAULT_MAX_FAILURE_RATE = float(os.environ.get("ALLIANCE_MAX_FAILURE_RATE", "0.005"))
+
+
+def add_parallel_args(parser) -> None:
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Concurrent API requests (default {DEFAULT_WORKERS}, env ALLIANCE_FETCH_WORKERS); "
+             "the AGR WAF answers 405 well before 20",
+    )
+    parser.add_argument(
+        "--max-failure-rate",
+        type=float,
+        default=DEFAULT_MAX_FAILURE_RATE,
+        help="Exit non-zero when more than this fraction of entities fail "
+             f"(default {DEFAULT_MAX_FAILURE_RATE}, env ALLIANCE_MAX_FAILURE_RATE)",
+    )
+
+
+@dataclass
+class RunReport:
+    label: str
+    total: int
+    done: int = 0
+    failures: list[tuple[str, str]] = field(default_factory=list)
+    elapsed: float = 0.0
+
+    @property
+    def failure_rate(self) -> float:
+        return len(self.failures) / self.total if self.total else 0.0
+
+
+def run_parallel(
+    ids: list[str],
+    work: Callable[[str, sqlite3.Connection, FetchStats], Any],
+    consume: Callable[[str, Any], None],
+    *,
+    cache_name: str,
+    stats: FetchStats,
+    workers: int = DEFAULT_WORKERS,
+    label: str = "genes",
+    progress_every: int = 1000,
+    progress_seconds: float = 60.0,
+) -> RunReport:
+    """Run work(id, cache, stats) for every id on a bounded thread pool.
+
+    consume(id, result) runs on the calling thread, in input order, so TSV
+    writing and de-duplication stay single-threaded and the output is
+    deterministic. Each worker thread owns one autocommit cache connection.
+    An exception in work() marks that id failed and the run carries on;
+    the caller decides from the report whether the run as a whole failed."""
+    report = RunReport(label=label, total=len(ids))
+    local = threading.local()
+    conns: list[sqlite3.Connection] = []
+    conns_lock = threading.Lock()
+
+    def thread_cache() -> sqlite3.Connection:
+        conn = getattr(local, "conn", None)
+        if conn is None:
+            conn = connect_cache(cache_name)
+            local.conn = conn
+            with conns_lock:
+                conns.append(conn)
+        return conn
+
+    def task(entity_id: str) -> tuple[bool, Any]:
+        try:
+            return True, work(entity_id, thread_cache(), stats)
+        except Exception as e:
+            return False, f"{type(e).__name__}: {e}"
+
+    start = time.time()
+    last_log = start
+    workers = max(1, workers)
+    log.info("%s: %d to fetch with %d workers", label, len(ids), workers)
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            pending: deque = deque()
+            source = iter(ids)
+
+            def submit_next() -> None:
+                entity_id = next(source, None)
+                if entity_id is not None:
+                    pending.append((entity_id, pool.submit(task, entity_id)))
+
+            for _ in range(workers * 4):
+                submit_next()
+            while pending:
+                entity_id, fut = pending.popleft()
+                ok, result = fut.result()
+                submit_next()
+                report.done += 1
+                if ok:
+                    consume(entity_id, result)
+                else:
+                    report.failures.append((entity_id, result))
+                    log.warning("%s: %s failed: %s", label, entity_id, result)
+                now = time.time()
+                if (report.done % progress_every == 0 or now - last_log >= progress_seconds
+                        or report.done == report.total):
+                    _log_progress(report, stats, now - start)
+                    last_log = now
+    finally:
+        for conn in conns:
+            conn.close()
+    report.elapsed = time.time() - start
+    return report
+
+
+def _log_progress(report: RunReport, stats: FetchStats, elapsed: float) -> None:
+    rate = report.done / elapsed if elapsed > 0 else 0.0
+    remaining = (report.total - report.done) / rate if rate > 0 else 0.0
+    log.info(
+        "%s: %d/%d (%.1f%%)  %.1f %s/s  %.1f req/s  cache_hits=%d  failed=%d  throttled=%d  eta %.1fh",
+        report.label, report.done, report.total,
+        100.0 * report.done / report.total if report.total else 100.0,
+        rate, report.label, stats.requests / elapsed if elapsed > 0 else 0.0,
+        stats.cache_hits, len(report.failures), stats.throttled, remaining / 3600,
+    )
+
+
+def finish_run(report: RunReport, stats: FetchStats, out_dir: Path, max_failure_rate: float) -> None:
+    """Log the run summary, write failed ids next to the TSVs, and exit
+    non-zero when the failure rate is above max_failure_rate. Failed ids are
+    not cached, so a rerun retries exactly those (everything else is served
+    from the cache)."""
+    log.info(
+        "%s: done %d/%d in %.0fs  failed=%d (%.3f%%)  API stats: %s",
+        report.label, report.done, report.total, report.elapsed,
+        len(report.failures), 100.0 * report.failure_rate, stats,
+    )
+    failures_path = Path(out_dir) / f"{Path(sys.argv[0]).stem}.failures.tsv"
+    if report.failures:
+        failures_path.parent.mkdir(parents=True, exist_ok=True)
+        with failures_path.open("w", encoding="utf-8") as fh:
+            for entity_id, err in report.failures:
+                fh.write(f"{entity_id}\t{err}\n")
+        for entity_id, err in report.failures[:20]:
+            log.warning("  failed %s: %s", entity_id, err)
+        log.warning("%d failed ids written to %s", len(report.failures), failures_path)
+    elif failures_path.exists():
+        failures_path.unlink()
+    if report.failure_rate > max_failure_rate:
+        log.error(
+            "%s: failure rate %.3f%% exceeds %.3f%%",
+            report.label, 100.0 * report.failure_rate, 100.0 * max_failure_rate,
+        )
+        sys.exit(1)
