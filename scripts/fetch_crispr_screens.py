@@ -37,6 +37,7 @@ from common import (  # noqa: E402
     fms_list_files,
     get_current_release,
     normalize_taxon,
+    selected_mods,
 )
 
 log = logging.getLogger("alliance.fetch.crispr_screens")
@@ -93,8 +94,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch CRISPR/RNAi screen hits from FMS BIOGRID-ORCS")
     parser.add_argument(
         "--mods",
-        default=",".join(DEFAULT_MODS),
-        help="Comma-separated MOD prefixes (HUMAN, MGI, FB available)",
+        help=f"Comma-separated MOD prefixes (HUMAN, MGI, FB available) (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--limit", type=int, help="Cap rows emitted")
     parser.add_argument(
@@ -111,7 +111,7 @@ def main() -> None:
     args = parser.parse_args()
 
     configure_logging(args.verbose)
-    mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+    mods = selected_mods(DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
     seen: set = set()

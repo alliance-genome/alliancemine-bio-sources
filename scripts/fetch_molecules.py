@@ -18,7 +18,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import TsvWriter, configure_logging, get_current_release, iter_fms_datatype  # noqa: E402
+from common import (  # noqa: E402
+    TsvWriter,
+    configure_logging,
+    get_current_release,
+    iter_fms_datatype,
+    selected_mods,
+)
 
 log = logging.getLogger("alliance.fetch.molecules")
 
@@ -64,8 +70,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance small molecules (FMS bulk)")
     parser.add_argument(
         "--mods",
-        default=",".join(DEFAULT_MODS),
-        help="Comma-separated MOD prefixes",
+        help=f"Comma-separated MOD prefixes (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--limit", type=int, help="Cap rows emitted")
     parser.add_argument(
@@ -77,7 +82,7 @@ def main() -> None:
     args = parser.parse_args()
 
     configure_logging(args.verbose)
-    mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+    mods = selected_mods(DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
     seen: set = set()
