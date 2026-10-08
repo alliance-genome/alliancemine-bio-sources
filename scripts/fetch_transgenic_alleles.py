@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterator
 
@@ -28,19 +27,23 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
-    enumerate_mod_genes,
-    enumerate_yeast_genes,
+    finish_run,
     get_current_release,
     get_nested,
     iter_fms_datatype,
     join_pipe,
     normalize_taxon,
-    open_cache,
     paginate,
+    resolve_gene_ids,
+    run_parallel,
+    selected_mods,
 )
 
 log = logging.getLogger("alliance.fetch.transgenic_alleles")
+
+DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "XBXL", "XBXT", "HUMAN"]
 
 
 COLUMNS = [
@@ -152,8 +155,7 @@ def main() -> None:
     parser.add_argument("--ids", help="Comma-separated gene CURIEs (only with --source api)")
     parser.add_argument(
         "--mods",
-        default="MGI,ZFIN,FB,WB,RGD,XBXL,XBXT,HUMAN",
-        help="Comma-separated MOD prefixes for seed gene enumeration (default: non-yeast)",
+        help=f"Comma-separated MOD prefixes (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--limit", type=int, help="Process at most N genes")
     parser.add_argument(
@@ -161,12 +163,7 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=20,
-        help="ThreadPool size for parallel per-gene API calls (default 20)",
-    )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -179,7 +176,7 @@ def main() -> None:
 
     # FMS path: bulk JSON.gz per MOD. No per-gene fan-out, no WAF.
     if args.source == "fms":
-        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+        mods = selected_mods(DEFAULT_MODS, args.mods)
         with TsvWriter(
             out_dir / "transgenic-alleles.tsv",
             COLUMNS,
@@ -190,66 +187,33 @@ def main() -> None:
         log.info("FMS Done. rows=%d", total)
         return
 
-    if args.ids:
-        gene_ids = [g.strip() for g in args.ids.split(",") if g.strip()]
-    else:
-        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
-        if mods == ["SGD"]:
-            gene_ids = enumerate_yeast_genes()
-        else:
-            gene_ids = enumerate_mod_genes(mods)
-    if args.limit:
-        gene_ids = gene_ids[: args.limit]
+    gene_ids = resolve_gene_ids(args.ids, args.mods, args.limit, default_mods=DEFAULT_MODS)
+    total_rows = 0
 
-    log.info("Processing %d genes", len(gene_ids))
+    def work(gid, cache, stats):
+        return [_row(gid, r) for r in paginate(f"/gene/{gid}/transgenic-alleles", cache=cache, stats=stats)]
 
-    def fetch_one(gid: str) -> tuple[str, list[dict], Exception | None]:
-        rows: list[dict] = []
-        try:
-            # Per-worker sqlite connection — sqlite3.Connection is not safe
-            # to share across threads even in WAL mode.
-            with open_cache("transgenic_alleles") as cache:
-                for result in paginate(
-                    f"/gene/{gid}/transgenic-alleles", cache=cache, stats=stats
-                ):
-                    rows.append(_row(gid, result))
-            return gid, rows, None
-        except Exception as e:
-            return gid, [], e
+    def consume(_gid, rows):
+        nonlocal total_rows
+        for row in rows:
+            key = row["transgenicAlleleId"]
+            if not key or key in seen_alleles:
+                continue
+            seen_alleles.add(key)
+            writer.write_row(**row)
+            total_rows += 1
 
     with TsvWriter(
-            out_dir / "transgenic-alleles.tsv",
-            COLUMNS,
-            release=release,
-            source="/gene/*/transgenic-alleles",
-         ) as writer:
-        total_rows = 0
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(fetch_one, gid): gid for gid in gene_ids}
-            try:
-                from tqdm import tqdm
-                pbar = tqdm(total=len(futures), desc="genes", unit="gene")
-            except ImportError:
-                pbar = None
-            for fut in as_completed(futures):
-                gid, rows, err = fut.result()
-                if pbar:
-                    pbar.update(1)
-                if err is not None:
-                    log.warning("Transgenic-allele fetch failed for %s: %s", gid, err)
-                    continue
-                for row in rows:
-                    key = row["transgenicAlleleId"]
-                    if not key or key in seen_alleles:
-                        continue
-                    seen_alleles.add(key)
-                    writer.write_row(**row)
-                    total_rows += 1
-            if pbar:
-                pbar.close()
+        out_dir / "transgenic-alleles.tsv",
+        COLUMNS,
+        release=release,
+        source="/gene/*/transgenic-alleles",
+    ) as writer:
+        report = run_parallel(gene_ids, work, consume, cache_name="transgenic_alleles",
+                              stats=stats, workers=args.workers, label="genes")
 
-    log.info("Done. rows=%d  API stats: %s", total_rows, stats)
-
+    log.info("transgenic_alleles: rows=%d", total_rows)
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 if __name__ == "__main__":
     main()

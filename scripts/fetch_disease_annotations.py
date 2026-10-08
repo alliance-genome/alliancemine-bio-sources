@@ -8,7 +8,8 @@ diseaseQualifiers (e.g. ["onset_of"]), evidenceCodes (ECO term references),
 parentSlimIds (DOID slim terms), and viaOrthologyOrder (0 when direct, >0
 when inherited via ortholog chain).
 
-Seed list is the distinct DOID column from the existing FMS DISEASE TSV.
+Seed list is the distinct DOID column of the pinned release's FMS
+DISEASE-ALLIANCE COMBINED TSV.
 For each disease we paginate the genes endpoint and emit one row per
 (disease, gene) annotation.
 
@@ -24,22 +25,24 @@ Output: data/disease-annotations-detail.tsv
 from __future__ import annotations
 
 import argparse
-import gzip
 import logging
 import sys
-import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
+    enumerate_disease_ids,
+    finish_run,
     get_current_release,
     get_nested,
     join_pipe,
-    open_cache,
     paginate,
+    publication_ids,
+    run_parallel,
 )
 
 log = logging.getLogger("alliance.fetch.disease_annotations")
@@ -65,7 +68,7 @@ def _row(disease_id: str, result: dict) -> dict:
     subject = result.get("subject") or {}
     obj = result.get("object") or {}
     refs = result.get("references") or []
-    pubmed_ids = result.get("pubmedPubModIDs") or []
+    pubmed_ids = publication_ids(result)
     ec = result.get("evidenceCodes") or []
     qualifiers = result.get("diseaseQualifiers") or []
     parent_slim = result.get("parentSlimIDs") or []
@@ -86,30 +89,6 @@ def _row(disease_id: str, result: dict) -> dict:
     }
 
 
-def _enumerate_diseases_from_combined() -> list[str]:
-    url = "https://fms.alliancegenome.org/download/DISEASE-ALLIANCE_COMBINED.tsv.gz"
-    raw = urllib.request.urlopen(url, timeout=120).read()
-    text = gzip.decompress(raw).decode("utf-8", errors="replace")
-    lines = [l for l in text.splitlines() if l and not l.startswith("#")]
-    if not lines:
-        return []
-    header = lines[0].split("\t")
-    try:
-        idx = header.index("DOID")
-    except ValueError:
-        return []
-    seen: set = set()
-    out: list[str] = []
-    for row in lines[1:]:
-        cols = row.split("\t")
-        if len(cols) > idx:
-            d = cols[idx].strip()
-            if d and d not in seen:
-                seen.add(d)
-                out.append(d)
-    return out
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance disease annotation detail")
     parser.add_argument("--ids", help="Comma-separated DOID CURIEs")
@@ -119,55 +98,51 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     configure_logging(args.verbose)
 
+    release = get_current_release()
     if args.ids:
         ids = [d.strip() for d in args.ids.split(",") if d.strip()]
     else:
-        log.info("Enumerating disease IDs from FMS DISEASE-ALLIANCE_COMBINED...")
-        ids = _enumerate_diseases_from_combined()
+        log.info("Enumerating disease IDs from FMS DISEASE-ALLIANCE COMBINED (release %s)...", release)
+        ids = enumerate_disease_ids()
     if args.limit:
         ids = ids[: args.limit]
 
-    log.info("Processing %d diseases", len(ids))
-    release = get_current_release()
     out_dir = Path(args.out_dir)
-
-    try:
-        from tqdm import tqdm
-        iterator = tqdm(ids, desc="diseases", unit="disease")
-    except ImportError:
-        iterator = ids
-
     stats = FetchStats()
     seen_uids: set = set()
+    total_rows = 0
 
-    with open_cache("disease_annotations") as cache, \
-         TsvWriter(
-             out_dir / "disease-annotations-detail.tsv",
-             COLUMNS,
-             release=release,
-             source="/disease/*/genes",
-         ) as writer:
-        total_rows = 0
-        for did in iterator:
-            try:
-                for result in paginate(f"/disease/{did}/genes", cache=cache, stats=stats):
-                    row = _row(did, result)
-                    uid = row["uniqueId"]
-                    if uid and uid in seen_uids:
-                        continue
-                    if uid:
-                        seen_uids.add(uid)
-                    writer.write_row(**row)
-                    total_rows += 1
-            except Exception as e:
-                log.warning("Disease-annotation fetch failed for %s: %s", did, e)
+    def work(did, cache, stats):
+        return [_row(did, r) for r in paginate(f"/disease/{did}/genes", cache=cache, stats=stats)]
 
-    log.info("Done. rows=%d  API stats: %s", total_rows, stats)
+    def consume(_did, rows):
+        nonlocal total_rows
+        for row in rows:
+            uid = row["uniqueId"]
+            if uid and uid in seen_uids:
+                continue
+            if uid:
+                seen_uids.add(uid)
+            writer.write_row(**row)
+            total_rows += 1
+
+    with TsvWriter(
+        out_dir / "disease-annotations-detail.tsv",
+        COLUMNS,
+        release=release,
+        source="/disease/*/genes",
+    ) as writer:
+        report = run_parallel(ids, work, consume, cache_name="disease_annotations", stats=stats,
+                              workers=args.workers, label="diseases")
+
+    log.info("disease_annotations: rows=%d", total_rows)
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 
 if __name__ == "__main__":

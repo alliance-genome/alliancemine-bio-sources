@@ -35,6 +35,7 @@ from common import (  # noqa: E402
     get_nested,
     join_pipe,
     paginate,
+    publication_ids,
     resolve_gene_ids,
     run_parallel,
 )
@@ -57,7 +58,7 @@ COLUMNS = [
 def _row(seed_id: str, result: dict) -> dict:
     subject = result.get("subject") or {}
     refs = result.get("references") or []
-    pubmed_ids = result.get("pubmedPubModIDs") or []
+    pubmed_ids = publication_ids(result)
     return {
         "subjectGeneId": get_nested(subject, "primaryExternalId", default=seed_id) or seed_id,
         "subjectGeneTaxon": get_nested(subject, "taxon", "curie", default=""),

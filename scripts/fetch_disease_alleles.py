@@ -21,11 +21,8 @@ Output: data/disease-alleles.tsv
 from __future__ import annotations
 
 import argparse
-import gzip
 import logging
 import sys
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterator
 
@@ -33,14 +30,18 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
+    enumerate_disease_ids,
+    finish_run,
     get_current_release,
     get_nested,
     iter_fms_datatype,
     join_pipe,
     normalize_taxon,
-    open_cache,
     paginate,
+    run_parallel,
+    selected_mods,
 )
 
 DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
@@ -95,30 +96,6 @@ COLUMNS = [
 ]
 
 
-def _enumerate_diseases_from_combined() -> list[str]:
-    url = "https://fms.alliancegenome.org/download/DISEASE-ALLIANCE_COMBINED.tsv.gz"
-    raw = urllib.request.urlopen(url, timeout=120).read()
-    text = gzip.decompress(raw).decode("utf-8", errors="replace")
-    lines = [l for l in text.splitlines() if l and not l.startswith("#")]
-    if not lines:
-        return []
-    header = lines[0].split("\t")
-    try:
-        idx = header.index("DOID")
-    except ValueError:
-        return []
-    seen: set = set()
-    out: list[str] = []
-    for row in lines[1:]:
-        cols = row.split("\t")
-        if len(cols) > idx:
-            d = cols[idx].strip()
-            if d and d not in seen:
-                seen.add(d)
-                out.append(d)
-    return out
-
-
 def _row(disease_id: str, result: dict) -> dict | None:
     obj = result.get("object") or {}
     primary = (result.get("primaryAnnotations") or [{}])[0]
@@ -162,8 +139,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mods",
-        default=",".join(DEFAULT_MODS),
-        help="Comma-separated MOD prefixes (FMS path)",
+        help=f"Comma-separated MOD prefixes, FMS path (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--ids", help="Comma-separated DOID CURIEs (api path)")
     parser.add_argument("--limit", type=int, help="Process at most N diseases / rows")
@@ -172,12 +148,7 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=4,
-        help="ThreadPool size (default 4; keep low to avoid AGR WAF rate limit)",
-    )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -189,7 +160,7 @@ def main() -> None:
     seen_pairs: set = set()
 
     if args.source == "fms":
-        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+        mods = selected_mods(DEFAULT_MODS, args.mods)
         total = 0
         with TsvWriter(
             out_dir / "disease-alleles.tsv",
@@ -212,59 +183,36 @@ def main() -> None:
     if args.ids:
         disease_ids = [d.strip() for d in args.ids.split(",") if d.strip()]
     else:
-        disease_ids = _enumerate_diseases_from_combined()
+        disease_ids = enumerate_disease_ids()
     if args.limit:
         disease_ids = disease_ids[: args.limit]
+    total_rows = 0
 
-    log.info("Processing %d diseases", len(disease_ids))
+    def work(did, cache, stats):
+        results = paginate(f"/disease/{did}/alleles", cache=cache, stats=stats)
+        return [row for row in (_row(did, r) for r in results) if row is not None]
 
-    def fetch_one(did: str) -> tuple[str, list[dict], Exception | None]:
-        rows: list[dict] = []
-        try:
-            with open_cache("disease_alleles") as cache:
-                for result in paginate(
-                    f"/disease/{did}/alleles", cache=cache, stats=stats
-                ):
-                    row = _row(did, result)
-                    if row is not None:
-                        rows.append(row)
-            return did, rows, None
-        except Exception as e:
-            return did, [], e
+    def consume(_did, rows):
+        nonlocal total_rows
+        for row in rows:
+            pair_key = (row["alleleId"], row["diseaseId"])
+            if pair_key in seen_pairs:
+                continue
+            seen_pairs.add(pair_key)
+            writer.write_row(**row)
+            total_rows += 1
 
     with TsvWriter(
-            out_dir / "disease-alleles.tsv",
-            COLUMNS,
-            release=release,
-            source="/disease/*/alleles",
-         ) as writer:
-        total_rows = 0
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(fetch_one, did): did for did in disease_ids}
-            try:
-                from tqdm import tqdm
-                pbar = tqdm(total=len(futures), desc="diseases", unit="dz")
-            except ImportError:
-                pbar = None
-            for fut in as_completed(futures):
-                did, rows, err = fut.result()
-                if pbar:
-                    pbar.update(1)
-                if err is not None:
-                    log.warning("Disease-alleles fetch failed for %s: %s", did, err)
-                    continue
-                for row in rows:
-                    pair_key = (row["alleleId"], row["diseaseId"])
-                    if pair_key in seen_pairs:
-                        continue
-                    seen_pairs.add(pair_key)
-                    writer.write_row(**row)
-                    total_rows += 1
-            if pbar:
-                pbar.close()
+        out_dir / "disease-alleles.tsv",
+        COLUMNS,
+        release=release,
+        source="/disease/*/alleles",
+    ) as writer:
+        report = run_parallel(disease_ids, work, consume, cache_name="disease_alleles",
+                              stats=stats, workers=args.workers, label="diseases")
 
-    log.info("Done. rows=%d  API stats: %s", total_rows, stats)
-
+    log.info("disease_alleles: rows=%d", total_rows)
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 if __name__ == "__main__":
     main()

@@ -118,6 +118,8 @@ class RunParallelTest(unittest.TestCase):
             time.sleep(0.001 * (hash(gid) % 5))
             if gid in ("G7", "G33"):
                 raise RuntimeError("boom")
+            if gid == "G40":
+                raise common.urllib.error.HTTPError(gid, 404, "Not Found", {}, None)
             return [gid.lower()]
 
         consumed: list[str] = []
@@ -126,9 +128,10 @@ class RunParallelTest(unittest.TestCase):
             ids, work, lambda gid, rows: consumed.extend(rows),
             cache_name="t", stats=stats, workers=4, label="genes",
         )
-        expected = [g.lower() for g in ids if g not in ("G7", "G33")]
+        expected = [g.lower() for g in ids if g not in ("G7", "G33", "G40")]
         self.assertEqual(consumed, expected)
         self.assertEqual([f[0] for f in report.failures], ["G7", "G33"])
+        self.assertEqual([m[0] for m in report.missing], ["G40"])
         self.assertEqual(report.done, 50)
         with common.open_cache("t") as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM cache").fetchone()[0], 50)

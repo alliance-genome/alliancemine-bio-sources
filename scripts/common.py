@@ -75,25 +75,28 @@ def _cache_path(cache_name: str) -> Path:
     return CACHE_DIR / f"{cache_name}.sqlite"
 
 
-def connect_cache(cache_name: str) -> sqlite3.Connection:
+def connect_cache(cache_name: str, *, initialise: bool = True) -> sqlite3.Connection:
     """Open one SQLite cache connection in autocommit mode, so every cached
     response is durable immediately (reruns resume from it) and no thread
     holds the write lock between requests. WAL + busy_timeout let several
-    connections (one per worker thread) share the file."""
+    connections (one per worker thread) share the file. Switching to WAL
+    needs an exclusive lock, so worker connections skip initialisation and
+    rely on it having been done once up front."""
     conn = sqlite3.connect(
         _cache_path(cache_name), timeout=30.0, isolation_level=None, check_same_thread=False
     )
-    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS cache ("
-        " key TEXT PRIMARY KEY,"
-        " url TEXT NOT NULL,"
-        " body TEXT NOT NULL,"
-        " ts INTEGER NOT NULL"
-        ")"
-    )
+    if initialise:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS cache ("
+            " key TEXT PRIMARY KEY,"
+            " url TEXT NOT NULL,"
+            " body TEXT NOT NULL,"
+            " ts INTEGER NOT NULL"
+            ")"
+        )
     return conn
 
 
@@ -278,6 +281,22 @@ def get_nested(obj: Any, *path: str, default: Any = None) -> Any:
 def join_pipe(values: Iterable[Any]) -> str:
     """Pipe-join non-empty stringifications."""
     return "|".join(str(v) for v in values if v not in (None, ""))
+
+
+def publication_ids(result: dict) -> list[str]:
+    """PubMed + MOD publication curies of an annotation. The API replaced the
+    flat pubmedPubModIDs list with pubmedPublications / pubModPublications
+    cross-reference lists; read whichever is present."""
+    flat = result.get("pubmedPubModIDs")
+    if flat:
+        return list(flat)
+    ids: list[str] = []
+    for key in ("pubmedPublications", "pubModPublications"):
+        for pub in result.get(key) or []:
+            curie = pub.get("referencedCurie", "") if isinstance(pub, dict) else ""
+            if curie and curie not in ids:
+                ids.append(curie)
+    return ids
 
 
 # ---------------------------------------------------------------------------
@@ -619,7 +638,7 @@ def fms_list_files(
             continue
         latest[sub] = row
     out: list[dict] = []
-    for sub, row in latest.items():
+    for sub, row in sorted(latest.items()):
         url = row.get("s3Url") or row.get("s3Path") or ""
         if not url.startswith("http"):
             url = "https://" + url.lstrip("/")
@@ -644,9 +663,11 @@ def fms_tsv_column(datatype: str, column: str, *, subtypes: list[str] | None = N
     import gzip
     seen: set[str] = set()
     out: list[str] = []
-    for fi in fms_list_files(datatype):
-        if subtypes is not None and fi["subType"] not in subtypes:
-            continue
+    files = fms_list_files(datatype)
+    if subtypes is not None:
+        by_sub = {fi["subType"]: fi for fi in files}
+        files = [by_sub[sub] for sub in subtypes if sub in by_sub]
+    for fi in files:
         local = fms_download_gz(fi["url"])
         idx = None
         with gzip.open(local, "rt", encoding="utf-8", errors="replace") as fh:
@@ -666,6 +687,18 @@ def fms_tsv_column(datatype: str, column: str, *, subtypes: list[str] | None = N
                         out.append(value)
         log.info("%s %s: %d distinct %s so far", datatype, fi["subType"], len(out), column)
     return out
+
+
+def enumerate_disease_ids() -> list[str]:
+    """Distinct DOIDs of the pinned release's DISEASE-ALLIANCE COMBINED file."""
+    return fms_tsv_column("DISEASE-ALLIANCE", "DOID", subtypes=["COMBINED"])
+
+
+def enumerate_allele_ids(mods: list[str]) -> list[str]:
+    """Distinct allele CURIEs of the pinned release's per-taxon VARIANT-ALLELE
+    TSVs. The COMBINED file is frozen at 4.0.0 and is not used."""
+    subtypes = [MOD_TAXON[m].replace(":", "") for m in mods]
+    return fms_tsv_column("VARIANT-ALLELE", "AlleleId", subtypes=list(dict.fromkeys(subtypes)))
 
 
 def fms_download_gz(url: str) -> Path:
@@ -762,12 +795,19 @@ def add_parallel_args(parser) -> None:
     )
 
 
+# The API answers 400 (malformed/unsupported id, e.g. WB transgenes on
+# /allele) or 404 for seed ids it does not serve. Those are reported as
+# missing rather than failed: retrying cannot change the answer.
+MISSING_HTTP_CODES = (400, 404)
+
+
 @dataclass
 class RunReport:
     label: str
     total: int
     done: int = 0
     failures: list[tuple[str, str]] = field(default_factory=list)
+    missing: list[tuple[str, str]] = field(default_factory=list)
     elapsed: float = 0.0
 
     @property
@@ -802,18 +842,22 @@ def run_parallel(
     def thread_cache() -> sqlite3.Connection:
         conn = getattr(local, "conn", None)
         if conn is None:
-            conn = connect_cache(cache_name)
+            conn = connect_cache(cache_name, initialise=False)
             local.conn = conn
             with conns_lock:
                 conns.append(conn)
         return conn
 
-    def task(entity_id: str) -> tuple[bool, Any]:
+    def task(entity_id: str) -> tuple[str, Any]:
         try:
-            return True, work(entity_id, thread_cache(), stats)
+            return "ok", work(entity_id, thread_cache(), stats)
+        except urllib.error.HTTPError as e:
+            status = "missing" if e.code in MISSING_HTTP_CODES else "failed"
+            return status, f"HTTP {e.code}"
         except Exception as e:
-            return False, f"{type(e).__name__}: {e}"
+            return "failed", f"{type(e).__name__}: {e}"
 
+    connect_cache(cache_name).close()
     start = time.time()
     last_log = start
     workers = max(1, workers)
@@ -832,11 +876,14 @@ def run_parallel(
                 submit_next()
             while pending:
                 entity_id, fut = pending.popleft()
-                ok, result = fut.result()
+                status, result = fut.result()
                 submit_next()
                 report.done += 1
-                if ok:
+                if status == "ok":
                     consume(entity_id, result)
+                elif status == "missing":
+                    report.missing.append((entity_id, result))
+                    log.debug("%s: %s not served by the API: %s", label, entity_id, result)
                 else:
                     report.failures.append((entity_id, result))
                     log.warning("%s: %s failed: %s", label, entity_id, result)
@@ -856,11 +903,13 @@ def _log_progress(report: RunReport, stats: FetchStats, elapsed: float) -> None:
     rate = report.done / elapsed if elapsed > 0 else 0.0
     remaining = (report.total - report.done) / rate if rate > 0 else 0.0
     log.info(
-        "%s: %d/%d (%.1f%%)  %.1f %s/s  %.1f req/s  cache_hits=%d  failed=%d  throttled=%d  eta %.1fh",
+        "%s: %d/%d (%.1f%%)  %.1f %s/s  %.1f req/s  cache_hits=%d  failed=%d  missing=%d  "
+        "throttled=%d  eta %.1fh",
         report.label, report.done, report.total,
         100.0 * report.done / report.total if report.total else 100.0,
         rate, report.label, stats.requests / elapsed if elapsed > 0 else 0.0,
-        stats.cache_hits, len(report.failures), stats.throttled, remaining / 3600,
+        stats.cache_hits, len(report.failures), len(report.missing), stats.throttled,
+        remaining / 3600,
     )
 
 
@@ -870,19 +919,23 @@ def finish_run(report: RunReport, stats: FetchStats, out_dir: Path, max_failure_
     not cached, so a rerun retries exactly those (everything else is served
     from the cache)."""
     log.info(
-        "%s: done %d/%d in %.0fs  failed=%d (%.3f%%)  API stats: %s",
+        "%s: done %d/%d in %.0fs  failed=%d (%.3f%%)  missing=%d  API stats: %s",
         report.label, report.done, report.total, report.elapsed,
-        len(report.failures), 100.0 * report.failure_rate, stats,
+        len(report.failures), 100.0 * report.failure_rate, len(report.missing), stats,
     )
     failures_path = Path(out_dir) / f"{Path(sys.argv[0]).stem}.failures.tsv"
-    if report.failures:
+    if report.failures or report.missing:
         failures_path.parent.mkdir(parents=True, exist_ok=True)
         with failures_path.open("w", encoding="utf-8") as fh:
-            for entity_id, err in report.failures:
-                fh.write(f"{entity_id}\t{err}\n")
+            for status, entries in (("failed", report.failures), ("missing", report.missing)):
+                for entity_id, err in entries:
+                    fh.write(f"{entity_id}\t{status}\t{err}\n")
         for entity_id, err in report.failures[:20]:
             log.warning("  failed %s: %s", entity_id, err)
-        log.warning("%d failed ids written to %s", len(report.failures), failures_path)
+        if report.missing:
+            log.warning("%d ids not served by the API (HTTP 400/404), e.g. %s",
+                        len(report.missing), ", ".join(e for e, _ in report.missing[:5]))
+        log.warning("Failed and missing ids written to %s", failures_path)
     elif failures_path.exists():
         failures_path.unlink()
     if report.failure_rate > max_failure_rate:

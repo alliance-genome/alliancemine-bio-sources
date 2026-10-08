@@ -26,7 +26,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterator
 
@@ -34,16 +33,18 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
-    enumerate_mod_genes,
-    enumerate_yeast_genes,
+    finish_run,
     get_current_release,
     get_nested,
     iter_fms_datatype,
     join_pipe,
     normalize_taxon,
-    open_cache,
     paginate,
+    resolve_gene_ids,
+    run_parallel,
+    selected_mods,
 )
 
 DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
@@ -181,8 +182,7 @@ def main() -> None:
     parser.add_argument("--ids", help="Comma-separated gene CURIEs (api path)")
     parser.add_argument(
         "--mods",
-        default=",".join(DEFAULT_MODS),
-        help="Comma-separated MOD prefixes",
+        help=f"Comma-separated MOD prefixes (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--limit", type=int, help="Process at most N genes")
     parser.add_argument(
@@ -190,12 +190,7 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=4,
-        help="ThreadPool size (default 4; keep low to avoid AGR WAF rate limit)",
-    )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -207,7 +202,7 @@ def main() -> None:
     seen_triples: set = set()
 
     if args.source == "fms":
-        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
+        mods = selected_mods(DEFAULT_MODS, args.mods)
         total = 0
         with TsvWriter(
             out_dir / "experimental-disease.tsv",
@@ -227,32 +222,22 @@ def main() -> None:
         log.info("FMS Done. rows=%d", total)
         return
 
-    if args.ids:
-        gene_ids = [g.strip() for g in args.ids.split(",") if g.strip()]
-    else:
-        mods = [m.strip() for m in args.mods.split(",") if m.strip()]
-        if mods == ["SGD"]:
-            gene_ids = enumerate_yeast_genes()
-        else:
-            gene_ids = enumerate_mod_genes(mods)
-    if args.limit:
-        gene_ids = gene_ids[: args.limit]
+    gene_ids = resolve_gene_ids(args.ids, args.mods, args.limit, default_mods=DEFAULT_MODS)
+    total_rows = 0
 
-    log.info("Processing %d genes", len(gene_ids))
+    def work(gid, cache, stats):
+        results = paginate(f"/gene/{gid}/diseases-by-experiment", cache=cache, stats=stats)
+        return [row for row in (_row(gid, r) for r in results) if row is not None]
 
-    def fetch_one(gid: str) -> tuple[str, list[dict], Exception | None]:
-        rows: list[dict] = []
-        try:
-            with open_cache("experimental_disease") as cache:
-                for result in paginate(
-                    f"/gene/{gid}/diseases-by-experiment", cache=cache, stats=stats
-                ):
-                    row = _row(gid, result)
-                    if row is not None:
-                        rows.append(row)
-            return gid, rows, None
-        except Exception as e:
-            return gid, [], e
+    def consume(_gid, rows):
+        nonlocal total_rows
+        for row in rows:
+            triple = (row["geneId"], row["diseaseId"], row["evidenceCodes"])
+            if triple in seen_triples:
+                continue
+            seen_triples.add(triple)
+            writer.write_row(**row)
+            total_rows += 1
 
     with TsvWriter(
         out_dir / "experimental-disease.tsv",
@@ -260,33 +245,11 @@ def main() -> None:
         release=release,
         source="/gene/*/diseases-by-experiment",
     ) as writer:
-        total_rows = 0
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(fetch_one, gid): gid for gid in gene_ids}
-            try:
-                from tqdm import tqdm
-                pbar = tqdm(total=len(futures), desc="genes", unit="gene")
-            except ImportError:
-                pbar = None
-            for fut in as_completed(futures):
-                gid, rows, err = fut.result()
-                if pbar:
-                    pbar.update(1)
-                if err is not None:
-                    log.warning("Experimental-disease fetch failed for %s: %s", gid, err)
-                    continue
-                for row in rows:
-                    triple = (row["geneId"], row["diseaseId"], row["evidenceCodes"])
-                    if triple in seen_triples:
-                        continue
-                    seen_triples.add(triple)
-                    writer.write_row(**row)
-                    total_rows += 1
-            if pbar:
-                pbar.close()
+        report = run_parallel(gene_ids, work, consume, cache_name="experimental_disease",
+                              stats=stats, workers=args.workers, label="genes")
 
-    log.info("Done. rows=%d  API stats: %s", total_rows, stats)
-
+    log.info("experimental_disease: rows=%d", total_rows)
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 if __name__ == "__main__":
     main()
