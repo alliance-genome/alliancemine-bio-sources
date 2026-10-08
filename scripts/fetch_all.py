@@ -7,27 +7,44 @@ will ingest them. Designed to be called from the AllianceMine Docker pipeline
 as a single pre-build step replacing the old FMS pull.
 
 Usage:
-    python3 fetch_all.py                  # full run, all fetchers
+    ALLIANCE_RELEASE=9.2.0 python3 fetch_all.py --out-dir /root/data/api
+    python3 fetch_all.py --release 9.2.0 --workers 6 --out-dir /root/data/api
     python3 fetch_all.py --only genes,paralogs
     python3 fetch_all.py --skip phenotypes
-    python3 fetch_all.py --limit 50       # smoke test — applies to every fetcher
+    python3 fetch_all.py --mods SGD,MGI --limit 50 --allow-release-mismatch   # smoke test
+
+Before running anything the pinned release (--release or ALLIANCE_RELEASE)
+is compared with what the API serves (/api/releaseInfo); a mismatch exits 2
+unless --allow-release-mismatch. Unpinned runs pin to the API's release.
+The pin is exported to every fetcher so FMS file selection, gene seeding and
+TSV provenance all use the same release.
+
+Pass-through flags (--limit, --out-dir, --workers, --max-failure-rate,
+--verbose) go only to fetchers whose --help lists them; --ids goes only to
+the fetchers seeded by gene CURIEs. --mods is exported as ALLIANCE_MODS,
+which narrows each fetcher's own default MOD list.
 
 Environment variables:
-    ALLIANCE_API_BASE   - API root (default https://www.alliancegenome.org/api)
-    ALLIANCE_FETCH_CACHE - SQLite cache dir (default scripts/.cache/)
+    ALLIANCE_RELEASE     - pinned Alliance release (e.g. 9.2.0)
+    ALLIANCE_MODS        - comma-separated MOD subset (default: all 9)
+    ALLIANCE_API_BASE    - API root (default https://www.alliancegenome.org/api)
+    ALLIANCE_FETCH_CACHE - SQLite cache + gene-list dir (default scripts/.cache/)
+    ALLIANCE_FMS_CACHE   - downloaded FMS files (default scripts/.fms_cache/)
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
+import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import configure_logging  # noqa: E402
+from common import configure_logging, get_api_release, parse_mods  # noqa: E402
 
 log = logging.getLogger("alliance.fetch.orchestrator")
 
@@ -84,13 +101,67 @@ FETCHERS = [
     ("wormmine_rnai",        "fetch_wormmine_rnai.py"),
 ]
 
+# Fetchers whose --ids takes gene CURIEs (allele_detail takes allele ids,
+# disease_annotations / disease_alleles take DOIDs).
+GENE_ID_FETCHERS = {
+    "genes", "interactions", "orthologs", "paralogs", "disease_models", "phenotypes",
+    "transgenic_alleles", "experimental_disease",
+}
 
-def run_one(name: str, script: str, extra_args: list[str]) -> tuple[str, int, float]:
+_OPTION_RE = re.compile(r"^\s+(?:-\w, )?(--[\w-]+)", re.MULTILINE)
+
+
+def accepted_flags(script: str) -> set[str]:
+    """Options a fetcher declares, read from its own --help."""
+    proc = subprocess.run(
+        [sys.executable, str(Path(__file__).parent / script), "--help"],
+        capture_output=True, text=True, timeout=120,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"{script} --help failed: {proc.stderr.strip()}")
+    return set(_OPTION_RE.findall(proc.stdout))
+
+
+def args_for(name: str, script: str, passthrough: dict[str, str | None]) -> list[str]:
+    flags = accepted_flags(script)
+    out: list[str] = []
+    for flag, value in passthrough.items():
+        if flag not in flags:
+            continue
+        if flag == "--ids" and name not in GENE_ID_FETCHERS:
+            continue
+        out += [flag] if value is None else [flag, value]
+    return out
+
+
+def check_release(pinned: str | None, allow_mismatch: bool) -> str:
+    """Return the release to pin every fetcher to, or exit when it does not
+    match the release the API is serving."""
+    api_release = get_api_release()
+    if not pinned:
+        if not api_release:
+            log.error("No ALLIANCE_RELEASE / --release given and /api/releaseInfo is unreachable")
+            sys.exit(2)
+        log.warning("No release pinned; pinning to the API's release %s", api_release)
+        return api_release
+    if api_release == pinned:
+        log.info("Release %s matches /api/releaseInfo", pinned)
+        return pinned
+    message = (f"Pinned release {pinned} but the API serves {api_release or 'unknown (unreachable)'}; "
+               "API-fetched data would not match the pinned FMS files")
+    if not allow_mismatch:
+        log.error("%s. Wait for the API switch-over or pass --allow-release-mismatch.", message)
+        sys.exit(2)
+    log.warning("%s (--allow-release-mismatch given)", message)
+    return pinned
+
+
+def run_one(name: str, script: str, extra_args: list[str], env: dict[str, str]) -> tuple[str, int, float]:
     script_path = Path(__file__).parent / script
     cmd = [sys.executable, str(script_path)] + extra_args
     log.info("=> %s  (%s)", name, " ".join(cmd))
     start = time.time()
-    proc = subprocess.run(cmd)
+    proc = subprocess.run(cmd, env=env)
     elapsed = time.time() - start
     status = "ok" if proc.returncode == 0 else f"FAILED rc={proc.returncode}"
     log.info("<= %s  %s  in %.1fs", name, status, elapsed)
@@ -101,9 +172,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run every Alliance fetcher in order")
     parser.add_argument("--only", help="Comma-separated subset of fetcher names to run")
     parser.add_argument("--skip", help="Comma-separated subset to skip")
+    parser.add_argument("--release", help="Alliance release to pin (default: env ALLIANCE_RELEASE)")
+    parser.add_argument("--allow-release-mismatch", action="store_true",
+                        help="Run even when the pinned release differs from /api/releaseInfo (smoke tests)")
+    parser.add_argument("--mods", help="Comma-separated MOD subset, exported as ALLIANCE_MODS")
     parser.add_argument("--limit", type=int, help="Pass --limit N through to each fetcher")
     parser.add_argument("--out-dir", help="Pass --out-dir through to each fetcher")
-    parser.add_argument("--ids", help="Pass --ids through to each fetcher (smoke tests)")
+    parser.add_argument("--ids", help="Pass --ids through to the gene-seeded fetchers (smoke tests)")
+    parser.add_argument("--workers", type=int, help="Pass --workers N through to the API fan-out fetchers")
+    parser.add_argument("--max-failure-rate", type=float,
+                        help="Pass --max-failure-rate through to the API fan-out fetchers")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--stop-on-error", action="store_true",
                         help="Abort immediately on any fetcher failure")
@@ -113,16 +191,31 @@ def main() -> None:
 
     only = set(n.strip() for n in args.only.split(",")) if args.only else None
     skip = set(n.strip() for n in args.skip.split(",")) if args.skip else set()
+    known = {name for name, _ in FETCHERS}
+    unknown = ((only or set()) | skip) - known
+    if unknown:
+        parser.error(f"unknown fetcher name(s): {', '.join(sorted(unknown))}")
 
-    extra: list[str] = []
+    env = dict(os.environ)
+    pinned = args.release or env.get("ALLIANCE_RELEASE", "").strip() or None
+    env["ALLIANCE_RELEASE"] = check_release(pinned, args.allow_release_mismatch)
+    if args.mods:
+        env["ALLIANCE_MODS"] = ",".join(parse_mods(args.mods))
+    log.info("Release %s, MODs %s", env["ALLIANCE_RELEASE"], env.get("ALLIANCE_MODS") or "all 9")
+
+    passthrough: dict[str, str | None] = {}
     if args.limit:
-        extra += ["--limit", str(args.limit)]
+        passthrough["--limit"] = str(args.limit)
     if args.out_dir:
-        extra += ["--out-dir", args.out_dir]
+        passthrough["--out-dir"] = args.out_dir
     if args.ids:
-        extra += ["--ids", args.ids]
+        passthrough["--ids"] = args.ids
+    if args.workers:
+        passthrough["--workers"] = str(args.workers)
+    if args.max_failure_rate is not None:
+        passthrough["--max-failure-rate"] = str(args.max_failure_rate)
     if args.verbose:
-        extra += ["--verbose"]
+        passthrough["--verbose"] = None
 
     results = []
     for name, script in FETCHERS:
@@ -131,19 +224,18 @@ def main() -> None:
         if name in skip:
             log.info("-- skipping %s", name)
             continue
-        result = run_one(name, script, extra)
+        result = run_one(name, script, args_for(name, script, passthrough), env)
         results.append(result)
         if args.stop_on_error and result[1] != 0:
             log.error("Stopping: %s failed", name)
             break
 
-    # Summary
     log.info("")
-    log.info("=== Summary ===")
+    log.info("=== Summary (release %s) ===", env["ALLIANCE_RELEASE"])
     any_failed = False
     for name, rc, elapsed in results:
         status = "ok" if rc == 0 else f"FAILED (rc={rc})"
-        log.info("  %-15s  %s  %.1fs", name, status, elapsed)
+        log.info("  %-20s  %s  %.1fs", name, status, elapsed)
         if rc != 0:
             any_failed = True
     sys.exit(1 if any_failed else 0)
