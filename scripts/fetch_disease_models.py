@@ -28,13 +28,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
-    enumerate_mod_genes,
+    finish_run,
     get_current_release,
     get_nested,
     join_pipe,
-    open_cache,
     paginate,
+    resolve_gene_ids,
+    run_parallel,
 )
 
 log = logging.getLogger("alliance.fetch.disease_models")
@@ -122,68 +124,57 @@ def _rows_for_result(seed_id: str, result: dict) -> list[dict]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance disease-model associations")
     parser.add_argument("--ids", help="Comma-separated gene CURIEs (skips enumeration)")
-    parser.add_argument("--mods", help=f"Comma-separated MOD list (default: {','.join(DEFAULT_MODS)})")
+    parser.add_argument(
+        "--mods",
+        help=f"Comma-separated MODs to seed from (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
+    )
     parser.add_argument("--limit", type=int, help="Process at most N genes")
     parser.add_argument(
         "--out-dir",
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     configure_logging(args.verbose)
 
-    if args.ids:
-        gene_ids = [g.strip() for g in args.ids.split(",") if g.strip()]
-    else:
-        mods = args.mods.split(",") if args.mods else DEFAULT_MODS
-        gene_ids = enumerate_mod_genes([m.strip() for m in mods])
-    if args.limit:
-        gene_ids = gene_ids[: args.limit]
-
-    log.info("Processing %d genes", len(gene_ids))
     release = get_current_release()
+    gene_ids = resolve_gene_ids(args.ids, args.mods, args.limit, default_mods=DEFAULT_MODS)
     out_dir = Path(args.out_dir)
-
-    try:
-        from tqdm import tqdm
-        iterator = tqdm(gene_ids, desc="genes", unit="gene")
-    except ImportError:
-        iterator = gene_ids
-
     stats = FetchStats()
     seen_keys: set = set()
+    total_rows = 0
+    genes_without_models = 0
 
-    with open_cache("disease_models") as cache, \
-         TsvWriter(
-             out_dir / "disease-models.tsv",
-             COLUMNS,
-             release=release,
-             source="/gene/*/models",
-         ) as writer:
-        total_rows = 0
-        skipped_empty = 0
-        for gid in iterator:
-            try:
-                page_had_results = False
-                for result in paginate(f"/gene/{gid}/models", cache=cache, stats=stats):
-                    page_had_results = True
-                    for row in _rows_for_result(gid, result):
-                        key = (row["modelId"], row["diseaseId"], row["subjectGeneId"])
-                        if key in seen_keys:
-                            continue
-                        seen_keys.add(key)
-                        writer.write_row(**row)
-                        total_rows += 1
-                if not page_had_results:
-                    skipped_empty += 1
-            except Exception as e:
-                log.warning("Disease-model fetch failed for %s: %s", gid, e)
+    def work(gid, cache, stats):
+        return list(paginate(f"/gene/{gid}/models", cache=cache, stats=stats))
 
-    log.info("Done. rows=%d  genes_without_models=%d  API stats: %s",
-             total_rows, skipped_empty, stats)
+    def consume(gid, results):
+        nonlocal total_rows, genes_without_models
+        if not results:
+            genes_without_models += 1
+        for result in results:
+            for row in _rows_for_result(gid, result):
+                key = (row["modelId"], row["diseaseId"], row["subjectGeneId"])
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                writer.write_row(**row)
+                total_rows += 1
 
+    with TsvWriter(
+        out_dir / "disease-models.tsv",
+        COLUMNS,
+        release=release,
+        source="/gene/*/models",
+    ) as writer:
+        report = run_parallel(gene_ids, work, consume, cache_name="disease_models", stats=stats,
+                              workers=args.workers, label="genes")
+
+    log.info("disease_models: rows=%d  genes_without_models=%d", total_rows, genes_without_models)
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 if __name__ == "__main__":
     main()

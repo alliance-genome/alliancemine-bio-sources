@@ -3,13 +3,15 @@
 Fetch molecular + genetic interactions from the Alliance API, emit two TSVs.
 
 Each gene gets two API calls (paginated) — one for each endpoint. Rows are
-written as interactions are discovered, deduplicated by the API's own
-`uniqueId` field so the converter doesn't need to dedupe again.
+deduplicated by the API's own `uniqueId` field so the converter doesn't need
+to dedupe again. A gene whose either endpoint fails is recorded as failed and
+contributes no rows; a rerun picks it up from the cache.
 
 Usage:
-    python3 fetch_interactions.py
+    python3 fetch_interactions.py                  # every gene of the 9 MODs
+    python3 fetch_interactions.py --mods SGD,HUMAN --workers 6
     python3 fetch_interactions.py --ids SGD:S000004103,SGD:S000002429
-    python3 fetch_interactions.py --limit 50   # yeast genome head-50 smoke test
+    python3 fetch_interactions.py --limit 50       # smoke test
 
 Output: data/molecular-interactions.tsv, data/genetic-interactions.tsv
 """
@@ -26,13 +28,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     FetchStats,
     TsvWriter,
+    add_parallel_args,
     configure_logging,
-    enumerate_yeast_genes,
+    finish_run,
     get_current_release,
     get_nested,
     join_pipe,
-    open_cache,
     paginate,
+    resolve_gene_ids,
+    run_parallel,
 )
 
 log = logging.getLogger("alliance.fetch.interactions")
@@ -180,105 +184,77 @@ def _row_for_interaction(gene_id: str, kind: str, wrapper: dict) -> dict:
     return row
 
 
-def fetch_for_gene(
-    gene_id: str,
-    mol_writer: TsvWriter,
-    gen_writer: TsvWriter,
-    seen_mol: set,
-    seen_gen: set,
-    *,
-    cache,
-    stats: FetchStats,
-) -> tuple[int, int]:
-    """Fetch both endpoints for one gene; return (mol_count, gen_count)."""
-    mol_count = 0
-    gen_count = 0
-    try:
-        for result in paginate(f"/gene/{gene_id}/molecular-interactions", cache=cache, stats=stats):
-            row = _row_for_interaction(gene_id, "molecular", result)
-            uid = row.get("uniqueId")
-            if uid and uid in seen_mol:
-                continue
-            if uid:
-                seen_mol.add(uid)
-            mol_writer.write_row(**row)
-            mol_count += 1
-    except Exception as e:
-        log.warning("Molecular fetch failed for %s: %s", gene_id, e)
+def fetch_for_gene(gene_id: str, cache, stats: FetchStats) -> tuple[list[dict], list[dict]]:
+    """Fetch both endpoints for one gene; return (molecular rows, genetic rows)."""
+    mol = [
+        _row_for_interaction(gene_id, "molecular", r)
+        for r in paginate(f"/gene/{gene_id}/molecular-interactions", cache=cache, stats=stats)
+    ]
+    gen = [
+        _row_for_interaction(gene_id, "genetic", r)
+        for r in paginate(f"/gene/{gene_id}/genetic-interactions", cache=cache, stats=stats)
+    ]
+    return mol, gen
 
-    try:
-        for result in paginate(f"/gene/{gene_id}/genetic-interactions", cache=cache, stats=stats):
-            row = _row_for_interaction(gene_id, "genetic", result)
-            uid = row.get("uniqueId")
-            if uid and uid in seen_gen:
-                continue
-            if uid:
-                seen_gen.add(uid)
-            gen_writer.write_row(**row)
-            gen_count += 1
-    except Exception as e:
-        log.warning("Genetic fetch failed for %s: %s", gene_id, e)
 
-    return mol_count, gen_count
+def _write_new(writer: TsvWriter, rows: list[dict], seen: set) -> int:
+    written = 0
+    for row in rows:
+        uid = row.get("uniqueId")
+        if uid and uid in seen:
+            continue
+        if uid:
+            seen.add(uid)
+        writer.write_row(**row)
+        written += 1
+    return written
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance interactions into TSVs")
     parser.add_argument("--ids", help="Comma-separated gene CURIEs (skips enumeration)")
+    parser.add_argument("--mods", help="Comma-separated MODs to seed from (default: all 9, env ALLIANCE_MODS)")
     parser.add_argument("--limit", type=int, help="Process at most N genes (for smoke tests)")
     parser.add_argument(
         "--out-dir",
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSVs (default: ../data)",
     )
+    add_parallel_args(parser)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     configure_logging(args.verbose)
 
-    if args.ids:
-        gene_ids = [g.strip() for g in args.ids.split(",") if g.strip()]
-    else:
-        gene_ids = enumerate_yeast_genes()
-    if args.limit:
-        gene_ids = gene_ids[: args.limit]
-
-    log.info("Processing %d genes", len(gene_ids))
     release = get_current_release()
+    gene_ids = resolve_gene_ids(args.ids, args.mods, args.limit)
     out_dir = Path(args.out_dir)
-
-    # Progress bar if available, otherwise fall through
-    try:
-        from tqdm import tqdm
-        iterator = tqdm(gene_ids, desc="genes", unit="gene")
-    except ImportError:
-        iterator = gene_ids
-
     stats = FetchStats()
     seen_mol: set = set()
     seen_gen: set = set()
+    totals = {"molecular": 0, "genetic": 0}
 
-    with open_cache("interactions") as cache, \
-         TsvWriter(
-             out_dir / "molecular-interactions.tsv",
-             MOLECULAR_COLUMNS,
-             release=release,
-             source=f"{getattr(cache, 'api_base', '')} /gene/*/molecular-interactions",
-         ) as mol_writer, \
-         TsvWriter(
-             out_dir / "genetic-interactions.tsv",
-             GENETIC_COLUMNS,
-             release=release,
-             source="/gene/*/genetic-interactions",
-         ) as gen_writer:
-        total_mol = total_gen = 0
-        for gid in iterator:
-            mol, gen = fetch_for_gene(gid, mol_writer, gen_writer, seen_mol, seen_gen, cache=cache, stats=stats)
-            total_mol += mol
-            total_gen += gen
+    with TsvWriter(
+        out_dir / "molecular-interactions.tsv",
+        MOLECULAR_COLUMNS,
+        release=release,
+        source="/gene/*/molecular-interactions",
+    ) as mol_writer, TsvWriter(
+        out_dir / "genetic-interactions.tsv",
+        GENETIC_COLUMNS,
+        release=release,
+        source="/gene/*/genetic-interactions",
+    ) as gen_writer:
+        def consume(_gid, result):
+            mol, gen = result
+            totals["molecular"] += _write_new(mol_writer, mol, seen_mol)
+            totals["genetic"] += _write_new(gen_writer, gen, seen_gen)
 
-    log.info("Done. Molecular rows: %d, genetic rows: %d", total_mol, total_gen)
-    log.info("API stats: %s", stats)
+        report = run_parallel(gene_ids, fetch_for_gene, consume, cache_name="interactions",
+                              stats=stats, workers=args.workers, label="genes")
+
+    log.info("interactions: molecular rows=%d  genetic rows=%d", totals["molecular"], totals["genetic"])
+    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 
 if __name__ == "__main__":
