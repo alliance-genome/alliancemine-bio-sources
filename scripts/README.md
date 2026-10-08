@@ -14,17 +14,19 @@ stable TSV.
 ## Running
 
 ```
-python3 scripts/fetch_all.py                              # every fetcher in order
+ALLIANCE_RELEASE=9.2.0 python3 scripts/fetch_all.py --out-dir /root/data/api   # build run
 python3 scripts/fetch_all.py --only genes,phenotypes      # subset
 python3 scripts/fetch_all.py --skip crispr_screens,string # exclude slow ones
-python3 scripts/fetch_all.py --limit 100                  # smoke test
+python3 scripts/fetch_all.py --mods SGD,MGI --limit 100 --allow-release-mismatch  # smoke test
 
 # direct invocation
-python3 scripts/fetch_interactions.py
-python3 scripts/fetch_interactions.py --ids 'SGD:S000004103,SGD:S000002429'
+python3 scripts/fetch_interactions.py                     # all 9 MODs, 6 workers
+python3 scripts/fetch_interactions.py --mods FB,WB --workers 4
+python3 scripts/fetch_interactions.py --ids 'SGD:S000004103,HGNC:1100'
 python3 scripts/fetch_disease_alleles.py --source api    # force API fallback
 python3 scripts/fetch_string.py --taxa 9606 --min-score 700
 python3 scripts/fetch_crispr_screens.py --mods MGI,FB    # skip 753MB HUMAN
+python3 -m unittest discover -s scripts/tests             # unit tests (stdlib only)
 ```
 
 Each fetcher writes TSVs under `data/` relative to the repo root (override
@@ -35,13 +37,48 @@ FMS gz payloads cache in `scripts/.fms_cache/`; STRING downloads cache in
 `fetch_all.py` is the Docker pipeline's pre-build step — it runs every fetcher
 in dependency order and exits non-zero if any fails.
 
+### Release pinning
+
+Every fetcher works against one release: `ALLIANCE_RELEASE` (or
+`fetch_all.py --release`). It selects the FMS files (most recent upload per
+dataSubType in that release's manifest), the BGI files the gene seeds come
+from, and the `# Alliance release:` line of each TSV header. Unpinned, a
+fetcher follows `/api/releaseInfo`, then FMS `releaseversion/current` — never
+the newest release by date, which FMS lists weeks before it is live.
+`fetch_all.py` refuses to start (exit 2) when the pin differs from
+`/api/releaseInfo`; `--allow-release-mismatch` overrides for smoke tests.
+
+### Seeding and throughput
+
+The per-entity API fetchers (`genes`, `interactions`, `orthologs`,
+`paralogs`, `phenotypes`, `disease_models`, `allele_detail`,
+`disease_annotations`, and the `--source api` paths) seed from the pinned
+release: genes from the 9 MODs' BGI files (369K genes in 9.1.0; per-MOD lists
+cached in `$ALLIANCE_FETCH_CACHE/gene-ids/<release>/`), alleles from the
+per-taxon `VARIANT-ALLELE` TSVs (538K), DOIDs from `DISEASE-ALLIANCE`
+COMBINED (6.7K). `--mods` / `ALLIANCE_MODS` narrow the MODs; `--ids` and
+`--limit` still work.
+
+They run `--workers` threads (default 6, `ALLIANCE_FETCH_WORKERS`); the AGR
+WAF answers HTTP 405 under heavier load and those are retried with backoff.
+Progress (done/total, entities/s, req/s, failures, throttled, ETA) is logged
+every 1000 entities or 60 s. A failed entity does not stop the run: failures
+and ids the API answers 400/404 for ("missing") are written to
+`<out-dir>/<fetcher>.failures.tsv`, and the fetcher exits non-zero only when
+failures exceed `--max-failure-rate` (default 0.5%). Successful responses are
+committed to the cache as they arrive, so a rerun resumes from it.
+
 ## Environment
 
 | Variable | Meaning | Default |
 |---|---|---|
 | `ALLIANCE_API_BASE` | API root | `https://www.alliancegenome.org/api` |
 | `ALLIANCE_FMS_BASE` | FMS root | `https://fms.alliancegenome.org/api` |
-| `ALLIANCE_FETCH_CACHE` | sqlite HTTP cache | `scripts/.cache/` |
+| `ALLIANCE_RELEASE` | pinned Alliance release | `/api/releaseInfo` |
+| `ALLIANCE_MODS` | MOD subset (narrows each fetcher's default) | all 9 |
+| `ALLIANCE_FETCH_WORKERS` | default `--workers` | `6` |
+| `ALLIANCE_MAX_FAILURE_RATE` | default `--max-failure-rate` | `0.005` |
+| `ALLIANCE_FETCH_CACHE` | sqlite HTTP cache + gene-id lists | `scripts/.cache/` |
 | `ALLIANCE_FMS_CACHE` | FMS gz cache | `scripts/.fms_cache/` |
 
 ## Fetchers

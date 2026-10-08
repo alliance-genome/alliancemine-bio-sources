@@ -61,9 +61,9 @@ Pattern: **Python fetcher → intermediate TSV → existing Java `BioFileConvert
     JSON              sqlite cache, TSV writer   schema per feed   as FMS-era converters
 ```
 
-Shared helpers in `scripts/common.py`: `http_get_json` (retry + sqlite cache), `paginate`, `intermine_paginate` (PathQuery REST against sister InterMine instances), `TsvWriter` (atomic, header-commented), `open_cache`, `FetchStats`, `configure_logging`, `get_nested`, `join_pipe`, `get_current_release`, `enumerate_yeast_genes`, `enumerate_mod_genes`. Each fetcher is a thin layer on top — see `scripts/README.md` for the current catalogue and how to run them.
+Shared helpers in `scripts/common.py`: `http_get_json` (retry + sqlite cache), `paginate`, `intermine_paginate` (PathQuery REST against sister InterMine instances), `TsvWriter` (atomic, header-commented), `open_cache`, `FetchStats`, `configure_logging`, `get_nested`, `join_pipe`, `get_current_release` (honours `ALLIANCE_RELEASE`), `enumerate_mod_genes` / `resolve_gene_ids` / `selected_mods` (all 9 MODs by default, `--mods` / `ALLIANCE_MODS`), `run_parallel` + `finish_run` (bounded `--workers` fan-out, failure-rate exit). Unit tests: `python3 -m unittest discover -s scripts/tests`. Each fetcher is a thin layer on top — see `scripts/README.md` for the current catalogue and how to run them.
 
-`fetch_all.py` is the orchestrator (`python3 scripts/fetch_all.py`, with `--only <names>` and `--limit N` for smoke testing) that the Docker pipeline should invoke as a single pre-build step. It runs the API-backed fetchers in order and exits non-zero on any failure.
+`fetch_all.py` is the orchestrator (`python3 scripts/fetch_all.py`, with `--only <names>`, `--mods`, `--limit N`, `--workers N` for smoke testing) that the Docker pipeline should invoke as a single pre-build step. It checks the pinned release (`--release` / `ALLIANCE_RELEASE`) against `/api/releaseInfo` first (exit 2 on mismatch unless `--allow-release-mismatch`), runs the fetchers in order and exits non-zero on any failure.
 
 **Not every fetcher hits the Alliance API.** Some MOD-curated entities (mouse strains, worm RNAi screens) live only in their MOD's own InterMine instance, so the corresponding fetchers run PathQuery REST against MouseMine / WormMine via `intermine_paginate`. They share the same TSV-output contract as the Alliance-API fetchers.
 
@@ -118,7 +118,7 @@ Today's fetcher-backed sources (each driven by a paired `fetch_*.py` script). Th
 
 **Enrichment-merge pattern**: the `*-detail` bio-source modules don't own their target class. They emit *partial* items keyed on a shared integration key (e.g. `Allele.key_alleleid`, `Homologue.key_pair`, `DiseaseAnnotation.key_subject_term`) so InterMine's integration engine merges them into the items produced by the primary source. This keeps each fetcher + converter focused on one API endpoint without forcing the primary converter to know about all enrichment columns.
 
-**Seed gene-ID lists**: `scripts/common.enumerate_yeast_genes()` currently pulls from the FMS BGI SGD export (still functional). `enumerate_mod_genes(mods)` is the cross-MOD generalisation — same FMS-BGI shape, takes a list of MOD prefixes. Once FMS is fully deprecated both need a replacement source — a plausible future home is the API itself if a paginated `/gene` list lands, or MOD-specific exports (SGD publishes a `chromosomal_feature.tab`).
+**Seed gene-ID lists**: `scripts/common.enumerate_mod_genes(mods)` reads the pinned release's FMS BGI files (all 9 MODs by default) and caches the per-MOD lists under `$ALLIANCE_FETCH_CACHE/gene-ids/<release>/`. Once FMS is fully deprecated both need a replacement source — a plausible future home is the API itself if a paginated `/gene` list lands, or MOD-specific exports (SGD publishes a `chromosomal_feature.tab`).
 
 ## Code Conventions
 
