@@ -138,7 +138,11 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
             allele = createItem("Allele");
             allele.setAttribute("featureType", "Allele");
-            if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("alleleId", alleleId);
+            if (StringUtils.isNotEmpty(alleleId)) {
+                allele.setAttribute("alleleId", alleleId);
+                // Merge key shared with the sgd source (SGD alleles carry "SGD:" + alleleSgdid).
+                allele.setAttribute("primaryIdentifier", alleleId);
+            }
             if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
             //if (StringUtils.isNotEmpty(alleleSynonym)) allele.setAttribute("alleleSynonym", alleleSynonym);
             if (StringUtils.isNotEmpty(alleleType)) allele.setAttribute("alleleType", alleleType);

@@ -399,7 +399,11 @@ public class SgdConverter extends BioDBConverter {
 					if (StringUtils.isNotEmpty(name)) allele.setAttribute("name", name);
 					if (StringUtils.isNotEmpty(description)) allele.setAttribute("description", description);
 					if (StringUtils.isNotEmpty(aclass)) allele.setAttribute("alleleClass", aclass);
-					if (StringUtils.isNotEmpty(alleleSgdid)) allele.setAttribute("alleleSgdid", alleleSgdid);
+					if (StringUtils.isNotEmpty(alleleSgdid)) {
+						allele.setAttribute("alleleSgdid", alleleSgdid);
+						// Same CURIE alliance-alleles uses as alleleId, so both copies merge on primaryIdentifier.
+						allele.setAttribute("primaryIdentifier", "SGD:" + alleleSgdid);
+					}
 					if (StringUtils.isNotEmpty(aliasName)) allele.setAttribute("aliasName", aliasName);
 
 					if(pmrefNo != null ) {
@@ -1275,12 +1279,14 @@ public class SgdConverter extends BioDBConverter {
 
 			String fixed_chromosome_no = getFixedChrName(chromosome_no);
 
-			// figure out why duplicates in the SQL..???..
-			/*if (featureMap.get(geneChildFeatureNo) == null) {
-				featureMap.put(geneChildFeatureNo, geneFeatureNo);
-			} else {
+			// The SQL repeats some rows (e.g. telomeric_repeat), which breaks integration with
+			// "Duplicate objects for pk". Skip exact repeats only: the segments of one feature
+			// (CDS pieces, introns) share child_id, so child_id alone would drop all but the first.
+			String childKey = geneChildFeatureNo + "|" + childFeatureType + "|" + mincoord + "|" + maxcoord;
+			if (featureMap.containsKey(childKey)) {
 				continue;
-			}*/
+			}
+			featureMap.put(childKey, geneFeatureNo);
 
 			Item parent = genes.get(geneFeatureNo);
 			// create the child Item
