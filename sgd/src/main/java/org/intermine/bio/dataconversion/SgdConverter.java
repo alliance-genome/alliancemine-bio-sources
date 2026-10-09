@@ -1258,10 +1258,12 @@ public class SgdConverter extends BioDBConverter {
 
 			String chromosome_no = res.getString("format_name"); //root chr.number
 			//String secondaryIdentifier = res.getString("child_identifier"); //child identifier is wrong -- fix it 11/13
-			String primaryIdentifier = res.getString("child_sgdid")+"_C"; // SXX
-
 			String maxcoord = res.getString("child_end_coord");
 			String mincoord = res.getString("child_start_coord");
+			// child_id and child_sgdid are the parent locus, shared by all its CDS pieces, introns
+			// and other subfeatures, so type and coordinates are needed to tell them apart.
+			String primaryIdentifier = res.getString("child_sgdid") + "_" + childFeatureType
+					+ "_" + mincoord + "_" + maxcoord;
 			String strand = res.getString("strand");
 
 			String seq = res.getString("residues");
@@ -1279,14 +1281,11 @@ public class SgdConverter extends BioDBConverter {
 
 			String fixed_chromosome_no = getFixedChrName(chromosome_no);
 
-			// The SQL repeats some rows (e.g. telomeric_repeat), which breaks integration with
-			// "Duplicate objects for pk". Skip exact repeats only: the segments of one feature
-			// (CDS pieces, introns) share child_id, so child_id alone would drop all but the first.
-			String childKey = geneChildFeatureNo + "|" + childFeatureType + "|" + mincoord + "|" + maxcoord;
-			if (featureMap.containsKey(childKey)) {
+			// The SQL repeats some rows (e.g. telomeric_repeat); skip exact repeats.
+			if (featureMap.containsKey(primaryIdentifier)) {
 				continue;
 			}
-			featureMap.put(childKey, geneFeatureNo);
+			featureMap.put(primaryIdentifier, geneFeatureNo);
 
 			Item parent = genes.get(geneFeatureNo);
 			// create the child Item
