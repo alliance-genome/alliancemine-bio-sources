@@ -184,11 +184,11 @@ public class AllianceAllelesConverter extends BioFileConverter {
 
             allele = createItem("Allele");
             allele.setAttribute("featureType", "Allele");
-            // D2: primaryIdentifier must be set so the integration engine can
-            // merge AGR-source alleles with SGD-source alleles via the unified
-            // Allele.key_primaryidentifier = primaryIdentifier, organism key.
-            if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("primaryIdentifier", alleleId);
-            if (StringUtils.isNotEmpty(alleleId)) allele.setAttribute("alleleId", alleleId);
+            if (StringUtils.isNotEmpty(alleleId)) {
+                allele.setAttribute("alleleId", alleleId);
+                // Merge key shared with the sgd source (SGD alleles carry "SGD:" + alleleSgdid).
+                allele.setAttribute("primaryIdentifier", alleleId);
+            }
             if (StringUtils.isNotEmpty(alleleSymbol)) allele.setAttribute("alleleSymbol", alleleSymbol);
             // Allele.synonyms is inherited from BioEntity; emit one Synonym item per pipe-separated token.
             createSynonyms(allele, alleleSynonym);

@@ -397,14 +397,14 @@ public class SgdConverter extends BioDBConverter {
 
 					allele = createItem("Allele");
 					allele.setAttribute("featureType", "Allele");
-					// D2: primaryIdentifier must be set so the integration engine can
-					// merge SGD-source alleles with AGR-source alleles via the unified
-					// Allele.key_primaryidentifier = primaryIdentifier, organism key.
-					if (StringUtils.isNotEmpty(alleleSgdid)) allele.setAttribute("primaryIdentifier", alleleSgdid);
 					if (StringUtils.isNotEmpty(name)) allele.setAttribute("name", name);
 					if (StringUtils.isNotEmpty(description)) allele.setAttribute("description", description);
 					if (StringUtils.isNotEmpty(aclass)) allele.setAttribute("alleleClass", aclass);
-					if (StringUtils.isNotEmpty(alleleSgdid)) allele.setAttribute("alleleSgdid", alleleSgdid);
+					if (StringUtils.isNotEmpty(alleleSgdid)) {
+						allele.setAttribute("alleleSgdid", alleleSgdid);
+						// Same CURIE alliance-alleles uses as alleleId, so both copies merge on primaryIdentifier.
+						allele.setAttribute("primaryIdentifier", "SGD:" + alleleSgdid);
+					}
 					if (StringUtils.isNotEmpty(aliasName)) allele.setAttribute("aliasName", aliasName);
 
 					if(pmrefNo != null ) {
@@ -1259,10 +1259,12 @@ public class SgdConverter extends BioDBConverter {
 
 			String chromosome_no = res.getString("format_name"); //root chr.number
 			//String secondaryIdentifier = res.getString("child_identifier"); //child identifier is wrong -- fix it 11/13
-			String primaryIdentifier = res.getString("child_sgdid")+"_C"; // SXX
-
 			String maxcoord = res.getString("child_end_coord");
 			String mincoord = res.getString("child_start_coord");
+			// child_id and child_sgdid are the parent locus, shared by all its CDS pieces, introns
+			// and other subfeatures, so type and coordinates are needed to tell them apart.
+			String primaryIdentifier = res.getString("child_sgdid") + "_" + childFeatureType
+					+ "_" + mincoord + "_" + maxcoord;
 			String strand = res.getString("strand");
 
 			String seq = res.getString("residues");
@@ -1280,12 +1282,11 @@ public class SgdConverter extends BioDBConverter {
 
 			String fixed_chromosome_no = getFixedChrName(chromosome_no);
 
-			// figure out why duplicates in the SQL..???..
-			/*if (featureMap.get(geneChildFeatureNo) == null) {
-				featureMap.put(geneChildFeatureNo, geneFeatureNo);
-			} else {
+			// The SQL repeats some rows (e.g. telomeric_repeat); skip exact repeats.
+			if (featureMap.containsKey(primaryIdentifier)) {
 				continue;
-			}*/
+			}
+			featureMap.put(primaryIdentifier, geneFeatureNo);
 
 			Item parent = genes.get(geneFeatureNo);
 			// create the child Item
