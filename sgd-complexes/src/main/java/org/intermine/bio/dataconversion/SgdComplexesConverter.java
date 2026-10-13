@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -46,11 +46,11 @@ public class SgdComplexesConverter extends BioDBConverter
 
     // accession to stored object ID
     private Map<String, String> interactors = new HashMap<String, String>();
-    private Map<String, String> synonyms = new HashMap();
+    private Map<String, String> synonyms = new HashMap<String, String>();
     private final Map<String, Item> ecoMap = new HashMap<String, Item>();
-    private Map<String, Item> publications = new HashMap();
+    private Map<String, Item> publications = new HashMap<String, Item>();
     private Map<String, String> terms = new HashMap<String, String>();
-    private Map<String, Item> complexes = new HashMap();
+    private Map<String, Item> complexes = new HashMap<String, Item>();
     private final Map<String, Item> proteins = new HashMap<String, Item>();
     private final Map<String, Item> otherinteractors = new HashMap<String, Item>();
 
@@ -106,7 +106,7 @@ public class SgdComplexesConverter extends BioDBConverter
             Long[] pmids = (Long[])pubs.getArray();
             Array gos = res.getArray("goids");
             String[] goids = (String[])gos.getArray();
-            System.out.println("productId is "+ productId);
+            LOG.info("productId is "+ productId);
             processComplex(complex_accession, intact_id, systematic_name, description, properties, display_name, eco_id, synonyms, pmids, goids);
         }
     }
@@ -317,7 +317,7 @@ public class SgdComplexesConverter extends BioDBConverter
             Item gene1 = null;
 
             if(type.equalsIgnoreCase("protein") && dbentity1 != null){
-                System.out.println("in type equals protein" + "   "+dbentity1 + "   "+ complex_accession);
+                LOG.debug("in type equals protein" + "   "+dbentity1 + "   "+ complex_accession);
                 gene1 = getProteinItem(dbentity1);
             }else{
                 gene1 = getOtherItem(type, int_display_name, int_format_name);

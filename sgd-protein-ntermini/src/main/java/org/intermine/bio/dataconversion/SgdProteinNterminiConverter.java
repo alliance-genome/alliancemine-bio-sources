@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2011 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -71,7 +71,7 @@ public class SgdProteinNterminiConverter extends BioFileConverter
 		 * Sample line 
 		 * YDL141W BPL1    n-termini       acetylation     1       22729381   
 		 */   	 
-		System.out.println("Processing Protien N-terminus Modification Data  file....");    
+		LOG.info("Processing Protein N-terminus Modification Data file....");
 
 		Iterator<?> tsvIter;
 		try {
@@ -84,9 +84,9 @@ public class SgdProteinNterminiConverter extends BioFileConverter
 
 			String[] line = (String[]) tsvIter.next();
 
-			if (line.length < 5) {
-				LOG.error("Couldn't process line. Expected 5 cols, but was " + line.length);
-				System.out.println("line skipped: " + line.length);
+			if (line.length < 7) {
+				LOG.error("Couldn't process line. Expected 7 cols, but was " + line.length);
+				LOG.warn("line skipped: " + line.length);
 				continue;
 
 			}

@@ -1,0 +1,145 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+AllianceMine bio-sources: a collection of **InterMine** data loaders that integrate biological data (genes, alleles, orthologs, ontologies, expression, interactions, etc.) from the Alliance of Genome Resources (AGR), SGD, and homology databases into a unified genomic data warehouse.
+
+Each top-level directory (e.g. `alliance-genes`, `sgd`, `mpo`, `hpo`, `sgd-gff`) is an independent Gradle subproject — a **"bio-source"** that parses one dataset and produces InterMine `Item` XML consumed by a downstream mine build.
+
+## Build / Test
+
+Version pins live in `gradle.properties` (`imVersion`, `bioVersion` — currently `5.1.0`). These are read via `System.getProperty` in the root `build.gradle`, so Gradle invocations already pick them up from `gradle.properties`.
+
+- **Build everything**: `./gradlew build`
+- **Build one module**: `./gradlew :bio-source-alliance-genes:build` (note the `bio-source-` prefix — see `settings.gradle`)
+- **Run all tests**: `./gradlew test` (runs with `ignoreFailures = true` and `forkEvery = 1`)
+- **Run one module's tests**: `./gradlew :bio-source-sgd:test`
+- **Aggregate report**: `./gradlew testReport` → `build/reports/allTests`
+- **Clean build**: `./gradlew clean build`
+
+Tests use `scanForTestClasses = false` and only include `**/*Test.class`, so test class filenames *must* end in `Test`.
+
+## Architecture
+
+### How a bio-source is wired up
+
+Every module follows the same InterMine convention — understanding it means you can navigate any module quickly:
+
+1. **`{module}.properties`** (at module root) declares the source type to the InterMine integration engine:
+   - `have.file.custom.tgt = true` → custom file parser (most Alliance sources, e.g. `alliance-genes`)
+   - `have.db.tgt = true` → reads from a SQL database (e.g. `sgd`, which has both `SgdConverter` and `SgdProcessor`)
+   - `have.file.obo = true` → OBO ontology loader with metadata like `obo.ontology.name` (e.g. `mpo`, `hpo`, `pato`)
+   - `converter.class` → fully qualified Java class under `org.intermine.bio.dataconversion`
+2. **`src/main/java/org/intermine/bio/dataconversion/{Name}Converter.java`** implements the parser. Custom file converters extend `BioFileConverter`; DB converters follow a `Converter` + `Processor` split (see `sgd/`). Parsers read input with `FormattedTextParser`, emit `Item`s via the inherited `ItemWriter`, and typically cache chromosomes/genes/synonyms in local `Map`s to de-duplicate refs.
+3. **`src/main/resources/{module}_additions.xml`** extends the genomic data model with classes/attributes/references specific to this source. This file is merged with the root `alliancemine-global_additions.xml` by the `biosource-dbmodel` Gradle plugin (see `bioSourceDBModelConfig.globalAdditionsFile` in root `build.gradle`).
+4. **`src/main/resources/{module}_keys.properties`** defines the **primary keys** the InterMine integration engine uses to merge records across sources (e.g. `Gene.key_primaryidentifier = primaryIdentifier, organism`). Getting these wrong silently produces duplicate objects.
+5. **`src/test/java/.../{Name}ConverterTest.java`** extends `ItemsTestCase` and compares produced items against a fixture XML in `src/test/resources`.
+
+### Root-level wiring
+
+- **`settings.gradle`** — registers every module with a `bio-source-` prefix (e.g. directory `alliance-genes/` → project `:bio-source-alliance-genes`). **Directories on disk without a matching entry here (e.g. `diopt-orthologs/`, `sgd-complementation/`, `psi-complexes/`, `psi-mi-ontology/`) are NOT in the build** — treat them as archived/WIP until added to `settings.gradle`.
+- **`build.gradle`** — `subprojects {}` block applies the `dbmodel` + `biosource-dbmodel` InterMine Gradle plugins, pins Java 1.8, declares shared dependencies (`bio-core`, `intermine-integrate`, `commons-collections`, `junit 4.8.2`, `xmlunit`), and configures the global additions merge. Each module's own `build.gradle` is usually minimal — just a `sourceSets {}` override (including `build/gen` for generated code) and `processResources { from('.') { include ("*.properties")} }` to pick up `{module}.properties`.
+- **`alliancemine-global_additions.xml`** — mine-wide model extensions (custom classes like `ARS`, `Allele`, `AlleleInteraction`, plus attribute additions to standard InterMine types). Edit with care: changes affect every module's generated model.
+
+### Adding a new bio-source
+
+1. Create the directory and mirror the layout of an existing similar module (file-based → copy `alliance-genes`, DB-based → copy `sgd`, ontology → copy `mpo`).
+2. Add the module to `settings.gradle` using the `bio-source-{name}` naming convention.
+3. Write the converter, `_additions.xml`, and `_keys.properties`. Declare the target type in `{module}.properties`.
+
+### API-backed sources (`scripts/` + fetcher pattern)
+
+The Alliance's FMS file-distribution service is being wound down. New data feeds — and existing feeds that need richer shapes than FMS ever surfaced — come via the **live API at `https://www.alliancegenome.org/api`**. The API is per-entity JSON (no bulk endpoint), so a direct Java-side HTTP fan-out would be the wrong place for retry / pagination / caching logic.
+
+Pattern: **Python fetcher → intermediate TSV → existing Java `BioFileConverter`**. All the messy HTTP plumbing lives under `scripts/`; the Java converters keep the same TSV-reader shape they always had.
+
+```
+[Alliance API] ---> [scripts/fetch_*.py]  ---> [data/*.tsv]  ---> [Java BioFileConverter]
+    per-entity        pagination, retry,         stable column     reads TSV, same pattern
+    JSON              sqlite cache, TSV writer   schema per feed   as FMS-era converters
+```
+
+Shared helpers in `scripts/common.py`: `http_get_json` (retry + sqlite cache), `paginate`, `intermine_paginate` (PathQuery REST against sister InterMine instances), `TsvWriter` (atomic, header-commented), `open_cache`, `FetchStats`, `configure_logging`, `get_nested`, `join_pipe`, `get_current_release` (honours `ALLIANCE_RELEASE`), `enumerate_mod_genes` / `resolve_gene_ids` / `selected_mods` (all 9 MODs by default, `--mods` / `ALLIANCE_MODS`), `run_parallel` + `finish_run` (bounded `--workers` fan-out, failure-rate exit). Unit tests: `python3 -m unittest discover -s scripts/tests`. Each fetcher is a thin layer on top — see `scripts/README.md` for the current catalogue and how to run them.
+
+`fetch_all.py` is the orchestrator (`python3 scripts/fetch_all.py`, with `--only <names>`, `--mods`, `--limit N`, `--workers N` for smoke testing) that the Docker pipeline should invoke as a single pre-build step. It checks the pinned release (`--release` / `ALLIANCE_RELEASE`) against `/api/releaseInfo` first (exit 2 on mismatch unless `--allow-release-mismatch`), runs the fetchers in order and exits non-zero on any failure.
+
+**Not every fetcher hits the Alliance API.** Some MOD-curated entities (mouse strains, worm RNAi screens) live only in their MOD's own InterMine instance, so the corresponding fetchers run PathQuery REST against MouseMine / WormMine via `intermine_paginate`. They share the same TSV-output contract as the Alliance-API fetchers.
+
+Today's fetcher-backed sources (each driven by a paired `fetch_*.py` script). The catalog grew substantially in May 2026 as FMS bulk replaced WAF-throttled API per-entity calls; see `scripts/README.md` for the full per-fetcher reference + output volumes.
+
+**API-driven per-gene** (primary identifier + enrichment passes):
+
+| Source module | Fetcher script | Endpoint(s) | Emitted TSV |
+|---|---|---|---|
+| `alliance-genes` | `fetch_genes.py` | `/gene/{id}` | `alliance-genes.tsv` |
+| `alliance-genetic-interactions` | `fetch_interactions.py` | `/gene/{id}/genetic-interactions` | `genetic-interactions.tsv` |
+| `alliance-molecular-interactions` | `fetch_interactions.py` | `/gene/{id}/molecular-interactions` | `molecular-interactions.tsv` |
+| `alliance-orthologs` / `alliance-ortholog-detail` | `fetch_orthologs.py` | `/gene/{id}/orthologs` | `orthologs.tsv` |
+| `alliance-paralogs` | `fetch_paralogs.py` | `/gene/{id}/paralogs` | `paralogs.tsv` |
+| `alliance-phenotypes` | `fetch_phenotypes.py` | `/gene/{id}/phenotypes` | `phenotypes.tsv` |
+| `alliance-disease-models` | `fetch_disease_models.py` | `/gene/{id}/models` | `disease-models.tsv` |
+| `alliance-allele-detail` | `fetch_allele_detail.py` | `/allele/{id}` | `allele-detail.tsv` |
+| `alliance-disease-detail` | `fetch_disease_annotations.py` | `/disease/{id}/genes` | `disease-annotations-detail.tsv` |
+
+**FMS bulk** (default `--source fms`, with `--source api` fallback where the API also serves the endpoint):
+
+| Source module | Fetcher script | FMS datatype | Emitted TSV |
+|---|---|---|---|
+| `alliance-transgenic-alleles` | `fetch_transgenic_alleles.py` | `CONSTRUCT` + `ALLELE` | `transgenic-alleles.tsv` |
+| `alliance-disease-alleles` | `fetch_disease_alleles.py` | `DAF` (objectType=allele) | `disease-alleles.tsv` |
+| `alliance-experimental-disease` | `fetch_experimental_disease.py` | `DAF` (objectType=gene + primaryGeneticEntityIDs) | `experimental-disease.tsv` |
+| `alliance-variants` | `fetch_variants.py` | `VARIANT-ALLELE-JSON` per taxon | `variants.tsv` |
+| `alliance-gene-descriptions` | `fetch_gene_descriptions.py` | `GENE-DESCRIPTION-JSON` | `gene-descriptions.tsv` |
+| `alliance-agms` | `fetch_agms.py` | `AGM` | `agms.tsv` (emits DiseaseModel + Strain when `subtype=strain`) |
+| `alliance-allele-phenotypes` | `fetch_allele_phenotypes.py` | `PHENOTYPE` (filtered to primaryGeneticEntityIDs) | `allele-phenotypes.tsv` |
+| `alliance-htp` | `fetch_htp.py` | `HTPDATASET` + `HTPDATASAMPLE` | `htp-datasets.tsv` + `htp-samples.tsv` |
+| `alliance-gene-crossrefs` | `fetch_gene_crossrefs.py` | `GENECROSSREFERENCEJSON` | `gene-crossrefs.tsv` |
+| `alliance-molecules` | `fetch_molecules.py` | `MOLECULE` | `molecules.tsv` |
+
+**External sources** (non-FMS, non-Alliance-API):
+
+| Source module | Fetcher script | Upstream | Emitted TSV |
+|---|---|---|---|
+| `alliance-alphafold` | `fetch_alphafold.py` | URL template against EBI AlphaFold (synthesised from `gene-crossrefs.tsv` UniProt rows — runs AFTER `fetch_gene_crossrefs.py`) | `alphafold.tsv` |
+| `alliance-string` | `fetch_string.py` | STRING DB v12 (`stringdb-downloads.org`) | `string-interactions.tsv` |
+| `alliance-crispr-screens` | `fetch_crispr_screens.py` | FMS `BIOGRID-ORCS` (streaming tar-extract, HIT=YES filter) | `crispr-screens.tsv` |
+| `alliance-chembl` | `fetch_chembl.py` | EBI FTP `chembl_uniprot_mapping.txt` | `chembl-targets.tsv` |
+
+**Cross-mine federation** (PathQuery REST):
+
+| Source module | Fetcher script | Upstream | Emitted TSV |
+|---|---|---|---|
+| `alliance-mouse-strains` | `fetch_mousemine_strains.py` | MouseMine PathQuery | `mouse-strains.tsv` |
+| `alliance-worm-rnai` | `fetch_wormmine_rnai.py` | WormMine PathQuery | `worm-rnai.tsv` |
+
+**Column-schema coupling**: each Python fetcher's `COLUMNS` list and each Java converter's `COL_*` constants must stay in lockstep. When adding a new column, update both.
+
+**Enrichment-merge pattern**: the `*-detail` bio-source modules don't own their target class. They emit *partial* items keyed on a shared integration key (e.g. `Allele.key_alleleid`, `Homologue.key_pair`, `DiseaseAnnotation.key_subject_term`) so InterMine's integration engine merges them into the items produced by the primary source. This keeps each fetcher + converter focused on one API endpoint without forcing the primary converter to know about all enrichment columns.
+
+**Seed gene-ID lists**: `scripts/common.enumerate_mod_genes(mods)` reads the pinned release's FMS BGI files (all 9 MODs by default) and caches the per-MOD lists under `$ALLIANCE_FETCH_CACHE/gene-ids/<release>/`. Once FMS is fully deprecated both need a replacement source — a plausible future home is the API itself if a paginated `/gene` list lands, or MOD-specific exports (SGD publishes a `chromosomal_feature.tab`).
+
+## Code Conventions
+
+- **Java 8** (`sourceCompatibility = 1.8`), 4-space indentation, braces on same line.
+- License header: `Copyright (C) 2002-YYYY AllianceMine` LGPL block at the top of every converter (copy from a neighboring file).
+- Logging: Log4j (`intermine-resources` provides it), not `System.out`. The sanitization pass migrated every converter; new code should follow.
+- Null/empty checks: use `StringUtils` from `commons-lang` (already imported in most converters).
+- Identifier naming in model: `primaryIdentifier` + `secondaryIdentifier` (case-sensitive, matters for key resolution).
+
+## Repository Hygiene
+
+- `bin/`, `build/`, `.gradle/`, `scripts/.cache/` are generated — root `.gitignore` covers them; do not commit.
+- `intermine.log` and `query.log` are runtime artifacts from local mine builds.
+- The global git rule (from `~/.claude/CLAUDE.md`): **never add "Claude" references or co-authorship to commit messages**.
+
+## Known cross-repo TODOs
+
+These belong in sibling repos, not here, but future sessions working on AllianceMine-wide issues should be aware:
+
+- **`alliancemine/project.xml` references `EXPRESSION-ALLIANCE_*.tsv`** (glob — was historically header-only `EXPRESSION-ALLIANCE_COMBINED.tsv`). Verified 2026-05-13 that FMS `EXPRESSION-ALLIANCE/COMBINED/` shards are POPULATED (1.77M rows in shard 0 alone), so the historical workaround note about per-MOD files is no longer accurate. Open gap: there's no Python fetcher for `EXPRESSION-ALLIANCE` — the docker pipeline pre-downloads it. See `docs/2026-05-13-fetcher-coverage-audit.md` for the recommended `fetch_expression.py` skeleton.
+- **`alliance-alleles` source points at `VARIANT-ALLELE_COMBINED.tsv`** which is **frozen at FMS release 4.0.0** — the file is no longer published for 9.0.0. The module currently won't integrate against a clean FMS pull. Two paths forward: retire `alliance-alleles` (other allele-flavoured sources cover the surface), or add `fetch_alleles.py` reading the FMS `ALLELE/{MOD}` datatype (we already use it in `fetch_transgenic_alleles.py`).
+- **`alliance-disease` relies on docker pre-pull** of `DISEASE-ALLIANCE_COMBINED.tsv`. Datatype is still in 9.0.0 (14 shards); a `fetch_disease.py` would make the local pipeline self-contained.
+- **`agr_intermine_builder/docker/alliancemine/`** Dockerfile currently drives the FMS pull via `legacy/alliancemine-unified/download_data.py`. Add a step to run `python3 scripts/fetch_all.py` before the gradle build so the new TSVs under `data/` exist by the time the converters run.
+- **AllianceGenesConverter's input path**: `project.xml` currently points at `/root/data/genes/` (a locally-built TSV). The new `scripts/fetch_genes.py` emits `data/alliance-genes.tsv` with the same 14-column schema + 3 enrichment columns. `project.xml` needs updating when the migration lands.

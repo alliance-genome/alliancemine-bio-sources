@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2016 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -12,9 +12,10 @@ package org.intermine.bio.dataconversion;
 import java.io.Reader;
 import java.util.*;
 
-import org.intermine.metadata.Model;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
 import org.intermine.xml.full.Item;
@@ -25,13 +26,15 @@ import org.intermine.xml.full.Item;
  */
 public class AllianceExpressionConverter extends BioFileConverter {
 
+    private static final Logger LOG = Logger.getLogger(AllianceExpressionConverter.class);
+
     private static final String DATASET_TITLE = "Alliance WT Expression data set";
     private static final String DATA_SOURCE_NAME = "Alliance WT Expression";
     private String licence;
-    private Map<String, Item> genes = new HashMap();
-    private Map<Item, Item> expannotations = new HashMap();
-    private Map<String, Item> ontoTerms = new HashMap();
-    private Map<String, Item> publications = new HashMap();
+    private Map<String, Item> genes = new HashMap<String, Item>();
+    private Map<Item, Item> expannotations = new HashMap<Item, Item>();
+    private Map<String, Item> ontoTerms = new HashMap<String, Item>();
+    private Map<String, Item> publications = new HashMap<String, Item>();
 
     /**
      * Construct a new AllianceGenesConverter.
@@ -57,7 +60,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
-        System.out.println("Processing Expression...");
+        LOG.info("Processing Expression...");
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if(count < 15 ) { count++; continue;}
@@ -69,15 +72,22 @@ public class AllianceExpressionConverter extends BioFileConverter {
             String stageterm = line[5];
             String assayID = line[6];
             String cellularcomponentID = line[8];
+            String cellularQualIds = line[10];
+            String cellularQualTerms = line[11];
             String substructureID = line[12];
+            String substructureQualIds = line[14];
+            String substructureQualTerms = line[15];
             String anatomyID = line[16];
+            String anatomyQualIds = line[18];
+            String anatomyQualTerms = line[19];
             String sourceUrl = line[20];
             String source = line[21];
             String reference = line[22];
-            processExpressionAnnotation(geneId, org, location, stageterm, assayID, cellularcomponentID, substructureID,
-                    anatomyID, sourceUrl, source, reference);
+            processExpressionAnnotation(geneId, org, location, stageterm, assayID, cellularcomponentID,
+                    cellularQualIds, cellularQualTerms, substructureID, substructureQualIds, substructureQualTerms,
+                    anatomyID, anatomyQualIds, anatomyQualTerms, sourceUrl, source, reference);
         }
-        System.out.println("size of expannots genes:  " + genes.size());
+        LOG.info("size of expannots genes: " + genes.size());
         storeOntologyTerms();
         storeExpAnnotations();
         storeGenes();
@@ -98,8 +108,11 @@ public class AllianceExpressionConverter extends BioFileConverter {
      * @param ref
      * @throws ObjectStoreException
      */
-    private void processExpressionAnnotation(String g, String o, String loc, String stage, String assay, String cellular, String structure,
-                                   String anatomy, String sourceurl, String source, String ref)
+    private void processExpressionAnnotation(String g, String o, String loc, String stage, String assay,
+                                   String cellular, String cellularQualIds, String cellularQualTerms,
+                                   String structure, String structureQualIds, String structureQualTerms,
+                                   String anatomy, String anatomyQualIds, String anatomyQualTerms,
+                                   String sourceurl, String source, String ref)
             throws ObjectStoreException {
 
         Item gene = getGene(g, o);
@@ -116,6 +129,14 @@ public class AllianceExpressionConverter extends BioFileConverter {
         if(StringUtils.isNotEmpty(cellular) ) { expAnnot.setReference("cellularcomponent", newOntologyTerm(cellular));}
         if(StringUtils.isNotEmpty(structure) ) {expAnnot.setReference("substructure", newOntologyTerm(structure));}
         if(StringUtils.isNotEmpty(anatomy) ) { expAnnot.setReference("anatomy", newOntologyTerm(anatomy));}
+        // Qualifier columns narrow the meaning of the three ontology term references above.
+        // FMS emits them as pipe-separated lists; store the raw list so downstream queries keep all values.
+        if(StringUtils.isNotEmpty(cellularQualIds) )    { expAnnot.setAttribute("cellularComponentQualifierIds", cellularQualIds);}
+        if(StringUtils.isNotEmpty(cellularQualTerms) )  { expAnnot.setAttribute("cellularComponentQualifierTermNames", cellularQualTerms);}
+        if(StringUtils.isNotEmpty(structureQualIds) )   { expAnnot.setAttribute("substructureQualifierIds", structureQualIds);}
+        if(StringUtils.isNotEmpty(structureQualTerms) ) { expAnnot.setAttribute("substructureQualifierTermNames", structureQualTerms);}
+        if(StringUtils.isNotEmpty(anatomyQualIds) )     { expAnnot.setAttribute("anatomyQualifierIds", anatomyQualIds);}
+        if(StringUtils.isNotEmpty(anatomyQualTerms) )   { expAnnot.setAttribute("anatomyQualifierTermNames", anatomyQualTerms);}
         if(StringUtils.isNotEmpty(ref) ) {
             String[] s = ref.split(",");
             for(int i=0; i < s.length; i++) {
@@ -184,7 +205,6 @@ public class AllianceExpressionConverter extends BioFileConverter {
             }else{
                 term = createItem("OntologyTerm");
             }
-            //System.out.println(" term.. " + identifier);
             term.setAttribute("identifier", identifier);
         }
         ontoTerms.put(identifier, term);
