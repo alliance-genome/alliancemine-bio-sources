@@ -32,7 +32,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
     private static final String DATA_SOURCE_NAME = "Alliance WT Expression";
     private String licence;
     private Map<String, Item> genes = new HashMap<String, Item>();
-    private Map<Item, Item> expannotations = new HashMap<Item, Item>();
+    private List<Item> expannotations = new ArrayList<Item>();
     private Map<String, Item> ontoTerms = new HashMap<String, Item>();
     private Map<String, Item> publications = new HashMap<String, Item>();
 
@@ -132,10 +132,13 @@ public class AllianceExpressionConverter extends BioFileConverter {
         // Qualifier columns narrow the meaning of the three ontology term references above.
         // FMS emits them as pipe-separated lists; store the raw list so downstream queries keep all values.
         if(StringUtils.isNotEmpty(cellularQualIds) )    { expAnnot.setAttribute("cellularComponentQualifierIds", cellularQualIds);}
+        addTerms(expAnnot, "cellularComponentQualifiers", cellularQualIds);
         if(StringUtils.isNotEmpty(cellularQualTerms) )  { expAnnot.setAttribute("cellularComponentQualifierTermNames", cellularQualTerms);}
         if(StringUtils.isNotEmpty(structureQualIds) )   { expAnnot.setAttribute("substructureQualifierIds", structureQualIds);}
+        addTerms(expAnnot, "substructureQualifiers", structureQualIds);
         if(StringUtils.isNotEmpty(structureQualTerms) ) { expAnnot.setAttribute("substructureQualifierTermNames", structureQualTerms);}
         if(StringUtils.isNotEmpty(anatomyQualIds) )     { expAnnot.setAttribute("anatomyQualifierIds", anatomyQualIds);}
+        addTerms(expAnnot, "anatomyQualifiers", anatomyQualIds);
         if(StringUtils.isNotEmpty(anatomyQualTerms) )   { expAnnot.setAttribute("anatomyQualifierTermNames", anatomyQualTerms);}
         if(StringUtils.isNotEmpty(ref) ) {
             String[] s = ref.split(",");
@@ -144,7 +147,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
                 expAnnot.addToCollection("publications", pub);
             }
         }
-        expannotations.put(gene, expAnnot);
+        expannotations.add(expAnnot);
         //expAnnot.setReference("gene", gene);
         gene.addToCollection("expressionAnnotations", expAnnot);
 
@@ -189,6 +192,19 @@ public class AllianceExpressionConverter extends BioFileConverter {
         return gene;
     }
 
+    /** Add one term per pipe-separated identifier to the named OntologyTerm collection. */
+    private void addTerms(Item annotation, String collection, String pipeSeparatedIds)
+            throws ObjectStoreException {
+        if (StringUtils.isEmpty(pipeSeparatedIds)) {
+            return;
+        }
+        for (String id : pipeSeparatedIds.split("\\|")) {
+            if (StringUtils.isNotBlank(id)) {
+                annotation.addToCollection(collection, newOntologyTerm(id.trim()));
+            }
+        }
+    }
+
     private String newOntologyTerm(String identifier) throws ObjectStoreException {
 
         Item term = ontoTerms.get(identifier);
@@ -230,7 +246,7 @@ public class AllianceExpressionConverter extends BioFileConverter {
      */
 
     private void storeExpAnnotations() throws ObjectStoreException {
-        for (Item exp : expannotations.values()) {
+        for (Item exp : expannotations) {
             try {
                 store(exp);
             } catch (ObjectStoreException e) {
