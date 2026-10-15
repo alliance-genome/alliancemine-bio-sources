@@ -49,6 +49,7 @@ public class AllianceCrisprScreensConverter extends BioFileConverter
     private static final int MIN_COLUMNS   = 9;
 
     private final Map<String, String> genes = new HashMap<String, String>();
+    private final Map<String, String> screens = new HashMap<String, String>();
 
     public AllianceCrisprScreensConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
@@ -80,6 +81,7 @@ public class AllianceCrisprScreensConverter extends BioFileConverter
         }
         Item r = createItem("CRISPRScreenResult");
         r.setAttribute("screenId", screen);
+        r.setReference("screen", getScreen(screen, line[COL_SOURCE].trim()));
         r.setAttribute("geneSymbol", sym);
         setIfPresent(r, "score1", line[COL_SCORE1]);
         setIfPresent(r, "score2", line[COL_SCORE2]);
@@ -113,6 +115,20 @@ public class AllianceCrisprScreensConverter extends BioFileConverter
         store(gene);
         genes.put(key, gene.getIdentifier());
         return gene.getIdentifier();
+    }
+
+    /** One CRISPRScreen per BioGRID ORCS screen ID; its results collection fills at integration. */
+    private String getScreen(String screenId, String source) throws ObjectStoreException {
+        String ref = screens.get(screenId);
+        if (ref == null) {
+            Item screen = createItem("CRISPRScreen");
+            screen.setAttribute("identifier", screenId);
+            setIfPresent(screen, "source", source);
+            store(screen);
+            ref = screen.getIdentifier();
+            screens.put(screenId, ref);
+        }
+        return ref;
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {

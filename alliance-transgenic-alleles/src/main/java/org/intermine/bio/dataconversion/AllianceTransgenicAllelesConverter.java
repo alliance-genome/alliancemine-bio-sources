@@ -48,6 +48,7 @@ public class AllianceTransgenicAllelesConverter extends BioFileConverter
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> alleles = new HashMap<String, String>();
+    private final Map<String, String> constructs = new HashMap<String, String>();
 
     public AllianceTransgenicAllelesConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
@@ -94,6 +95,11 @@ public class AllianceTransgenicAllelesConverter extends BioFileConverter
             item.setAttribute("primaryIdentifier", alleleId);
             setIfPresent(item, "alleleSymbol", line[COL_ALLELE_SYMBOL]);
             setIfPresent(item, "constructIdentifier", line[COL_CONSTRUCT_IDS]);
+            for (String constructId : line[COL_CONSTRUCT_IDS].split("\\|")) {
+                if (StringUtils.isNotBlank(constructId)) {
+                    item.addToCollection("constructs", getConstruct(constructId.trim()));
+                }
+            }
             if (organismRef != null) {
                 item.setReference("organism", organismRef);
             }
@@ -120,6 +126,19 @@ public class AllianceTransgenicAllelesConverter extends BioFileConverter
         store(gene);
         genes.put(primaryId, gene.getIdentifier());
         return gene.getIdentifier();
+    }
+
+    /** Construct keyed on primaryIdentifier, created once per run. */
+    private String getConstruct(String id) throws ObjectStoreException {
+        String ref = constructs.get(id);
+        if (ref == null) {
+            Item item = createItem("Construct");
+            item.setAttribute("primaryIdentifier", id);
+            store(item);
+            ref = item.getIdentifier();
+            constructs.put(id, ref);
+        }
+        return ref;
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {

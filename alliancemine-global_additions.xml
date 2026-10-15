@@ -503,6 +503,7 @@
         <attribute name="expresses" type="java.lang.String"/>
         <reference name="parentAllele" referenced-type="Allele" reverse-reference="transgenicAlleles"/>
         <collection name="targetGenes" referenced-type="Gene" reverse-reference="targetedByTransgenicAlleles"/>
+        <collection name="constructs" referenced-type="Construct" reverse-reference="transgenicAlleles"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>
@@ -814,6 +815,7 @@
         <attribute name="source" type="java.lang.String"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="crisprScreenResults"/>
         <reference name="organism" referenced-type="Organism"/>
+        <reference name="screen" referenced-type="CRISPRScreen" reverse-reference="results"/>
     </class>
     <class name="Molecule" is-interface="true">
         <attribute name="primaryIdentifier" type="java.lang.String"/>
@@ -1147,4 +1149,13 @@
         <reference name="orf" referenced-type="ORF" reverse-reference="uORFs"/>
     </class>
 
+    <class name="CRISPRScreen" is-interface="true">
+        <attribute name="identifier" type="java.lang.String"/>
+        <attribute name="source" type="java.lang.String"/>
+        <collection name="results" referenced-type="CRISPRScreenResult" reverse-reference="screen"/>
+    </class>
+    <class name="Construct" is-interface="true">
+        <attribute name="primaryIdentifier" type="java.lang.String"/>
+        <collection name="transgenicAlleles" referenced-type="TransgenicAllele" reverse-reference="constructs"/>
+    </class>
 </model>
