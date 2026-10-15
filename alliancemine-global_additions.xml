@@ -753,7 +753,7 @@
         <attribute name="curated" type="java.lang.Boolean"/>
         <reference name="summary" referenced-type="PathwaySummary"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
-        <collection name="proteins" referenced-type="Protein" reverse-reference="pathways"/>
+        <collection name="proteins" referenced-type="Protein"/>
         <collection name="dataSets" referenced-type="DataSet"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="pathways"/>
     </class>
@@ -895,7 +895,7 @@
         <collection name="features" referenced-type="UniProtFeature" reverse-reference="protein"/>
         <collection name="keywords" referenced-type="OntologyTerm"/>
         <collection name="isoforms" referenced-type="Protein" reverse-reference="canonicalProtein"/>
-        <collection name="pathways" referenced-type="Pathway" reverse-reference="proteins"/>
+        <collection name="pathways" referenced-type="Pathway"/>
         <collection name="comments" referenced-type="Comment"/>
         <collection name="stringInteractionsAsA" referenced-type="STRINGInteraction" reverse-reference="proteinA"/>
         <collection name="stringInteractionsAsB" referenced-type="STRINGInteraction" reverse-reference="proteinB"/>
