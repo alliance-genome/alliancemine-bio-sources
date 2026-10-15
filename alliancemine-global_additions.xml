@@ -33,13 +33,16 @@
         <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="alleleSubject"/>
         <collection name="diseaseAnnotations" referenced-type="DiseaseAnnotation" reverse-reference="alleleSubject"/>
         <collection name="transgenicAlleles" referenced-type="TransgenicAllele" reverse-reference="parentAllele"/>
+        <collection name="diseases" referenced-type="Disease" reverse-reference="alleles"/>
+        <collection name="interactionsAsAllele1" referenced-type="AlleleInteraction" reverse-reference="allele1"/>
+        <collection name="interactionsAsAllele2" referenced-type="AlleleInteraction" reverse-reference="allele2"/>
     </class>
     
     <class name="AlleleInteraction" is-interface="true">
         <attribute name="pvalue" type="java.lang.Float"/>
         <attribute name="sgaScore" type="java.lang.Float"/>
-        <reference name="allele1" referenced-type="Allele"/>
-        <reference name="allele2" referenced-type="Allele"/>
+        <reference name="allele1" referenced-type="Allele" reverse-reference="interactionsAsAllele1"/>
+        <reference name="allele2" referenced-type="Allele" reverse-reference="interactionsAsAllele2"/>
     </class>
     
     <class name="Annotatable" is-interface="true">
@@ -57,7 +60,7 @@
         <collection name="publications" referenced-type="Publication" reverse-reference="authors"/>
     </class>
     <class name="BindingSite" extends="BiologicalRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000409">
-        <reference name="regulator" referenced-type="Gene"/>
+        <reference name="regulator" referenced-type="Gene" reverse-reference="regulatedBindingSites"/>
         <reference name="xelement" referenced-type="XElement" reverse-reference="bindingsites"/>
     </class>
     <class name="BioEntity" extends="Annotatable" is-interface="true">
@@ -132,7 +135,7 @@
         <attribute name="variantsTypeId" type="java.lang.String"/>
         <reference name="allele" referenced-type="Allele" reverse-reference="variants"/>
         <reference name="publication" referenced-type="Publication"/>
-        <reference name="affectedGene" referenced-type="Gene"/>
+        <reference name="affectedGene" referenced-type="Gene" reverse-reference="variants"/>
         <!--<collection name="synonyms" referenced-type="Synonym"/>-->
         <!--<collection name="crossreferences" referenced-type="CrossReference" reverse-reference="variant"/>-->
         <collection name="variantdetails" referenced-type="VariantDetails"/>
@@ -143,8 +146,8 @@
         <attribute name="impact" type="java.lang.String"/>
         <attribute name="aminoAcidChange" type="java.lang.String"/>
         <reference name="variant" referenced-type="Variant" reverse-reference="consequences"/>
-        <reference name="gene" referenced-type="Gene"/>
-        <reference name="transcript" referenced-type="Transcript"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="variantConsequences"/>
+        <reference name="transcript" referenced-type="Transcript" reverse-reference="variantConsequences"/>
     </class>
     <class name="VariantDetails" extends="SequenceCollection SequenceFeature" is-interface="true">
         <attribute name="assembly" type="java.lang.String"/>
@@ -208,6 +211,7 @@
         <collection name="allInteractors" referenced-type="Interactor"/>
         <collection name="goAnnotation" referenced-type="GOAnnotation"/>
         <collection name="publications" referenced-type="Publication"/>
+        <collection name="complexInteractions" referenced-type="Interaction" reverse-reference="complex"/>
     </class>
 
     <class name="ComplexEvidence" extends="OntologyAnnotation" is-interface="true">
@@ -223,7 +227,9 @@
         <reference name="subject" referenced-type="BioEntity" reverse-reference="crossReferences"/>
         <!--<reference name="variant" referenced-type="BioEntity" reverse-reference="crossReferences"/>-->
     </class>
-    <class name="DOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/doid.owl"/>
+    <class name="DOTerm" extends="OntologyTerm" is-interface="true" term="http://purl.obolibrary.org/obo/doid.owl">
+        <collection name="diseaseModels" referenced-type="DiseaseModel" reverse-reference="disease"/>
+    </class>
     <class name="DataSet" is-interface="true" term="http://purl.org/dc/dcmitype/Dataset">
         <attribute name="description" type="java.lang.String"/>
         <attribute name="url" type="java.lang.String"/>
@@ -249,7 +255,7 @@
         <attribute name="identifier" type="java.lang.String"/>
         <attribute name="name" type="java.lang.String"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="diseases"/>
-        <collection name="alleles" referenced-type="Allele"/>
+        <collection name="alleles" referenced-type="Allele" reverse-reference="diseases"/>
         <collection name="publications" referenced-type="Publication"/>
         <collection name="dataSets" referenced-type="DataSet"/>
     </class>
@@ -381,6 +387,13 @@
         <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="subject"/>
         <collection name="diseaseModels" referenced-type="DiseaseModel" reverse-reference="gene"/>
         <collection name="experimentalDiseaseAnnotations" referenced-type="DiseaseAnnotation" reverse-reference="experimentalGene"/>
+        <collection name="crisprScreenResults" referenced-type="CRISPRScreenResult" reverse-reference="gene"/>
+        <collection name="rnaiResults" referenced-type="RNAi" reverse-reference="genes"/>
+        <collection name="variants" referenced-type="Variant" reverse-reference="affectedGene"/>
+        <collection name="variantConsequences" referenced-type="VariantConsequence" reverse-reference="gene"/>
+        <collection name="targetedByTransgenicAlleles" referenced-type="TransgenicAllele" reverse-reference="targetGenes"/>
+        <collection name="regulatedBindingSites" referenced-type="BindingSite" reverse-reference="regulator"/>
+        <collection name="interactionRegions" referenced-type="InteractionRegion" reverse-reference="gene"/>
     </class>
     <class name="Paralogue" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000858">
         <attribute name="identity" type="java.lang.Integer"/>
@@ -462,7 +475,7 @@
         <attribute name="DNA" type="java.lang.String"/>
         <reference name="reference" referenced-type="Publication"/>
         <reference name="strain" referenced-type="Strain"/>
-        <collection name="genes" referenced-type="Gene"/>
+        <collection name="genes" referenced-type="Gene" reverse-reference="rnaiResults"/>
         <collection name="phenotypesObserved" referenced-type="Phenotype"/>
         <collection name="phenotypesNotObserved" referenced-type="Phenotype"/>
     </class>
@@ -477,7 +490,7 @@
         <attribute name="hasDiseaseAnnotations" type="java.lang.Boolean"/>
         <attribute name="hasPhenotypeAnnotations" type="java.lang.Boolean"/>
         <reference name="gene" referenced-type="Gene" reverse-reference="diseaseModels"/>
-        <reference name="disease" referenced-type="DOTerm"/>
+        <reference name="disease" referenced-type="DOTerm" reverse-reference="diseaseModels"/>
     </class>
     <class name="TransgenicAllele" extends="Allele" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001218">
         <attribute name="constructIdentifier" type="java.lang.String"/>
@@ -485,7 +498,7 @@
         <attribute name="reporterTag" type="java.lang.String"/>
         <attribute name="expresses" type="java.lang.String"/>
         <reference name="parentAllele" referenced-type="Allele" reverse-reference="transgenicAlleles"/>
-        <collection name="targetGenes" referenced-type="Gene"/>
+        <collection name="targetGenes" referenced-type="Gene" reverse-reference="targetedByTransgenicAlleles"/>
     </class>
     <class name="GeneFlankingRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000239">
         <attribute name="direction" type="java.lang.String"/>
@@ -524,7 +537,7 @@
         <attribute name="aggregationDatabase" type="java.lang.String"/>
         <reference name="participant1" referenced-type="BioEntity" reverse-reference="interactions"/>
         <reference name="participant2" referenced-type="BioEntity"/>
-        <reference name="complex" referenced-type="Complex"/>
+        <reference name="complex" referenced-type="Complex" reverse-reference="complexInteractions"/>
         <reference name="detectionMethod" referenced-type="InteractionTerm"/>
         <reference name="interactionSource" referenced-type="InteractionTerm"/>
         <collection name="details" referenced-type="InteractionDetail" reverse-reference="interaction"/>
@@ -567,7 +580,7 @@
     <class name="InteractionRegion" is-interface="true">
         <attribute name="startStatus" type="java.lang.String"/>
         <attribute name="endStatus" type="java.lang.String"/>
-        <reference name="gene" referenced-type="Gene"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="interactionRegions"/>
         <reference name="ontologyTerm" referenced-type="OntologyTerm"/>
         <reference name="interaction" referenced-type="InteractionDetail" reverse-reference="interactingRegions"/>
         <collection name="locations" referenced-type="Location"/>
@@ -733,7 +746,7 @@
         <attribute name="curated" type="java.lang.Boolean"/>
         <reference name="summary" referenced-type="PathwaySummary"/>
         <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
-        <collection name="proteins" referenced-type="Protein"/>
+        <collection name="proteins" referenced-type="Protein" reverse-reference="pathways"/>
         <collection name="dataSets" referenced-type="DataSet"/>
         <collection name="publications" referenced-type="Publication" reverse-reference="pathways"/>
     </class>
@@ -782,8 +795,8 @@
         <attribute name="stringIdA" type="java.lang.String"/>
         <attribute name="stringIdB" type="java.lang.String"/>
         <attribute name="combinedScore" type="java.lang.Integer"/>
-        <reference name="proteinA" referenced-type="Protein"/>
-        <reference name="proteinB" referenced-type="Protein"/>
+        <reference name="proteinA" referenced-type="Protein" reverse-reference="stringInteractionsAsA"/>
+        <reference name="proteinB" referenced-type="Protein" reverse-reference="stringInteractionsAsB"/>
         <reference name="organism" referenced-type="Organism"/>
     </class>
     <class name="CRISPRScreenResult" is-interface="true">
@@ -793,7 +806,7 @@
         <attribute name="score2" type="java.lang.String"/>
         <attribute name="hit" type="java.lang.Boolean"/>
         <attribute name="source" type="java.lang.String"/>
-        <reference name="gene" referenced-type="Gene"/>
+        <reference name="gene" referenced-type="Gene" reverse-reference="crisprScreenResults"/>
         <reference name="organism" referenced-type="Organism"/>
     </class>
     <class name="Molecule" is-interface="true">
@@ -873,8 +886,10 @@
         <collection name="features" referenced-type="UniProtFeature" reverse-reference="protein"/>
         <collection name="keywords" referenced-type="OntologyTerm"/>
         <collection name="isoforms" referenced-type="Protein" reverse-reference="canonicalProtein"/>
-        <collection name="pathways" referenced-type="Pathway"/>
+        <collection name="pathways" referenced-type="Pathway" reverse-reference="proteins"/>
         <collection name="comments" referenced-type="Comment"/>
+        <collection name="stringInteractionsAsA" referenced-type="STRINGInteraction" reverse-reference="proteinA"/>
+        <collection name="stringInteractionsAsB" referenced-type="STRINGInteraction" reverse-reference="proteinB"/>
     </class>
     <class name="UniProtFeature" is-interface="true">
         <attribute name="begin" type="java.lang.Integer"/>
@@ -1081,6 +1096,7 @@
         <collection name="exons" referenced-type="Exon" reverse-reference="transcripts"/>
         <collection name="UTRs" referenced-type="UTR" reverse-reference="transcripts"/>
         <collection name="CDSs" referenced-type="CDS" reverse-reference="transcript"/>
+        <collection name="variantConsequences" referenced-type="VariantConsequence" reverse-reference="transcript"/>
     </class>
     <class name="TransposableElementGene" extends="ProteinCodingGene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111">
         <collection name="plus1translationalframeshifts" referenced-type="Plus1TranslationalFrameshift" reverse-reference="transposableelementgene"/>

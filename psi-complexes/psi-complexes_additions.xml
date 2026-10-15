@@ -7,7 +7,7 @@
     <class name="Interaction" is-interface="true">
         <reference name="participant1" referenced-type="BioEntity" reverse-reference="interactions" />
         <reference name="participant2" referenced-type="BioEntity" />
-        <reference name="complex" referenced-type="Complex" />
+        <reference name="complex" referenced-type="Complex" reverse-reference="complexInteractions" />
         <collection name="details" referenced-type="InteractionDetail" reverse-reference="interaction"/>
     </class>
 
