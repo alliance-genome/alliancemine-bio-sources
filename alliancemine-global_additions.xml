@@ -621,6 +621,8 @@
     </class>
     
     <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000234">
+        <reference name="fivePrimeUTR" referenced-type="FivePrimeUTR"/>
+        <reference name="threePrimeUTR" referenced-type="ThreePrimeUTR"/>
         <attribute name="fivePrimeDataSet" type="java.lang.String"/>
         <attribute name="note" type="java.lang.String"/>
         <attribute name="threePrimeScore" type="java.lang.String"/>
