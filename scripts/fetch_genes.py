@@ -100,6 +100,11 @@ def _row_for_gene(payload: dict) -> dict:
     converter tests for, as in bgi_to_genes_tsv.py."""
     gene = payload.get("gene") or {}
     secondary_ids = [s.get("secondaryId", "") for s in gene.get("geneSecondaryIds") or []]
+    # Systematic name (SGD ORF, WormBase sequence name) and the secondary IDs after the first
+    # have no Gene attribute of their own; they become synonyms so lookups find the gene.
+    synonyms = [_display(s) for s in gene.get("geneSynonyms") or []]
+    synonyms += [_display(gene.get("geneSystematicName"))] + secondary_ids[1:]
+    synonyms = list(dict.fromkeys(v for v in synonyms if v))
     crossrefs: list[str] = []
     for x in gene.get("crossReferences") or []:
         curie = x.get("referencedCurie", "")
@@ -114,7 +119,7 @@ def _row_for_gene(payload: dict) -> dict:
     return {
         "primaryIdentifier": gene.get("primaryExternalId", ""),
         "secondaryIdentifier": secondary_ids[0] if secondary_ids else "",
-        "synonyms": _list_literal([_display(s) for s in gene.get("geneSynonyms") or []]),
+        "synonyms": _list_literal(synonyms),
         "crossrefs": _list_literal(crossrefs),
         "name": _display(gene.get("geneFullName")),
         "symbol": _display(gene.get("geneSymbol")),
