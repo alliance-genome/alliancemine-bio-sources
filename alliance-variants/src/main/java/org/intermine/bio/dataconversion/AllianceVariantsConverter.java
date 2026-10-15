@@ -99,6 +99,10 @@ public class AllianceVariantsConverter extends BioFileConverter
         setIfPresent(variant, "variantSymbol", line[COL_VARIANT_SYM]);
         setIfPresent(variant, "variantType", line[COL_VAR_TYPE]);
         setIfPresent(variant, "variantsTypeId", line[COL_VAR_TYPE_ID]);
+        String typeId = line[COL_VAR_TYPE_ID].trim();
+        if (typeId.startsWith("SO:")) {
+            variant.setReference("sequenceOntologyTerm", getSoTerm(typeId));
+        }
         setIfPresent(variant, "VariantsHgvsNames", line[COL_HGVS]);
 
         String alleleId = line[COL_ALLELE_ID].trim();
@@ -155,6 +159,19 @@ public class AllianceVariantsConverter extends BioFileConverter
             }
         }
         return emitted;
+    }
+
+    /** SOTerm stub keyed on identifier; merges with the term the so source loads. */
+    private String getSoTerm(String identifier) throws ObjectStoreException {
+        String ref = soTerms.get(identifier);
+        if (ref == null) {
+            Item term = createItem("SOTerm");
+            term.setAttribute("identifier", identifier);
+            store(term);
+            ref = term.getIdentifier();
+            soTerms.put(identifier, ref);
+        }
+        return ref;
     }
 
     private String getAllele(String primaryId, String taxon) throws ObjectStoreException {
