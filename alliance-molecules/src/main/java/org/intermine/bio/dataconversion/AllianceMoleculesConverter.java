@@ -11,7 +11,9 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.io.Reader;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
@@ -30,6 +32,8 @@ public class AllianceMoleculesConverter extends BioFileConverter
 
     private static final String DATASET_TITLE = "Alliance Small Molecules";
     private static final String DATA_SOURCE_NAME = "Alliance of Genome Resources";
+
+    private final Map<String, String> terms = new HashMap<String, String>();
 
     private static final int COL_ID       = 0;
     private static final int COL_CHEBI    = 1;
@@ -71,6 +75,10 @@ public class AllianceMoleculesConverter extends BioFileConverter
         Item m = createItem("Molecule");
         m.setAttribute("primaryIdentifier", pid);
         setIfPresent(m, "chebiId", line[COL_CHEBI]);
+        String chebi = line[COL_CHEBI].trim();
+        if (chebi.startsWith("CHEBI:")) {
+            m.setReference("chebiTerm", getTerm(chebi));
+        }
         setIfPresent(m, "name", line[COL_NAME]);
         setIfPresent(m, "iupacName", line[COL_IUPAC]);
         setIfPresent(m, "smiles", line[COL_SMILES]);
@@ -78,6 +86,19 @@ public class AllianceMoleculesConverter extends BioFileConverter
         setIfPresent(m, "inchiKey", line[COL_INCHIKEY]);
         setIfPresent(m, "dataProvider", line[COL_PROVIDER]);
         store(m);
+    }
+
+    /** OntologyTerm stub keyed on identifier, shared with any source that loads the term. */
+    private String getTerm(String identifier) throws ObjectStoreException {
+        String ref = terms.get(identifier);
+        if (ref == null) {
+            Item term = createItem("OntologyTerm");
+            term.setAttribute("identifier", identifier);
+            store(term);
+            ref = term.getIdentifier();
+            terms.put(identifier, ref);
+        }
+        return ref;
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {
