@@ -268,6 +268,7 @@
         <attribute name="evidenceType" type="java.lang.String"/>
         <reference name="alleleSubject" referenced-type="Allele" reverse-reference="diseaseAnnotations"/>
         <reference name="experimentalGene" referenced-type="Gene" reverse-reference="experimentalDiseaseAnnotations"/>
+        <collection name="slimTerms" referenced-type="DOTerm"/>
     </class>
     <class name="DiseaseEvidence" extends="OntologyEvidence" is-interface="true">
         <collection name="with" referenced-type="BioEntity"/>

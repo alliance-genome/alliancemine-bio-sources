@@ -103,6 +103,11 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
         setIfPresent(ann, "generatedRelationString", line[COL_GEN_REL_STRING]);
         setIfPresent(ann, "diseaseQualifiers", line[COL_QUALIFIERS]);
         setIfPresent(ann, "parentSlimIds", line[COL_PARENT_SLIM_IDS]);
+        for (String slimId : line[COL_PARENT_SLIM_IDS].split("\\|")) {
+            if (slimId.trim().startsWith("DOID:")) {
+                ann.addToCollection("slimTerms", getDoTerm(slimId.trim(), ""));
+            }
+        }
         setIntIfPresent(ann, "viaOrthologyOrder", line[COL_VIA_ORTHOLOGY]);
         setIfPresent(ann, "uniqueId", line[COL_UNIQUE_ID]);
         store(ann);
