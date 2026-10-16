@@ -32,6 +32,13 @@ from typing import Any, Callable, Iterable, Iterator
 
 API_BASE = os.environ.get("ALLIANCE_API_BASE", "https://www.alliancegenome.org/api")
 FMS_BASE = os.environ.get("ALLIANCE_FMS_BASE", "https://fms.alliancegenome.org/api")
+# The site WAF answers HTTP 405 to bulk clients with a non-browser User-Agent
+# (stage.alliancegenome.org, 2026-10-14); ALLIANCE_USER_AGENT overrides.
+USER_AGENT = os.environ.get(
+    "ALLIANCE_USER_AGENT",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.6 Safari/605.1.15",
+)
 CACHE_DIR = Path(os.environ.get("ALLIANCE_FETCH_CACHE", Path(__file__).parent / ".cache"))
 FMS_CACHE_DIR = Path(os.environ.get("ALLIANCE_FMS_CACHE", Path(__file__).parent / ".fms_cache"))
 
@@ -138,7 +145,7 @@ def http_get_json(
         try:
             req = urllib.request.Request(url, headers={
                 "Accept": "application/json",
-                "User-Agent": "AllianceMine-fetcher/1.0 (+https://github.com/alliance-genome/alliancemine-bio-sources)",
+                "User-Agent": USER_AGENT,
             })
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
@@ -715,7 +722,7 @@ def fms_download_gz(url: str) -> Path:
         log.debug("FMS cache HIT %s -> %s", url, target.name)
         return target
     log.info("FMS download %s", url)
-    req = _u.Request(url, headers={"User-Agent": "AllianceMine-fetcher/1.0"})
+    req = _u.Request(url, headers={"User-Agent": USER_AGENT})
     with _u.urlopen(req, timeout=300) as resp, target.open("wb") as fh:
         while True:
             chunk = resp.read(1 << 16)
