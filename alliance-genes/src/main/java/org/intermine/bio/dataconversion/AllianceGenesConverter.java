@@ -19,6 +19,7 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.ClassDescriptor;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
@@ -295,7 +296,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item.setAttribute("automatedDescription", autoDescription);
             }
             // Optional API-enrichment columns (absent in legacy FMS-produced TSVs).
-            if (line.length > COL_DATE_PRODUCED) {
+            if (line.length > COL_DATE_PRODUCED && hasField(item, "dateProduced")) {
                 String dateProduced = line[COL_DATE_PRODUCED].trim();
                 if (StringUtils.isNotEmpty(dateProduced)) {
                     try {
@@ -306,13 +307,13 @@ public class AllianceGenesConverter extends BioFileConverter {
                     }
                 }
             }
-            if (line.length > COL_DATA_PROVIDER) {
+            if (line.length > COL_DATA_PROVIDER && hasField(item, "dataProvider")) {
                 String dataProvider = line[COL_DATA_PROVIDER].trim();
                 if (StringUtils.isNotEmpty(dataProvider)) {
                     item.setAttribute("dataProvider", dataProvider);
                 }
             }
-            if (line.length > COL_MOD_URL) {
+            if (line.length > COL_MOD_URL && hasField(item, "modCrossRefCompleteUrl")) {
                 String modUrl = line[COL_MOD_URL].trim();
                 if (StringUtils.isNotEmpty(modUrl)) {
                     item.setAttribute("modCrossRefCompleteUrl", modUrl);
@@ -350,6 +351,12 @@ public class AllianceGenesConverter extends BioFileConverter {
      * @param id
      * @throws ObjectStoreException
      */
+    /** Gene-only attributes are skipped for the non-gene features this file also carries. */
+    private boolean hasField(Item item, String field) {
+        ClassDescriptor cd = getModel().getClassDescriptorByName(item.getClassName());
+        return cd != null && cd.getFieldDescriptorByName(field) != null;
+    }
+
     private void getCrossReference(String Id, String subjectId, String ids)
             throws ObjectStoreException {
 
