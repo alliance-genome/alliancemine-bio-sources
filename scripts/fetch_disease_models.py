@@ -239,11 +239,15 @@ def main() -> None:
 
     log.info("disease_models: rows=%d  genes_without_models=%d  disease_names_unmapped=%d/%d",
              total_rows, genes_without_models, unmapped_rows, named_rows)
-    if unmapped_rate_exceeded(unmapped_rows, named_rows):
+    unmapped_exceeded = unmapped_rate_exceeded(unmapped_rows, named_rows)
+    if unmapped_exceeded:
         log.error("disease_models: %d of %d disease names have no DOID (limit %.0f%%)",
                   unmapped_rows, named_rows, MAX_UNMAPPED_RATE * 100)
-        sys.exit(1)
-    finish_run(report, stats, out_dir, args.max_failure_rate)
+    try:
+        finish_run(report, stats, out_dir, args.max_failure_rate)
+    finally:
+        if unmapped_exceeded:
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
