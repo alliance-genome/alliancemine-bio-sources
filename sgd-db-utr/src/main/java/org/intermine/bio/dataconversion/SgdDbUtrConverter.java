@@ -237,7 +237,7 @@ public class SgdDbUtrConverter extends BioFileConverter
             a = new Integer(end);
             b = new Integer(start);
         }
-        Integer length = new Integer(b.intValue() - a.intValue());
+        Integer length = new Integer(b.intValue() - a.intValue() + 1);
         return length.toString();
     }
 
