@@ -397,6 +397,7 @@ public class SgdConverter extends BioDBConverter {
 
 					allele = createItem("Allele");
 					allele.setAttribute("featureType", "Allele");
+					allele.setReference("organism", organism);
 					if (StringUtils.isNotEmpty(name)) allele.setAttribute("name", name);
 					if (StringUtils.isNotEmpty(description)) allele.setAttribute("description", description);
 					if (StringUtils.isNotEmpty(aclass)) allele.setAttribute("alleleClass", aclass);

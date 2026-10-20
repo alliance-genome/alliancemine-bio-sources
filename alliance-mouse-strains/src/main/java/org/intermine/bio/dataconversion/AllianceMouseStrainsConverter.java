@@ -39,6 +39,7 @@ public class AllianceMouseStrainsConverter extends BioFileConverter
     private static final String DATASET_TITLE = "MouseMine Strains";
     private static final String DATA_SOURCE_NAME = "MouseMine";
     private static final String MOUSE_TAXON = "10090";
+    private static final String MGI_PREFIX = "MGI:";
 
     // Must match scripts/fetch_mousemine_strains.py COLUMNS
     private static final int COL_STRAIN_ID         = 0;
@@ -50,6 +51,7 @@ public class AllianceMouseStrainsConverter extends BioFileConverter
     private final Map<String, Item> strains = new HashMap<String, Item>();
     private final Map<String, String> alleles = new HashMap<String, String>();
     private String organismRef = null;
+    private int skippedAlleles = 0;
 
     public AllianceMouseStrainsConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
@@ -77,7 +79,8 @@ public class AllianceMouseStrainsConverter extends BioFileConverter
             store(strain);
         }
         LOG.info("MouseStrains: processed " + rows + " (strain,allele) rows -> "
-                + strains.size() + " distinct Strain items");
+                + strains.size() + " distinct Strain items; skipped " + skippedAlleles
+                + " alleles with non-MGI ids");
     }
 
     private void processRow(String[] line) throws ObjectStoreException {
@@ -95,9 +98,14 @@ public class AllianceMouseStrainsConverter extends BioFileConverter
             strains.put(strainId, strain);
         }
         String alleleId = line[COL_ALLELE_ID].trim();
-        if (!alleleId.isEmpty()) {
-            strain.addToCollection("alleles", getAllele(alleleId));
+        if (alleleId.isEmpty()) {
+            return;
         }
+        if (!alleleId.startsWith(MGI_PREFIX)) {
+            skippedAlleles++;
+            return;
+        }
+        strain.addToCollection("alleles", getAllele(alleleId));
     }
 
     private String getMouseOrganism() throws ObjectStoreException {
@@ -115,6 +123,8 @@ public class AllianceMouseStrainsConverter extends BioFileConverter
         }
         Item a = createItem("Allele");
         a.setAttribute("alleleId", alleleId);
+        a.setAttribute("primaryIdentifier", alleleId);
+        a.setReference("organism", getMouseOrganism());
         store(a);
         alleles.put(alleleId, a.getIdentifier());
         return a.getIdentifier();

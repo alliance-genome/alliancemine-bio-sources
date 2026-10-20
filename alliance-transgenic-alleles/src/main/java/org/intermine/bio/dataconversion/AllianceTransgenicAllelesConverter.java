@@ -105,8 +105,7 @@ public class AllianceTransgenicAllelesConverter extends BioFileConverter
             }
             if (!geneId.isEmpty()) {
                 String geneRef = getGene(geneId, organismRef);
-                // TransgenicAllele extends Allele which has reference "gene".
-                item.setReference("gene", geneRef);
+                item.addToCollection("targetGenes", geneRef);
             }
             store(item);
             alleles.put(alleleId, item.getIdentifier());
