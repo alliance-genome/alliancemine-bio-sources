@@ -27,7 +27,8 @@ from common import (  # noqa: E402
 log = logging.getLogger("alliance.fetch.gene_crossrefs")
 
 
-MOD_PREFIXES = {"MGI", "SGD", "ZFIN", "FB", "WB", "RGD", "HGNC", "XBXL", "XBXT", "XB"}
+MOD_PREFIXES = {"MGI", "SGD", "ZFIN", "FB", "WB", "RGD", "HGNC", "XBXL", "XBXT", "XB",
+                "Xenbase"}
 
 
 COLUMNS = [
