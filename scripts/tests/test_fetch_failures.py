@@ -75,6 +75,69 @@ def test_http_400_and_404_count_as_failures(code):
     assert report.failure_rate == 1.0
 
 
+def test_cache_key_includes_release_and_api_base(monkeypatch):
+    url = "https://x/gene/1"
+    k920 = common._url_key(url)
+    monkeypatch.setenv("ALLIANCE_RELEASE", "9.1.0")
+    common.get_current_release.cache_clear()
+    assert common._url_key(url) != k920
+    monkeypatch.setenv("ALLIANCE_RELEASE", "9.2.0")
+    common.get_current_release.cache_clear()
+    assert common._url_key(url) == k920
+    monkeypatch.setattr(common, "API_BASE", "https://stage/api")
+    assert common._url_key(url) != k920
+
+
+def test_cached_response_from_other_release_is_not_served(monkeypatch):
+    calls = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        return Resp(b'{"release": "%d"}' % len(calls))
+
+    monkeypatch.setattr(common.urllib.request, "urlopen", fake_urlopen)
+    conn = common.connect_cache("t")
+    assert common.http_get_json("/gene/1", cache=conn) == {"release": "1"}
+    assert common.http_get_json("/gene/1", cache=conn) == {"release": "1"}
+    monkeypatch.setenv("ALLIANCE_RELEASE", "9.1.0")
+    common.get_current_release.cache_clear()
+    assert common.http_get_json("/gene/1", cache=conn) == {"release": "2"}
+    assert len(calls) == 2
+
+
+def test_pathquery_cache_expires_by_ts(monkeypatch):
+    calls = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(1)
+        return Resp(b'{"results": [["a"]], "wasSuccessful": true}')
+
+    monkeypatch.setattr(common.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(common, "PATHQUERY_MAX_AGE", 100)
+    conn = common.connect_cache("pq")
+    run = lambda: list(common.intermine_paginate("http://m", "<query/>", cache=conn))
+    assert run() == [["a"]]
+    assert run() == [["a"]]
+    assert len(calls) == 1
+    conn.execute("UPDATE cache SET ts = ?", (int(time.time()) - 1000,))
+    assert run() == [["a"]]
+    assert len(calls) == 2
+
+
 def test_fms_download_failure_leaves_no_target(monkeypatch):
     class Boom(io.BytesIO):
         def __enter__(self):

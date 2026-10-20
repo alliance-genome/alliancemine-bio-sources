@@ -81,6 +81,7 @@ committed to the cache as they arrive, so a rerun resumes from it.
 | `ALLIANCE_MAX_FAILURE_RATE` | default `--max-failure-rate` | `0.005` |
 | `ALLIANCE_FETCH_CACHE` | sqlite HTTP cache + gene-id lists | `scripts/.cache/` |
 | `ALLIANCE_FMS_CACHE` | FMS gz cache | `scripts/.fms_cache/` |
+| `ALLIANCE_PATHQUERY_MAX_AGE` | seconds a cached PathQuery page stays valid | `604800` |
 
 ## Fetchers
 

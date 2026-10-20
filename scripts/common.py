@@ -42,6 +42,9 @@ USER_AGENT = os.environ.get(
 CACHE_DIR = Path(os.environ.get("ALLIANCE_FETCH_CACHE", Path(__file__).parent / ".cache"))
 FMS_CACHE_DIR = Path(os.environ.get("ALLIANCE_FMS_CACHE", Path(__file__).parent / ".fms_cache"))
 
+# Seconds a cached PathQuery page stays valid; other mines publish on their own schedule.
+PATHQUERY_MAX_AGE = int(os.environ.get("ALLIANCE_PATHQUERY_MAX_AGE", str(7 * 86400)))
+
 log = logging.getLogger("alliance.fetch")
 
 
@@ -118,7 +121,10 @@ def open_cache(cache_name: str) -> Iterator[sqlite3.Connection]:
 
 
 def _url_key(url: str) -> str:
-    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+    """Cache key: sha256 of release, API base and URL, so a payload cached
+    for one release or API host is never served for another."""
+    scope = f"{get_current_release()}|{API_BASE}|{url}"
+    return hashlib.sha256(scope.encode("utf-8")).hexdigest()
 
 
 def http_get_json(
@@ -132,7 +138,7 @@ def http_get_json(
     """GET path (prepended with API_BASE) as JSON. Retries with exponential
     backoff on 429/5xx and caches successful responses."""
     url = path if path.startswith("http") else f"{API_BASE}{path}"
-    key = _url_key(url)
+    key = _url_key(url) if cache is not None else ""
 
     if cache is not None:
         row = cache.execute("SELECT body FROM cache WHERE key = ?", (key,)).fetchone()
@@ -411,8 +417,10 @@ def intermine_paginate(
 
         cache_key = _url_key(f"{url}|{start}|{page_size}|{query_xml}")
         if cache is not None:
-            row = cache.execute("SELECT body FROM cache WHERE key = ?", (cache_key,)).fetchone()
-            if row is not None:
+            row = cache.execute(
+                "SELECT body, ts FROM cache WHERE key = ?", (cache_key,)
+            ).fetchone()
+            if row is not None and time.time() - row[1] <= PATHQUERY_MAX_AGE:
                 _bump(stats, "cache_hits")
                 data = json.loads(row[0])
                 results = data.get("results") or []
@@ -954,6 +962,8 @@ def finish_run(
         report.label, report.done, report.total, report.elapsed,
         len(report.failures), 100.0 * report.failure_rate, rows_written, stats,
     )
+    if stats.cache_hits:
+        log.info("%s: %d responses served from the cache", report.label, stats.cache_hits)
     failures_path = Path(out_dir) / f"{Path(sys.argv[0]).stem}.failures.tsv"
     if report.failures:
         failures_path.parent.mkdir(parents=True, exist_ok=True)
