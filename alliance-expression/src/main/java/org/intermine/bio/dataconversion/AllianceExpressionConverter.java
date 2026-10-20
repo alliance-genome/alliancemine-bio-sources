@@ -144,7 +144,9 @@ public class AllianceExpressionConverter extends BioFileConverter {
             String[] s = ref.split(",");
             for(int i=0; i < s.length; i++) {
                 String pub = getPublication(s[i]);
-                expAnnot.addToCollection("publications", pub);
+                if (pub != null) {
+                    expAnnot.addToCollection("publications", pub);
+                }
             }
         }
         expannotations.add(expAnnot);
@@ -154,20 +156,27 @@ public class AllianceExpressionConverter extends BioFileConverter {
     }
 
 
-    private String getPublication(String pubMedId)
+    private String getPublication(String pubToken)
             throws ObjectStoreException {
-        Item item = publications.get(pubMedId);
+        String token = pubToken.trim();
+        if (token.startsWith("PMID:")) {
+            token = token.substring(5).trim();
+        } else if (token.startsWith("WBPaper")) {
+            token = "WB:" + token;
+        }
+        if (token.isEmpty()) {
+            return null;
+        }
+        Item item = publications.get(token);
         if (item == null) {
             item = createItem("Publication");
-            if (StringUtils.isNotEmpty(pubMedId)) {
-                item.setAttribute("pubMedId", pubMedId);
-            }
+            item.setAttribute(StringUtils.isNumeric(token) ? "pubMedId" : "pubXrefId", token);
             try {
                 store(item);
             } catch (ObjectStoreException e) {
                 throw new ObjectStoreException(e);
             }
-            publications.put(pubMedId, item);
+            publications.put(token, item);
         }
         return item.getIdentifier();
     }
