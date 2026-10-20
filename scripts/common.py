@@ -742,12 +742,17 @@ def fms_download_gz(url: str) -> Path:
         return target
     log.info("FMS download %s", url)
     req = _u.Request(url, headers={"User-Agent": USER_AGENT})
-    with _u.urlopen(req, timeout=300) as resp, target.open("wb") as fh:
-        while True:
-            chunk = resp.read(1 << 16)
-            if not chunk:
-                break
-            fh.write(chunk)
+    part = target.with_suffix(target.suffix + ".part")
+    try:
+        with _u.urlopen(req, timeout=300) as resp, part.open("wb") as fh:
+            while True:
+                chunk = resp.read(1 << 16)
+                if not chunk:
+                    break
+                fh.write(chunk)
+        os.replace(part, target)
+    finally:
+        part.unlink(missing_ok=True)
     return target
 
 
@@ -789,8 +794,10 @@ def iter_fms_datatype(
     with the MOD without re-parsing the URL."""
     files = fms_list_files(datatype, release=release, sub_filter=sub_filter)
     if not files:
-        log.warning("No FMS files for datatype=%s sub_filter=%s", datatype, sub_filter)
-        return
+        raise RuntimeError(
+            f"No FMS files for datatype={datatype} sub_filter={sub_filter} in release "
+            f"{release or get_current_release()}; narrow --mods or ALLIANCE_MODS to skip it"
+        )
     for fi in files:
         local = fms_download_gz(fi["url"])
         for rec in fms_iter_json_records(local):
@@ -821,19 +828,12 @@ def add_parallel_args(parser) -> None:
     )
 
 
-# The API answers 400 (malformed/unsupported id, e.g. WB transgenes on
-# /allele) or 404 for seed ids it does not serve. Those are reported as
-# missing rather than failed: retrying cannot change the answer.
-MISSING_HTTP_CODES = (400, 404)
-
-
 @dataclass
 class RunReport:
     label: str
     total: int
     done: int = 0
     failures: list[tuple[str, str]] = field(default_factory=list)
-    missing: list[tuple[str, str]] = field(default_factory=list)
     elapsed: float = 0.0
 
     @property
@@ -878,8 +878,7 @@ def run_parallel(
         try:
             return "ok", work(entity_id, thread_cache(), stats)
         except urllib.error.HTTPError as e:
-            status = "missing" if e.code in MISSING_HTTP_CODES else "failed"
-            return status, f"HTTP {e.code}"
+            return "failed", f"HTTP {e.code}"
         except Exception as e:
             return "failed", f"{type(e).__name__}: {e}"
 
@@ -907,9 +906,6 @@ def run_parallel(
                 report.done += 1
                 if status == "ok":
                     consume(entity_id, result)
-                elif status == "missing":
-                    report.missing.append((entity_id, result))
-                    log.debug("%s: %s not served by the API: %s", label, entity_id, result)
                 else:
                     report.failures.append((entity_id, result))
                     log.warning("%s: %s failed: %s", label, entity_id, result)
@@ -929,39 +925,44 @@ def _log_progress(report: RunReport, stats: FetchStats, elapsed: float) -> None:
     rate = report.done / elapsed if elapsed > 0 else 0.0
     remaining = (report.total - report.done) / rate if rate > 0 else 0.0
     log.info(
-        "%s: %d/%d (%.1f%%)  %.1f %s/s  %.1f req/s  cache_hits=%d  failed=%d  missing=%d  "
+        "%s: %d/%d (%.1f%%)  %.1f %s/s  %.1f req/s  cache_hits=%d  failed=%d  "
         "throttled=%d  eta %.1fh",
         report.label, report.done, report.total,
         100.0 * report.done / report.total if report.total else 100.0,
         rate, report.label, stats.requests / elapsed if elapsed > 0 else 0.0,
-        stats.cache_hits, len(report.failures), len(report.missing), stats.throttled,
+        stats.cache_hits, len(report.failures), stats.throttled,
         remaining / 3600,
     )
 
 
-def finish_run(report: RunReport, stats: FetchStats, out_dir: Path, max_failure_rate: float) -> None:
+def finish_run(
+    report: RunReport,
+    stats: FetchStats,
+    out_dir: Path,
+    max_failure_rate: float,
+    *,
+    rows_written: int,
+) -> None:
     """Log the run summary, write failed ids next to the TSVs, and exit
-    non-zero when the failure rate is above max_failure_rate. Failed ids are
-    not cached, so a rerun retries exactly those (everything else is served
-    from the cache)."""
+    non-zero when the failure rate is above max_failure_rate or no row was
+    written. Call it inside the TsvWriter block: the SystemExit then makes the
+    writer drop its temp file instead of renaming a partial TSV into place.
+    Failed ids are not cached, so a rerun retries exactly those (everything
+    else is served from the cache)."""
     log.info(
-        "%s: done %d/%d in %.0fs  failed=%d (%.3f%%)  missing=%d  API stats: %s",
+        "%s: done %d/%d in %.0fs  failed=%d (%.3f%%)  rows=%d  API stats: %s",
         report.label, report.done, report.total, report.elapsed,
-        len(report.failures), 100.0 * report.failure_rate, len(report.missing), stats,
+        len(report.failures), 100.0 * report.failure_rate, rows_written, stats,
     )
     failures_path = Path(out_dir) / f"{Path(sys.argv[0]).stem}.failures.tsv"
-    if report.failures or report.missing:
+    if report.failures:
         failures_path.parent.mkdir(parents=True, exist_ok=True)
         with failures_path.open("w", encoding="utf-8") as fh:
-            for status, entries in (("failed", report.failures), ("missing", report.missing)):
-                for entity_id, err in entries:
-                    fh.write(f"{entity_id}\t{status}\t{err}\n")
+            for entity_id, err in report.failures:
+                fh.write(f"{entity_id}\tfailed\t{err}\n")
         for entity_id, err in report.failures[:20]:
             log.warning("  failed %s: %s", entity_id, err)
-        if report.missing:
-            log.warning("%d ids not served by the API (HTTP 400/404), e.g. %s",
-                        len(report.missing), ", ".join(e for e, _ in report.missing[:5]))
-        log.warning("Failed and missing ids written to %s", failures_path)
+        log.warning("Failed ids written to %s", failures_path)
     elif failures_path.exists():
         failures_path.unlink()
     if report.failure_rate > max_failure_rate:
@@ -969,4 +970,7 @@ def finish_run(report: RunReport, stats: FetchStats, out_dir: Path, max_failure_
             "%s: failure rate %.3f%% exceeds %.3f%%",
             report.label, 100.0 * report.failure_rate, 100.0 * max_failure_rate,
         )
+        sys.exit(1)
+    if rows_written == 0:
+        log.error("%s: no rows written", report.label)
         sys.exit(1)

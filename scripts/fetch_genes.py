@@ -174,8 +174,8 @@ def main() -> None:
             gene_ids, work, lambda _gid, row: writer.write_row(**row),
             cache_name="genes", stats=stats, workers=args.workers, label="genes",
         )
-
-    finish_run(report, stats, out_dir, args.max_failure_rate)
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=writer.rows_written)
 
 
 if __name__ == "__main__":

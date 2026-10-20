@@ -252,9 +252,10 @@ def main() -> None:
 
         report = run_parallel(gene_ids, fetch_for_gene, consume, cache_name="interactions",
                               stats=stats, workers=args.workers, label="genes")
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=mol_writer.rows_written + gen_writer.rows_written)
 
     log.info("interactions: molecular rows=%d  genetic rows=%d", totals["molecular"], totals["genetic"])
-    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 
 if __name__ == "__main__":

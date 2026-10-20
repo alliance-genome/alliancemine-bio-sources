@@ -215,9 +215,10 @@ def main() -> None:
     ) as writer:
         report = run_parallel(gene_ids, work, consume, cache_name="disease_models", stats=stats,
                               workers=args.workers, label="genes")
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=writer.rows_written)
 
     log.info("disease_models: rows=%d  genes_without_models=%d", total_rows, genes_without_models)
-    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 if __name__ == "__main__":
     main()

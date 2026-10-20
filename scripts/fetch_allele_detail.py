@@ -126,8 +126,8 @@ def main() -> None:
             allele_ids, work, lambda _aid, row: writer.write_row(**row),
             cache_name="allele_detail", stats=stats, workers=args.workers, label="alleles",
         )
-
-    finish_run(report, stats, out_dir, args.max_failure_rate)
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=writer.rows_written)
 
 
 if __name__ == "__main__":

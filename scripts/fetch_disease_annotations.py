@@ -140,9 +140,10 @@ def main() -> None:
     ) as writer:
         report = run_parallel(ids, work, consume, cache_name="disease_annotations", stats=stats,
                               workers=args.workers, label="diseases")
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=writer.rows_written)
 
     log.info("disease_annotations: rows=%d", total_rows)
-    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 
 if __name__ == "__main__":
