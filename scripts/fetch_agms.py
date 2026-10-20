@@ -34,6 +34,9 @@ log = logging.getLogger("alliance.fetch.agms")
 
 
 DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "XBXL", "XBXT"]
+# The 9.1.0 FMS manifest has no XBXL or XBXT file for this datatype, and
+# iter_fms_datatype raises on a missing file, so the FMS path skips them.
+FMS_DEFAULT_MODS = [m for m in DEFAULT_MODS if m not in ("XBXL", "XBXT")]
 
 
 COLUMNS = [
@@ -69,7 +72,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch Alliance AGMs (FMS bulk)")
     parser.add_argument(
         "--mods",
-        help=f"Comma-separated MOD prefixes (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
+        help=f"Comma-separated MOD prefixes (default: {','.join(FMS_DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--limit", type=int, help="Cap rows emitted")
     parser.add_argument(
@@ -82,7 +85,7 @@ def main() -> None:
 
     configure_logging(args.verbose)
 
-    mods = selected_mods(DEFAULT_MODS, args.mods)
+    mods = selected_mods(FMS_DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
     seen: set = set()

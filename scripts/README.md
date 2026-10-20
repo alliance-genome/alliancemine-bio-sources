@@ -34,6 +34,10 @@ with `--out-dir`). HTTP responses cache in `scripts/.cache/<fetcher>.sqlite`;
 FMS gz payloads cache in `scripts/.fms_cache/`; STRING downloads cache in
 `scripts/.string_cache/`.
 
+Cache keys include the Alliance release and API base, so a new release never
+reads old responses. A run without `ALLIANCE_RELEASE` makes one extra
+`/releaseInfo` call to learn the release (cached per process).
+
 `fetch_all.py` is the Docker pipeline's pre-build step — it runs every fetcher
 in dependency order and exits non-zero if any fails.
 

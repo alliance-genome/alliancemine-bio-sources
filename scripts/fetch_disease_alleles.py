@@ -46,6 +46,9 @@ from common import (  # noqa: E402
 )
 
 DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
+# The 9.1.0 FMS manifest has no XBXL or XBXT file for this datatype, and
+# iter_fms_datatype raises on a missing file, so the FMS path skips them.
+FMS_DEFAULT_MODS = [m for m in DEFAULT_MODS if m not in ("XBXL", "XBXT")]
 
 
 def _fms_rows(mods: list[str]) -> Iterator[dict]:
@@ -140,7 +143,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mods",
-        help=f"Comma-separated MOD prefixes, FMS path (default: {','.join(DEFAULT_MODS)}, env ALLIANCE_MODS)",
+        help=f"Comma-separated MOD prefixes, FMS path (default: {','.join(FMS_DEFAULT_MODS)}, env ALLIANCE_MODS)",
     )
     parser.add_argument("--ids", help="Comma-separated DOID CURIEs (api path)")
     parser.add_argument("--limit", type=int, help="Process at most N diseases / rows")
@@ -161,7 +164,7 @@ def main() -> None:
     seen_pairs: set = set()
 
     if args.source == "fms":
-        mods = selected_mods(DEFAULT_MODS, args.mods)
+        mods = selected_mods(FMS_DEFAULT_MODS, args.mods)
         total = 0
         with TsvWriter(
             out_dir / "disease-alleles.tsv",

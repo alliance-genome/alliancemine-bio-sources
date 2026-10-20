@@ -48,6 +48,9 @@ from common import (  # noqa: E402
 )
 
 DEFAULT_MODS = ["MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN", "XBXL", "XBXT"]
+# The 9.1.0 FMS manifest has no XBXL or XBXT file for this datatype, and
+# iter_fms_datatype raises on a missing file, so the FMS path skips them.
+FMS_DEFAULT_MODS = [m for m in DEFAULT_MODS if m not in ("XBXL", "XBXT")]
 
 
 # MOD-prefix → NCBI taxon. Used because DAF rows do not carry taxon — must
@@ -202,7 +205,7 @@ def main() -> None:
     seen_triples: set = set()
 
     if args.source == "fms":
-        mods = selected_mods(DEFAULT_MODS, args.mods)
+        mods = selected_mods(FMS_DEFAULT_MODS, args.mods)
         total = 0
         with TsvWriter(
             out_dir / "experimental-disease.tsv",

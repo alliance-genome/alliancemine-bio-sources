@@ -159,3 +159,29 @@ def test_missing_fms_mod_raises(monkeypatch):
     monkeypatch.setattr(common, "fms_list_files", lambda *a, **k: [])
     with pytest.raises(RuntimeError, match="No FMS files"):
         list(common.iter_fms_datatype("AGM", sub_filter="WB"))
+
+
+@pytest.mark.parametrize("module, datatypes", [
+    ("fetch_agms", ["AGM"]),
+    ("fetch_htp", ["HTPDATASET", "HTPDATASAMPLE"]),
+    ("fetch_disease_alleles", ["DAF"]),
+    ("fetch_experimental_disease", ["DAF"]),
+])
+def test_default_mods_all_have_fms_files(monkeypatch, module, datatypes):
+    # 9.1.0 manifest: every MOD but XBXL and XBXT has a file for these datatypes.
+    manifest_mods = {"MGI", "ZFIN", "FB", "WB", "RGD", "SGD", "HUMAN"}
+    rows = [
+        {"dataType": {"name": dt}, "dataSubType": {"name": m},
+         "s3Url": f"x/{dt}_{m}.json.gz", "uploadDate": "2026-01-01"}
+        for dt in datatypes for m in manifest_mods
+    ]
+    monkeypatch.setattr(common, "_fms_manifest", lambda release: rows)
+    monkeypatch.setattr(common, "fms_download_gz", lambda url: Path(url))
+    monkeypatch.setattr(common, "fms_iter_json_records", lambda path: iter([{}]))
+    monkeypatch.delenv("ALLIANCE_MODS", raising=False)
+    mod = __import__(module)
+    mods = common.selected_mods(mod.FMS_DEFAULT_MODS, None)
+    assert mods
+    for dt in datatypes:
+        for m in mods:
+            assert list(common.iter_fms_datatype(dt, sub_filter=m)) == [(m, {})]
