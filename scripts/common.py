@@ -563,41 +563,60 @@ def _gene_list_path(release: str, mod: str) -> Path:
     return CACHE_DIR / "gene-ids" / release / f"{mod}.txt"
 
 
+def _mod_gene_ids(mod: str, release: str, urls: dict[str, str]) -> list[str]:
+    """Gene CURIEs of one MOD from its BGI JSON, cached under
+    $ALLIANCE_FETCH_CACHE/gene-ids/<release>/ when the release is known."""
+    path = _gene_list_path(release, mod)
+    cacheable = release != "unknown"
+    if cacheable and path.exists():
+        ids = [line.strip() for line in path.read_text().splitlines() if line.strip()]
+        log.info("Enumerated %d %s genes from %s", len(ids), mod, path)
+        return ids
+    if not urls:
+        urls.update(_resolve_bgi_urls(ALL_MODS))
+    if mod not in urls:
+        raise RuntimeError(f"No BGI file for {mod} in FMS release {release}")
+    ids = _bgi_gene_ids(fms_download_gz(urls[mod]), _MOD_PREFIX[mod])
+    if not ids:
+        raise RuntimeError(f"BGI file for {mod} yielded no gene IDs: {urls[mod]}")
+    log.info("Enumerated %d %s genes from FMS BGI %s", len(ids), mod, urls[mod])
+    if cacheable:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text("\n".join(ids) + "\n")
+        os.replace(tmp, path)
+    return ids
+
+
 def enumerate_mod_genes(mods: list[str]) -> list[str]:
     """Return gene CURIEs across one or more MODs by parsing each MOD's BGI
-    JSON for the pinned release. The per-MOD lists are cached under
-    $ALLIANCE_FETCH_CACHE/gene-ids/<release>/ so the fetchers in one run
-    enumerate once instead of re-downloading every BGI file."""
+    JSON for the pinned release. The per-MOD lists are cached so the
+    fetchers in one run enumerate once instead of re-downloading every BGI
+    file."""
     release = get_current_release()
-    cacheable = release != "unknown"
+    urls: dict[str, str] = {}
     combined: list[str] = []
     seen: set[str] = set()
-    urls: dict[str, str] | None = None
     for mod in mods:
-        path = _gene_list_path(release, mod)
-        if cacheable and path.exists():
-            ids = [line.strip() for line in path.read_text().splitlines() if line.strip()]
-            log.info("Enumerated %d %s genes from %s", len(ids), mod, path)
-        else:
-            if urls is None:
-                urls = _resolve_bgi_urls(mods)
-            if mod not in urls:
-                raise RuntimeError(f"No BGI file for {mod} in FMS release {release}")
-            ids = _bgi_gene_ids(fms_download_gz(urls[mod]), _MOD_PREFIX[mod])
-            if not ids:
-                raise RuntimeError(f"BGI file for {mod} yielded no gene IDs: {urls[mod]}")
-            log.info("Enumerated %d %s genes from FMS BGI %s", len(ids), mod, urls[mod])
-            if cacheable:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                tmp = path.with_suffix(".tmp")
-                tmp.write_text("\n".join(ids) + "\n")
-                os.replace(tmp, path)
-        for gid in ids:
+        for gid in _mod_gene_ids(mod, release, urls):
             if gid not in seen:
                 seen.add(gid)
                 combined.append(gid)
     log.info("Total across MODs %s: %d genes", ",".join(mods), len(combined))
     return combined
+
+
+def mod_gene_taxa(mods: list[str] | None = None) -> dict[str, str]:
+    """Gene CURIE -> NCBITaxon CURIE from the per-MOD BGI gene lists. The
+    9.2.0 API dropped gene.taxon from several payloads (/gene/{id}/models),
+    and the curie prefix alone cannot tell X. laevis from X. tropicalis."""
+    release = get_current_release()
+    urls: dict[str, str] = {}
+    taxa: dict[str, str] = {}
+    for mod in mods or ALL_MODS:
+        for gid in _mod_gene_ids(mod, release, urls):
+            taxa.setdefault(gid, MOD_TAXON[mod])
+    return taxa
 
 
 # ---------------------------------------------------------------------------

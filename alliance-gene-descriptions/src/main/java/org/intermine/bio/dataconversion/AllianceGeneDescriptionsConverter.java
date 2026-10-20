@@ -28,7 +28,7 @@ import org.intermine.xml.full.Item;
  * scripts/fetch_gene_descriptions.py from the Alliance FMS
  * GENE-DESCRIPTION-JSON bulk files) and produces partial Gene items
  * carrying the AGR auto-curated description fields. Merged with sibling
- * Gene items via Gene.key_primaryidentifier.
+ * Gene items via Gene.key_primaryidentifier (primaryIdentifier, organism).
  */
 public class AllianceGeneDescriptionsConverter extends BioFileConverter
 {
@@ -51,6 +51,20 @@ public class AllianceGeneDescriptionsConverter extends BioFileConverter
     private static final int COL_DATA_PROVIDER = 10;
     private static final int MIN_COLUMNS       = 11;
 
+    // dataProvider column (FMS dataSubType) -> NCBI taxon id
+    private static final Map<String, String> MOD_TAXON = new HashMap<String, String>();
+    static {
+        MOD_TAXON.put("SGD", "559292");
+        MOD_TAXON.put("MGI", "10090");
+        MOD_TAXON.put("RGD", "10116");
+        MOD_TAXON.put("ZFIN", "7955");
+        MOD_TAXON.put("FB", "7227");
+        MOD_TAXON.put("WB", "6239");
+        MOD_TAXON.put("XBXL", "8355");
+        MOD_TAXON.put("XBXT", "8364");
+        MOD_TAXON.put("HUMAN", "9606");
+    }
+
     private final Map<String, String> genes = new HashMap<String, String>();
 
     public AllianceGeneDescriptionsConverter(ItemWriter writer, Model model) {
@@ -61,6 +75,7 @@ public class AllianceGeneDescriptionsConverter extends BioFileConverter
         LOG.info("Processing Alliance gene descriptions...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int unknownProvider = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -69,19 +84,30 @@ public class AllianceGeneDescriptionsConverter extends BioFileConverter
             if ("geneId".equals(line[COL_GENE_ID])) {
                 continue;
             }
-            processRow(line);
+            String taxonId = MOD_TAXON.get(line[COL_DATA_PROVIDER].trim());
+            if (taxonId == null) {
+                unknownProvider++;
+                continue;
+            }
+            processRow(line, taxonId);
             rows++;
         }
-        LOG.info("GeneDescriptions: emitted " + rows + " partial Gene items");
+        LOG.info("GeneDescriptions: emitted " + rows + " partial Gene items, skipped "
+                + unknownProvider + " with an unknown dataProvider");
+        if (unknownProvider > 0) {
+            throw new IllegalStateException(unknownProvider
+                    + " gene-description rows have a dataProvider missing from MOD_TAXON");
+        }
     }
 
-    private void processRow(String[] line) throws ObjectStoreException {
+    private void processRow(String[] line, String taxonId) throws ObjectStoreException {
         String geneId = line[COL_GENE_ID].trim();
         if (geneId.isEmpty()) {
             return;
         }
         Item gene = createItem("Gene");
         gene.setAttribute("primaryIdentifier", geneId);
+        gene.setReference("organism", getOrganism(taxonId));
         setIfPresent(gene, "autoDescription",        line[COL_AUTO]);
         setIfPresent(gene, "goDescription",          line[COL_GO]);
         setIfPresent(gene, "goFunctionDescription",  line[COL_GO_F]);

@@ -52,6 +52,10 @@ public class AllianceDiseaseModelsConverter extends BioFileConverter
     private static final int COL_HAS_DISEASE           = 11;
     private static final int COL_HAS_PHENOTYPE         = 12;
     private static final int MIN_COLUMNS               = 13;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> doTerms = new HashMap<String, String>();
@@ -67,6 +71,7 @@ public class AllianceDiseaseModelsConverter extends BioFileConverter
         LOG.info("Processing Alliance disease models...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -75,10 +80,19 @@ public class AllianceDiseaseModelsConverter extends BioFileConverter
             if ("subjectGeneId".equals(line[COL_SUBJECT_GENE_ID])) {
                 continue;
             }
-            processRow(line);
             rows++;
+            if (StringUtils.isEmpty(line[COL_SUBJECT_GENE_TAXON].trim())) {
+                missingTaxon++;
+                continue;
+            }
+            processRow(line);
         }
-        LOG.info("DiseaseModels: processed " + rows + " rows");
+        LOG.info("DiseaseModels: processed " + rows + " rows, skipped " + missingTaxon
+                + " with no subjectGeneTaxon");
+        if (missingTaxon > rows * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + rows
+                    + " disease-model rows have no subjectGeneTaxon; rerun fetch_disease_models.py");
+        }
     }
 
     private void processRow(String[] line) throws ObjectStoreException {
@@ -115,10 +129,8 @@ public class AllianceDiseaseModelsConverter extends BioFileConverter
         }
         Item gene = createItem("Gene");
         gene.setAttribute("primaryIdentifier", primaryId);
-        if (StringUtils.isNotEmpty(taxon)) {
-            String taxonId = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
-            gene.setReference("organism", getOrganism(taxonId));
-        }
+        String taxonId = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
+        gene.setReference("organism", getOrganism(taxonId));
         store(gene);
         genes.put(primaryId, gene.getIdentifier());
         return gene.getIdentifier();

@@ -133,6 +133,7 @@ public class AllianceAllelesConverter extends BioFileConverter {
             }
             Item allele = processAlleles(alleleId, alleleSymbol, alleleSynonym, alleleType, variantId, variantSymbol, variantSynonym, variantCrossRefs, variantHgvsName, variantType, variantsTypeId, assembly, chr,
                     chrStart, chrEnd, seqRef, seqVariant, mostSevere, variantReference, hasDisease, hasPhenotype, affectedGene);
+            allele.setReference("organism", org);
             if (gene != null) {
                 allele.setReference("gene", gene);
                 gene.addToCollection("alleles", allele);
