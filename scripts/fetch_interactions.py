@@ -197,16 +197,44 @@ def fetch_for_gene(gene_id: str, cache, stats: FetchStats) -> tuple[list[dict], 
     return mol, gen
 
 
-def _write_new(writer: TsvWriter, rows: list[dict], seen: set) -> int:
+def _is_canonical(row: dict) -> bool:
+    return row.get("geneId", "") <= row.get("partnerGeneId", "")
+
+
+def _write_new(writer: TsvWriter, rows: list[dict], seen: set, pending: dict) -> int:
+    """Write each uniqueId once, in the orientation geneId <= partnerGeneId.
+
+    The API returns one interaction from both genes' endpoints, with the
+    queried gene first. A non-canonical copy is held in `pending` until
+    `_flush_pending`, so completion order never decides the kept direction.
+    """
     written = 0
     for row in rows:
         uid = row.get("uniqueId")
-        if uid and uid in seen:
+        if not uid:
+            writer.write_row(**row)
+            written += 1
+        elif uid in seen:
             continue
-        if uid:
+        elif _is_canonical(row):
             seen.add(uid)
-        writer.write_row(**row)
-        written += 1
+            pending.pop(uid, None)
+            writer.write_row(**row)
+            written += 1
+        else:
+            pending.setdefault(uid, row)
+    return written
+
+
+def _flush_pending(writer: TsvWriter, pending: dict, seen: set) -> int:
+    """Write the non-canonical copies whose canonical twin never arrived, sorted by uniqueId."""
+    written = 0
+    for uid in sorted(pending):
+        if uid not in seen:
+            seen.add(uid)
+            writer.write_row(**pending[uid])
+            written += 1
+    pending.clear()
     return written
 
 
@@ -232,6 +260,8 @@ def main() -> None:
     stats = FetchStats()
     seen_mol: set = set()
     seen_gen: set = set()
+    pending_mol: dict = {}
+    pending_gen: dict = {}
     totals = {"molecular": 0, "genetic": 0}
 
     with TsvWriter(
@@ -247,11 +277,13 @@ def main() -> None:
     ) as gen_writer:
         def consume(_gid, result):
             mol, gen = result
-            totals["molecular"] += _write_new(mol_writer, mol, seen_mol)
-            totals["genetic"] += _write_new(gen_writer, gen, seen_gen)
+            totals["molecular"] += _write_new(mol_writer, mol, seen_mol, pending_mol)
+            totals["genetic"] += _write_new(gen_writer, gen, seen_gen, pending_gen)
 
         report = run_parallel(gene_ids, fetch_for_gene, consume, cache_name="interactions",
                               stats=stats, workers=args.workers, label="genes")
+        totals["molecular"] += _flush_pending(mol_writer, pending_mol, seen_mol)
+        totals["genetic"] += _flush_pending(gen_writer, pending_gen, seen_gen)
 
     log.info("interactions: molecular rows=%d  genetic rows=%d", totals["molecular"], totals["genetic"])
     finish_run(report, stats, out_dir, args.max_failure_rate)
