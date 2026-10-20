@@ -112,14 +112,14 @@ public class AllianceGenesConverter extends BioFileConverter {
                 continue;
             }
             String species = origspecies.replace("NCBITaxon:", "");
-            String chromosome = line[COL_CHROMOSOME].trim();
-            String start = line[COL_START].trim();
-            String end = line[COL_END].trim();
-            String strand = line[COL_STRAND].trim();
+            String chromosome = nullToEmpty(line[COL_CHROMOSOME].trim());
+            String start = nullToEmpty(line[COL_START].trim());
+            String end = nullToEmpty(line[COL_END].trim());
+            String strand = normaliseStrand(line[COL_STRAND].trim());
             String feature_type = line[COL_FEATURE_TYPE].trim();
 
             String chr = "";
-            if (species.equals("559292")) {
+            if (species.equals("559292") && !chromosome.isEmpty()) {
                 if (chromosome.equals("Mito")) {
                     chr = "chrmt";
                 } else {
@@ -136,11 +136,11 @@ public class AllianceGenesConverter extends BioFileConverter {
             Item g = genes.get(primaryIdentifier);
             if (g != null) {
                 String mcm = geneschromosomes.get(primaryIdentifier);
-                if (!mcm.equals(chrId)) {
+                if (mcm != null && !mcm.equals(chrId)) {
                     g.setReference("chromosome", mcm);
                 }
                 // ~~~ location ~~~
-                if (!start.equals("null") || !end.equals("null")) {
+                if (chrId != null && !start.isEmpty() && !end.isEmpty()) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
                     g.setReference("chromosomeLocation", locationRefId);
                 }
@@ -320,9 +320,11 @@ public class AllianceGenesConverter extends BioFileConverter {
                 }
             }
             item.setReference("organism", organism);
-            item.setReference("chromosome", chrId);
+            if (chrId != null) {
+                item.setReference("chromosome", chrId);
+            }
             // ~~~ location ~~~
-            if (!start.equals("null") || !end.equals("null")) {
+            if (chrId != null && !start.isEmpty() && !end.isEmpty()) {
                 String locationRefId = getLocation(item, chrId, start, end, strand);
                 item.setReference("chromosomeLocation", locationRefId);
             }
@@ -464,7 +466,21 @@ public class AllianceGenesConverter extends BioFileConverter {
     }
 
 
-    private String getLength(String start, String end)
+    static String nullToEmpty(String value) {
+        return "null".equals(value) ? "" : value;
+    }
+
+    static String normaliseStrand(String strand) {
+        if ("+".equals(strand)) {
+            return "1";
+        }
+        if ("-".equals(strand)) {
+            return "-1";
+        }
+        return nullToEmpty(strand);
+    }
+
+    static String getLength(String start, String end)
             throws NumberFormatException {
         Integer a = new Integer(start);
         Integer b = new Integer(end);
@@ -475,7 +491,7 @@ public class AllianceGenesConverter extends BioFileConverter {
             a = new Integer(end);
             b = new Integer(start);
         }
-        Integer length = new Integer(b.intValue() - a.intValue());
+        Integer length = new Integer(b.intValue() - a.intValue() + 1);
         return length.toString();
     }
 
