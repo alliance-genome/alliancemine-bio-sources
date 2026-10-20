@@ -37,7 +37,7 @@ public class SgdGffUtrConverter extends BioFileConverter
 	private final Map<String, Item> genes = new HashMap<String, Item>();
 	private final Map<String, Item> transcripts = new HashMap<String, Item>();
 	private Map<String, String> chromosomes = new HashMap<String, String>();
-	private static final String TAXON_ID = "4932";
+	private static final String TAXON_ID = "559292";
 	private Item organism;
 
     /**
@@ -234,7 +234,7 @@ public class SgdGffUtrConverter extends BioFileConverter
 			a = new Integer(end);
 			b = new Integer(start);
 		}
-		Integer length = new Integer(b.intValue() - a.intValue());
+		Integer length = new Integer(b.intValue() - a.intValue() + 1);
 		return length.toString();
 	}
 
