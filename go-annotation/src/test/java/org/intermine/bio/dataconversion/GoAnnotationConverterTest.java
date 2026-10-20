@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2018 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -10,25 +10,38 @@ package org.intermine.bio.dataconversion;
  *
  */
 
-public class GoAnnotationConverterTest extends ItemsTestCase
+import java.io.StringReader;
+import java.util.HashMap;
+
+import junit.framework.TestCase;
+
+import org.intermine.dataconversion.MockItemWriter;
+import org.intermine.metadata.Model;
+import org.intermine.xml.full.Item;
+
+public class GoAnnotationConverterTest extends TestCase
 {
-    Model model = Model.getInstanceByName("genomic");
-    GoAnnotationConverter converter;
-    MockItemWriter itemWriter;
-
-    public GoAnnotationConverterTest(String arg) {
-        super(arg);
+    private static String gaf(String pub) {
+        return "SGD\tS000000001\tACT1\t\tGO:0005515\t" + pub + "\tIPI\tSGD:S000000002\tF\t\t\t"
+                + "gene\ttaxon:559292\t20200101\tSGD\t\t\n";
     }
 
-    public void setUp() throws Exception {
-        super.setUp();
-        // if you need to do some preprocessing and set up, do that here
+    private int countAnnotations(String gafText) throws Exception {
+        MockItemWriter writer =
+                new MockItemWriter(new HashMap<String, org.intermine.model.fulldata.Item>());
+        new GoConverter(writer, Model.getInstanceByName("genomic"))
+                .process(new StringReader(gafText));
+        int annotations = 0;
+        for (Item item : writer.getItems()) {
+            if ("GOAnnotation".equals(item.getClassName())) {
+                annotations++;
+            }
+        }
+        return annotations;
     }
 
-    public void testProcess() throws Exception {
-        // read in a test file (place in test/resources so it's on the classpath)
-        // process using your converter
-        // compare results to expected results
-        // look at the other intermine unit tests for help!
+    public void testRepeatedAnnotationWithWithTextIsMerged() throws Exception {
+        // same gene, term, qualifier, with-text and publication on two lines
+        assertEquals(1, countAnnotations(gaf("PMID:1") + gaf("PMID:1")));
     }
 }

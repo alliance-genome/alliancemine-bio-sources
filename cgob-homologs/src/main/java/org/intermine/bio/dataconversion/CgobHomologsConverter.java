@@ -105,21 +105,16 @@ public class CgobHomologsConverter extends BioFileConverter
             }
             
             
-            if (refId1 == null || refId2 == null || refId3 == null || refId4 == null || refId5 == null) {
+            if (refId1 == null) {
                 continue;
             }
 
-            processHomologue(refId1, refId2);
-            processHomologue(refId2, refId1);
-            
-            processHomologue(refId1, refId3);
-            processHomologue(refId3, refId1);
-            
-            processHomologue(refId1, refId4);
-            processHomologue(refId4, refId1);
-            
-            processHomologue(refId1, refId5);
-            processHomologue(refId5, refId1);
+            for (String other : new String[] {refId2, refId3, refId4, refId5}) {
+                if (other != null) {
+                    processHomologue(refId1, other);
+                    processHomologue(other, refId1);
+                }
+            }
 
         }
     }

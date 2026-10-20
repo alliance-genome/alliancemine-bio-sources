@@ -75,6 +75,10 @@ public class AllianceMolecularInteractionsConverter extends BioFileConverter
     private static final int COL_AGGREGATION_DATABASE       = 27;
     private static final int COL_AGGREGATION_DATABASE_NAME  = 28;
     private static final int MIN_COLUMNS                    = 29;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> publications = new HashMap<String, String>();
@@ -92,6 +96,7 @@ public class AllianceMolecularInteractionsConverter extends BioFileConverter
         LOG.info("Processing molecular interactions...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         int skippedHeader = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
@@ -104,8 +109,17 @@ public class AllianceMolecularInteractionsConverter extends BioFileConverter
                 skippedHeader++;
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_GENE_TAXON]) || StringUtils.isBlank(line[COL_PARTNER_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("molecular-interactions: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " molecular-interactions rows have no gene taxon; rerun fetch_interactions.py");
         }
         LOG.info("Molecular: processed " + rows + " rows, skipped " + skippedHeader + " header row(s), unique interactions=" + storedInteractionUids.size());
     }

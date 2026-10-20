@@ -54,6 +54,10 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
     private static final int COL_NEGATED       = 9;
     private static final int COL_DATA_PROVIDER = 10;
     private static final int MIN_COLUMNS       = 11;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> doTerms = new HashMap<String, String>();
@@ -68,6 +72,7 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
         LOG.info("Processing Alliance experimental disease annotations...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -76,8 +81,17 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
             if ("geneId".equals(line[COL_GENE_ID])) {
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_GENE_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("experimental-disease: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " experimental-disease rows have no gene taxon; rerun fetch_experimental_disease.py");
         }
         LOG.info("ExperimentalDisease: emitted " + rows + " partial DiseaseAnnotation items");
     }

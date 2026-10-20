@@ -363,7 +363,7 @@ public class GoConverter extends BioFileConverter
                 }
 
                 // new evidence
-                if (allEvidenceForAnnotation == null || !StringUtils.isEmpty(withText)) {
+                if (allEvidenceForAnnotation == null) {
                     String goTermIdentifier = newGoTerm(goId);
                     Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism, dataSource, dataSourceCode);
                     allEvidenceForAnnotation = new LinkedHashSet<Evidence>();

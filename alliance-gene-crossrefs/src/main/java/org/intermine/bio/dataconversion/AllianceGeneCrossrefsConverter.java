@@ -44,6 +44,10 @@ public class AllianceGeneCrossrefsConverter extends BioFileConverter
     private static final int COL_XREF_URL   = 3;
     private static final int COL_XREF_TYPE  = 4;
     private static final int MIN_COLUMNS    = 5;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> dataSources = new HashMap<String, String>();
@@ -56,6 +60,7 @@ public class AllianceGeneCrossrefsConverter extends BioFileConverter
         LOG.info("Processing Alliance gene cross-references...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -64,8 +69,17 @@ public class AllianceGeneCrossrefsConverter extends BioFileConverter
             if ("geneId".equals(line[COL_GENE_ID])) {
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_GENE_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("gene-crossrefs: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " gene-crossrefs rows have no gene taxon; rerun fetch_gene_crossrefs.py");
         }
         LOG.info("GeneCrossrefs: emitted " + rows + " CrossReference items");
     }

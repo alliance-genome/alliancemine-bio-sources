@@ -10,6 +10,10 @@ package org.intermine.bio.dataconversion;
  *
  */
 
+import org.intermine.dataconversion.ItemsTestCase;
+import org.intermine.dataconversion.MockItemWriter;
+import org.intermine.metadata.Model;
+
 public class AllianceGenesConverterTest extends ItemsTestCase
 {
     Model model = Model.getInstanceByName("genomic");
