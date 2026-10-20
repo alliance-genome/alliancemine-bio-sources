@@ -158,6 +158,8 @@ public class AllianceExpressionConverter extends BioFileConverter {
 
     private String getPublication(String pubToken)
             throws ObjectStoreException {
+        // Only bare WBPaper ids get the WB: prefix. Any other token without a PMID: prefix
+        // (MGI:..., ZFIN:..., FB:...) is stored unchanged in pubXrefId.
         String token = pubToken.trim();
         if (token.startsWith("PMID:")) {
             token = token.substring(5).trim();

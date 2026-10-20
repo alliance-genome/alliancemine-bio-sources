@@ -180,6 +180,8 @@ public class AllianceWormRnaiConverter extends BioFileConverter
             return null;
         }
         String p = pubToken.trim();
+        // Only bare WBPaper ids get the WB: prefix. Any other token without a PMID: prefix
+        // (MGI:..., ZFIN:..., FB:...) is stored unchanged in pubXrefId.
         if (p.startsWith("WBPaper")) {
             p = "WB:" + p;
         }
