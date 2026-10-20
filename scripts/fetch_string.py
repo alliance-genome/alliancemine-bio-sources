@@ -31,8 +31,7 @@ from pathlib import Path
 from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import TsvWriter, configure_logging, get_current_release  # noqa: E402
-from fetch_alphafold import _rows_from_crossrefs  # noqa: E402
+from common import TsvWriter, configure_logging, get_current_release, rows_from_crossrefs  # noqa: E402
 
 log = logging.getLogger("alliance.fetch.string")
 
@@ -159,7 +158,7 @@ def main() -> None:
     release = get_current_release()
     out_dir = Path(args.out_dir)
     crossrefs = Path(args.crossrefs) if args.crossrefs else out_dir / "gene-crossrefs.tsv"
-    known = {r["uniProtAccession"] for r in _rows_from_crossrefs(crossrefs)} if crossrefs.exists() else None
+    known = {r["uniProtAccession"] for r in rows_from_crossrefs(crossrefs)} if crossrefs.exists() else None
     if known is None:
         log.warning("Missing %s; UniProt accessions are not filtered", crossrefs)
     total = 0

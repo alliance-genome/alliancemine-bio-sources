@@ -970,3 +970,24 @@ def finish_run(report: RunReport, stats: FetchStats, out_dir: Path, max_failure_
             report.label, 100.0 * report.failure_rate, 100.0 * max_failure_rate,
         )
         sys.exit(1)
+
+
+def rows_from_crossrefs(path: Path) -> Iterator[dict]:
+    """Yield {uniProtAccession, geneId, geneTaxon} per UniProtKB xref in gene-crossrefs.tsv."""
+    with path.open() as fh:
+        for line in fh:
+            if line.startswith("#") or not line.strip():
+                continue
+            cols = line.rstrip("\n").split("\t")
+            if cols and cols[0] == "geneId":
+                continue
+            if len(cols) < 5:
+                continue
+            gene_id, taxon, xref_id = cols[:3]
+            if not xref_id.startswith("UniProtKB:"):
+                continue
+            yield {
+                "uniProtAccession": xref_id.split(":", 1)[1],
+                "geneId": gene_id,
+                "geneTaxon": taxon,
+            }
