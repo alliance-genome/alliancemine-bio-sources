@@ -95,6 +95,36 @@ class FmsListFilesTest(unittest.TestCase):
         self.assertEqual(sorted(f["url"] for f in files), ["https://x/9.1.0/zfin3", "https://x/9.2.0/sgd"])
 
 
+class ModGeneIdsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.patch = mock.patch.object(common, "CACHE_DIR", Path(self.tmp.name))
+        self.patch.start()
+
+    def tearDown(self) -> None:
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def test_union_of_descriptions_and_bgi(self) -> None:
+        files = {
+            "desc": [{"gene_id": "WB:WBGene1"}, {"gene_id": "WB:WBGene3"}],
+            "bgi": [{"basicGeneticEntity": {"primaryId": "WB:WBGene1"}},
+                    {"basicGeneticEntity": {"primaryId": "WB:WBGene2"}}],
+        }
+        urls = {"WB": ["desc", "bgi"]}
+        with mock.patch.object(common, "fms_download_gz", side_effect=Path), \
+             mock.patch.object(common, "fms_iter_json_records", side_effect=lambda p: iter(files[str(p)])):
+            ids = common._mod_gene_ids("WB", "9.2.0", urls)
+        self.assertEqual(ids, ["WB:WBGene1", "WB:WBGene3", "WB:WBGene2"])
+        self.assertEqual(common._mod_gene_ids("WB", "9.2.0", {}), ids)
+
+    def test_empty_file_raises(self) -> None:
+        with mock.patch.object(common, "fms_download_gz", side_effect=Path), \
+             mock.patch.object(common, "fms_iter_json_records", return_value=iter([])):
+            with self.assertRaises(RuntimeError):
+                common._mod_gene_ids("WB", "9.2.0", {"WB": ["desc"]})
+
+
 class RunParallelTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
