@@ -30,8 +30,9 @@ import org.intermine.xml.full.Item;
  *
  * The InterMine integration engine merges these partial Allele items into
  * those produced by alliance-alleles via the Allele.key_primaryidentifier integration
- * key (primaryIdentifier, set to the alleleId CURIE). Order of source ingestion is decided by project.xml; both
- * sources work whether this one runs before or after alliance-alleles.
+ * key (primaryIdentifier, set to the alleleId CURIE). Order of source ingestion is
+ * decided by project.xml; both sources work whether this one runs before or after
+ * alliance-alleles.
  *
  * @author
  */
