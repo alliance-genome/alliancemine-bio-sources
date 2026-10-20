@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import TsvWriter, configure_logging, get_current_release  # noqa: E402
+from common import TsvWriter, configure_logging, get_current_release, rows_from_crossrefs  # noqa: E402
 
 log = logging.getLogger("alliance.fetch.alphafold")
 
@@ -33,29 +33,6 @@ COLUMNS = [
     "geneTaxon",
     "alphaFoldUrl",
 ]
-
-
-def _rows_from_crossrefs(path: Path):
-    """Yield (acc, geneId, taxon, url) per UniProtKB xref."""
-    with path.open() as fh:
-        for line in fh:
-            if line.startswith("#") or not line.strip():
-                continue
-            cols = line.rstrip("\n").split("\t")
-            if cols and cols[0] == "geneId":
-                continue
-            if len(cols) < 5:
-                continue
-            gene_id, taxon, xref_id, xref_url, xref_type = cols[:5]
-            if not xref_id.startswith("UniProtKB:"):
-                continue
-            acc = xref_id.split(":", 1)[1]
-            yield {
-                "uniProtAccession": acc,
-                "geneId": gene_id,
-                "geneTaxon": taxon,
-                "alphaFoldUrl": f"{ALPHAFOLD_URL}{acc}",
-            }
 
 
 def main() -> None:
@@ -89,11 +66,11 @@ def main() -> None:
         release=release,
         source="alphafold.ebi.ac.uk (URL template; no HTTP fetch)",
     ) as writer:
-        for row in _rows_from_crossrefs(crossrefs):
+        for row in rows_from_crossrefs(crossrefs):
             if row["uniProtAccession"] in seen:
                 continue
             seen.add(row["uniProtAccession"])
-            writer.write_row(**row)
+            writer.write_row(**row, alphaFoldUrl=f"{ALPHAFOLD_URL}{row['uniProtAccession']}")
             total += 1
             if args.limit is not None and total >= args.limit:
                 break

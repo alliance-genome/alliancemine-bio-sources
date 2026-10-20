@@ -40,7 +40,8 @@ public class AllianceChemblConverter extends BioFileConverter
     private static final int COL_NAME     = 2;
     private static final int COL_TYPE     = 3;
     private static final int COL_URL      = 4;
-    private static final int MIN_COLUMNS  = 5;
+    private static final int COL_TAXON    = 5;
+    private static final int MIN_COLUMNS  = 6;
 
     private final Map<String, String> proteinsByAcc = new HashMap<String, String>();
     private String chemblSourceRef;
@@ -83,18 +84,21 @@ public class AllianceChemblConverter extends BioFileConverter
         xr.setAttribute("identifier", chembl);
         xr.setAttribute("url", line[COL_URL].trim());
         xr.setAttribute("dbxreftype", line[COL_TYPE].trim());
-        xr.setReference("subject", getProtein(acc));
+        xr.setReference("subject", getProtein(acc, line[COL_TAXON].trim()));
         xr.setReference("source", chemblSourceRef);
         store(xr);
     }
 
-    private String getProtein(String acc) throws ObjectStoreException {
+    private String getProtein(String acc, String taxon) throws ObjectStoreException {
         String ref = proteinsByAcc.get(acc);
         if (ref != null) {
             return ref;
         }
         Item p = createItem("Protein");
         p.setAttribute("primaryAccession", acc);
+        if (!taxon.isEmpty()) {
+            p.setReference("organism", getOrganism(taxon.substring(taxon.indexOf(':') + 1)));
+        }
         store(p);
         proteinsByAcc.put(acc, p.getIdentifier());
         return p.getIdentifier();

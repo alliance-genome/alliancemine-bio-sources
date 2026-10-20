@@ -71,6 +71,10 @@ public class AllianceAlphafoldConverter extends BioFileConverter
         protein.setAttribute("primaryAccession", acc);
         protein.setAttribute("alphaFoldId", acc);
         protein.setAttribute("alphaFoldUrl", line[COL_AF_URL].trim());
+        String taxon = line[COL_TAXON].trim();
+        if (!taxon.isEmpty()) {
+            protein.setReference("organism", getOrganism(taxon.substring(taxon.indexOf(':') + 1)));
+        }
         store(protein);
     }
 }

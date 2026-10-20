@@ -6,9 +6,12 @@ files per taxon:
     {taxid}.protein.aliases.v12.0.txt.gz  — STRING ID → UniProt mapping
     {taxid}.protein.links.v12.0.txt.gz    — score-weighted protein pairs
 
-Emits one row per (proteinA, proteinB) interaction whose combined score
-crosses the threshold. The default 700 corresponds to STRING's
-"high confidence" tier.
+Emits one row per unordered protein pair (stringIdA < stringIdB) whose
+combined score crosses the threshold; STRING lists each pair in both
+directions. The default 700 corresponds to STRING's "high confidence"
+tier. When gene-crossrefs.tsv is present in --out-dir, UniProt accessions
+are restricted to the UniProtKB set loaded through gene cross-references
+and pairs with no resolvable end are dropped.
 
 Usage:
     python3 fetch_string.py
@@ -28,7 +31,7 @@ from pathlib import Path
 from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import TsvWriter, configure_logging, get_current_release  # noqa: E402
+from common import TsvWriter, configure_logging, get_current_release, rows_from_crossrefs  # noqa: E402
 
 log = logging.getLogger("alliance.fetch.string")
 
@@ -73,13 +76,26 @@ def _download(url: str) -> Path:
     return target
 
 
-def _alias_map(taxid: str) -> dict[str, str]:
-    """STRING ID → first-seen UniProt accession. Some STRING entries have
-    multiple UniProt mappings (isoforms); first is canonical enough for
-    cross-source merge via Protein.primaryAccession."""
+def pick_accession(candidates: list[str], known: set[str] | None) -> str:
+    """Choose one UniProt accession for a STRING id. With a known set,
+    the first candidate in it wins and "" means none resolves; without
+    one, the first candidate wins."""
+    if known is None:
+        return candidates[0] if candidates else ""
+    for acc in candidates:
+        if acc in known:
+            return acc
+    return ""
+
+
+def _alias_map(taxid: str, known: set[str] | None = None) -> dict[str, str]:
+    """STRING ID → UniProt accession. A STRING entry can alias several
+    UniProt accessions (Swiss-Prot, TrEMBL, isoforms); the alias table does
+    not mark reviewed status, so the one present in the loaded UniProtKB
+    set is chosen."""
     url = f"{STRING_BASE}/protein.aliases.{STRING_VERSION}/{taxid}.protein.aliases.{STRING_VERSION}.txt.gz"
     path = _download(url)
-    out: dict[str, str] = {}
+    candidates: dict[str, list[str]] = {}
     with gzip.open(path, "rt") as fh:
         for line in fh:
             if line.startswith("#"):
@@ -88,8 +104,13 @@ def _alias_map(taxid: str) -> dict[str, str]:
             if len(parts) < 3:
                 continue
             sid, alias, source = parts[0], parts[1], parts[2]
-            if source == "UniProt_AC" and sid not in out:
-                out[sid] = alias
+            if source == "UniProt_AC":
+                candidates.setdefault(sid, []).append(alias)
+    out: dict[str, str] = {}
+    for sid, accs in candidates.items():
+        acc = pick_accession(accs, known)
+        if acc:
+            out[sid] = acc
     return out
 
 
@@ -106,7 +127,7 @@ def _iter_links(taxid: str, min_score: int) -> Iterator[tuple[str, str, int]]:
                 score = int(cols[2])
             except ValueError:
                 continue
-            if score < min_score:
+            if score < min_score or cols[0] >= cols[1]:
                 continue
             yield cols[0], cols[1], score
 
@@ -125,6 +146,10 @@ def main() -> None:
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
     )
+    parser.add_argument(
+        "--crossrefs",
+        help="Path to gene-crossrefs.tsv (default: <out-dir>/gene-crossrefs.tsv)",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -132,6 +157,10 @@ def main() -> None:
     taxa = [t.strip() for t in args.taxa.split(",") if t.strip()]
     release = get_current_release()
     out_dir = Path(args.out_dir)
+    crossrefs = Path(args.crossrefs) if args.crossrefs else out_dir / "gene-crossrefs.tsv"
+    known = {r["uniProtAccession"] for r in rows_from_crossrefs(crossrefs)} if crossrefs.exists() else None
+    if known is None:
+        log.warning("Missing %s; UniProt accessions are not filtered", crossrefs)
     total = 0
     with TsvWriter(
         out_dir / "string-interactions.tsv",
@@ -141,13 +170,15 @@ def main() -> None:
     ) as writer:
         for taxid in taxa:
             log.info("STRING %s: building alias map", taxid)
-            aliases = _alias_map(taxid)
+            aliases = _alias_map(taxid, known)
             log.info("STRING %s: %d STRING→UniProt mappings", taxid, len(aliases))
             canonical_taxon = LEGACY_REMAP.get(taxid, taxid)
             emitted = 0
             for a, b, score in _iter_links(taxid, args.min_score):
                 up_a = aliases.get(a, "")
                 up_b = aliases.get(b, "")
+                if known is not None and not (up_a or up_b):
+                    continue
                 writer.write_row(
                     stringIdA=a,
                     stringIdB=b,

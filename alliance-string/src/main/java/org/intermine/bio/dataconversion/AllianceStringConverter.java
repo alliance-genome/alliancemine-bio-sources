@@ -81,29 +81,32 @@ public class AllianceStringConverter extends BioFileConverter
         if (!score.isEmpty()) {
             it.setAttribute("combinedScore", score);
         }
+        String taxon = line[COL_TAXON].trim();
+        String tid = taxon.substring(taxon.indexOf(':') + 1);
         String upA = line[COL_UP_A].trim();
         if (!upA.isEmpty()) {
-            it.setReference("proteinA", getProtein(upA));
+            it.setReference("proteinA", getProtein(upA, tid));
         }
         String upB = line[COL_UP_B].trim();
         if (!upB.isEmpty()) {
-            it.setReference("proteinB", getProtein(upB));
+            it.setReference("proteinB", getProtein(upB, tid));
         }
-        String taxon = line[COL_TAXON].trim();
-        if (StringUtils.isNotEmpty(taxon)) {
-            String tid = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
+        if (StringUtils.isNotEmpty(tid)) {
             it.setReference("organism", getOrganism(tid));
         }
         store(it);
     }
 
-    private String getProtein(String acc) throws ObjectStoreException {
+    private String getProtein(String acc, String tid) throws ObjectStoreException {
         String ref = proteinsByAcc.get(acc);
         if (ref != null) {
             return ref;
         }
         Item p = createItem("Protein");
         p.setAttribute("primaryAccession", acc);
+        if (StringUtils.isNotEmpty(tid)) {
+            p.setReference("organism", getOrganism(tid));
+        }
         store(p);
         proteinsByAcc.put(acc, p.getIdentifier());
         return p.getIdentifier();
