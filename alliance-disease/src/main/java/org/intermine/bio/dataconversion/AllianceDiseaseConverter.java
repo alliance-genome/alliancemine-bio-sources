@@ -485,31 +485,24 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         return refId;
     }
 
-    private String newPublication(String pubMedId) throws ObjectStoreException {
-
-        String pubRefId = null;
-        String pmid = null;
-        String otherId = null;
-
-        if (pubMedId.startsWith("PMID:")) {
-            pmid = pubMedId.substring(5);
-        }else{
-            otherId = pubMedId;
+    private String newPublication(String pubToken) throws ObjectStoreException {
+        // Only bare WBPaper ids get the WB: prefix. Any other token without a PMID: prefix
+        // (MGI:..., ZFIN:..., FB:...) is stored unchanged in pubXrefId.
+        String token = pubToken.trim();
+        if (token.startsWith("PMID:")) {
+            token = token.substring(5).trim();
+        } else if (token.startsWith("WBPaper")) {
+            token = "WB:" + token;
         }
-        if (StringUtil.allDigits(pmid)) {
-            pubRefId = publications.get(pmid);
-            if (pubRefId == null) {
-                Item item = createItem("Publication");
-                item.setAttribute("pubMedId", pmid);
-                pubRefId = item.getIdentifier();
-                publications.put(pmid, pubRefId);
-                store(item);
-            }
-        }else if(otherId != null) {
+        if (token.isEmpty()) {
+            return null;
+        }
+        String pubRefId = publications.get(token);
+        if (pubRefId == null) {
             Item item = createItem("Publication");
-            item.setAttribute("pubXrefId", otherId);
+            item.setAttribute(StringUtil.allDigits(token) ? "pubMedId" : "pubXrefId", token);
             pubRefId = item.getIdentifier();
-            publications.put(pmid, pubRefId);
+            publications.put(token, pubRefId);
             store(item);
         }
         return pubRefId;

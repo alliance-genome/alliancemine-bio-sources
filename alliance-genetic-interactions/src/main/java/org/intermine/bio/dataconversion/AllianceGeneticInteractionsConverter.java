@@ -120,9 +120,37 @@ public class AllianceGeneticInteractionsConverter extends BioFileConverter
         String geneRef = getGene(geneId, line[COL_GENE_TAXON].trim());
         String partnerRef = getGene(partnerGeneId, line[COL_PARTNER_TAXON].trim());
 
+        String pubRef = getPublication(line[COL_PUBMED_ID], line[COL_REFERENCE_ID], line[COL_SHORT_CITATION]);
+        String experimentRef = null;
+        if (pubRef != null) {
+            Item experiment = createItem("InteractionExperiment");
+            experiment.setReference("publication", pubRef);
+            experiment.setAttribute("name", line[COL_SHORT_CITATION].trim());
+            store(experiment);
+            experimentRef = experiment.getIdentifier();
+        }
+
+        // Gene.interactions follows participant1 only, so store the pair in both orientations.
+        storeInteraction(line, uniqueId, geneRef, partnerRef, false, experimentRef);
+        if (!geneRef.equals(partnerRef)) {
+            storeInteraction(line, uniqueId, partnerRef, geneRef, true, experimentRef);
+        }
+    }
+
+    private void storeInteraction(String[] line, String uniqueId, String participant1,
+            String participant2, boolean swapped, String experimentRef) throws ObjectStoreException {
+        int colRole1 = swapped ? COL_INTERACTOR_B_ROLE : COL_INTERACTOR_A_ROLE;
+        int colRole1Name = swapped ? COL_INTERACTOR_B_ROLE_NAME : COL_INTERACTOR_A_ROLE_NAME;
+        int colRole2 = swapped ? COL_INTERACTOR_A_ROLE : COL_INTERACTOR_B_ROLE;
+        int colRole2Name = swapped ? COL_INTERACTOR_A_ROLE_NAME : COL_INTERACTOR_B_ROLE_NAME;
+        int colType1 = swapped ? COL_INTERACTOR_B_TYPE : COL_INTERACTOR_A_TYPE;
+        int colType1Name = swapped ? COL_INTERACTOR_B_TYPE_NAME : COL_INTERACTOR_A_TYPE_NAME;
+        int colType2 = swapped ? COL_INTERACTOR_A_TYPE : COL_INTERACTOR_B_TYPE;
+        int colType2Name = swapped ? COL_INTERACTOR_A_TYPE_NAME : COL_INTERACTOR_B_TYPE_NAME;
+
         Item interaction = createItem("Interaction");
-        interaction.setReference("participant1", geneRef);
-        interaction.setReference("participant2", partnerRef);
+        interaction.setReference("participant1", participant1);
+        interaction.setReference("participant2", participant2);
         setIfPresent(interaction, "relation", line[COL_RELATION]);
         setReferenceIfPresent(interaction, "interactionSource",
                 getInteractionTerm(line[COL_INTERACTION_SOURCE], line[COL_INTERACTION_SOURCE_NAME]));
@@ -134,22 +162,17 @@ public class AllianceGeneticInteractionsConverter extends BioFileConverter
         setIfPresent(detail, "shortName", line[COL_INTERACTION_TYPE_NAME]);
         setIfPresent(detail, "name", uniqueId);
         setIfPresent(detail, "relationshipType", line[COL_RELATION]);
-        setIfPresent(detail, "role1", line[COL_INTERACTOR_A_ROLE]);
-        setIfPresent(detail, "role1Name", line[COL_INTERACTOR_A_ROLE_NAME]);
-        setIfPresent(detail, "role2", line[COL_INTERACTOR_B_ROLE]);
-        setIfPresent(detail, "role2Name", line[COL_INTERACTOR_B_ROLE_NAME]);
+        setIfPresent(detail, "role1", line[colRole1]);
+        setIfPresent(detail, "role1Name", line[colRole1Name]);
+        setIfPresent(detail, "role2", line[colRole2]);
+        setIfPresent(detail, "role2Name", line[colRole2Name]);
         setIfPresent(detail, "phenotypesOrTraits", line[COL_PHENOTYPES_OR_TRAITS]);
         setReferenceIfPresent(detail, "participant1Type",
-                getInteractionTerm(line[COL_INTERACTOR_A_TYPE], line[COL_INTERACTOR_A_TYPE_NAME]));
+                getInteractionTerm(line[colType1], line[colType1Name]));
         setReferenceIfPresent(detail, "participant2Type",
-                getInteractionTerm(line[COL_INTERACTOR_B_TYPE], line[COL_INTERACTOR_B_TYPE_NAME]));
-        String pubRef = getPublication(line[COL_PUBMED_ID], line[COL_REFERENCE_ID], line[COL_SHORT_CITATION]);
-        if (pubRef != null) {
-            Item experiment = createItem("InteractionExperiment");
-            experiment.setReference("publication", pubRef);
-            experiment.setAttribute("name", line[COL_SHORT_CITATION].trim());
-            store(experiment);
-            detail.setReference("experiment", experiment);
+                getInteractionTerm(line[colType2], line[colType2Name]));
+        if (experimentRef != null) {
+            detail.setReference("experiment", experimentRef);
         }
         store(detail);
     }
