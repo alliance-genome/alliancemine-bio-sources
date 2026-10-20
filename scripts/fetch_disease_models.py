@@ -65,12 +65,14 @@ COLUMNS = [
 
 
 NOT_MODEL_PREFIX = "does not model "
+MAX_UNMAPPED_RATE = 0.01
 
 
 def load_do_names(obo_path: Path) -> dict[str, str]:
     """Lower-cased DO term name and EXACT synonym -> DOID. The 9.2.0
     /gene/{id}/models payload carries the disease name only (disease: {})."""
     names: dict[str, str] = {}
+    synonyms: dict[str, str] = {}
     term_id = None
     with obo_path.open(encoding="utf-8") as fh:
         for line in fh:
@@ -82,10 +84,23 @@ def load_do_names(obo_path: Path) -> dict[str, str]:
             elif term_id and line.startswith("name: "):
                 names.setdefault(line[6:].lower(), term_id)
             elif term_id and line.startswith('synonym: "') and " EXACT " in line:
-                names.setdefault(line.split('"')[1].lower(), term_id)
+                synonyms.setdefault(line.split('"')[1].lower(), term_id)
     if not names:
         raise RuntimeError(f"No DOID terms read from {obo_path}")
+    for synonym, doid in synonyms.items():
+        names.setdefault(synonym, doid)
     return names
+
+
+def dedupe_key(row: dict) -> tuple:
+    """Rows of one model differ by gene, disease and association type. An
+    unmapped disease falls back to its name so two of them do not collapse."""
+    return (row["modelId"], row["diseaseId"] or row["diseaseName"], row["subjectGeneId"],
+            row["associationType"])
+
+
+def unmapped_rate_exceeded(unmapped: int, named: int, max_rate: float = MAX_UNMAPPED_RATE) -> bool:
+    return named > 0 and unmapped / named > max_rate
 
 
 def disease_curie(dm: dict, do_names: dict[str, str]) -> str:
@@ -190,20 +205,26 @@ def main() -> None:
     seen_keys: set = set()
     total_rows = 0
     genes_without_models = 0
+    named_rows = 0
+    unmapped_rows = 0
 
     def work(gid, cache, stats):
         return list(paginate(f"/gene/{gid}/models", cache=cache, stats=stats))
 
     def consume(gid, results):
-        nonlocal total_rows, genes_without_models
+        nonlocal total_rows, genes_without_models, named_rows, unmapped_rows
         if not results:
             genes_without_models += 1
         for result in results:
             for row in _rows_for_result(gid, result, gene_taxa, do_names):
-                key = (row["modelId"], row["diseaseId"], row["subjectGeneId"])
+                key = dedupe_key(row)
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
+                if row["diseaseName"]:
+                    named_rows += 1
+                    if not row["diseaseId"]:
+                        unmapped_rows += 1
                 writer.write_row(**row)
                 total_rows += 1
 
@@ -216,8 +237,17 @@ def main() -> None:
         report = run_parallel(gene_ids, work, consume, cache_name="disease_models", stats=stats,
                               workers=args.workers, label="genes")
 
-    log.info("disease_models: rows=%d  genes_without_models=%d", total_rows, genes_without_models)
-    finish_run(report, stats, out_dir, args.max_failure_rate)
+    log.info("disease_models: rows=%d  genes_without_models=%d  disease_names_unmapped=%d/%d",
+             total_rows, genes_without_models, unmapped_rows, named_rows)
+    unmapped_exceeded = unmapped_rate_exceeded(unmapped_rows, named_rows)
+    if unmapped_exceeded:
+        log.error("disease_models: %d of %d disease names have no DOID (limit %.0f%%)",
+                  unmapped_rows, named_rows, MAX_UNMAPPED_RATE * 100)
+    try:
+        finish_run(report, stats, out_dir, args.max_failure_rate)
+    finally:
+        if unmapped_exceeded:
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

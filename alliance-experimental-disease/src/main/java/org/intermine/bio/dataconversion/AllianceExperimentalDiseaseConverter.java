@@ -96,7 +96,6 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
         ann.setReference("ontologyTerm", doRef);
         ann.setAttribute("evidenceType", EVIDENCE_TYPE);
         setIfPresent(ann, "generatedRelationString", line[COL_RELATION]);
-        store(ann);
 
         String ecoCsv = line[COL_ECO_CODES].trim();
         String pmidCsv = line[COL_PMIDS].trim();
@@ -121,6 +120,7 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
             store(ev);
             ann.addToCollection("evidence", ev);
         }
+        store(ann);
     }
 
     private String getGene(String primaryId, String taxon) throws ObjectStoreException {
