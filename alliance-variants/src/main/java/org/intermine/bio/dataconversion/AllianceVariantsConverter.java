@@ -55,6 +55,10 @@ public class AllianceVariantsConverter extends BioFileConverter
     private static final int COL_TAXON         = 13;
     private static final int COL_DATA_PROVIDER = 14;
     private static final int MIN_COLUMNS       = 15;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> alleles = new HashMap<String, String>();
     private final Map<String, String> genes = new HashMap<String, String>();
@@ -68,6 +72,7 @@ public class AllianceVariantsConverter extends BioFileConverter
         LOG.info("Processing Alliance variants...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         int consequences = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
@@ -77,8 +82,17 @@ public class AllianceVariantsConverter extends BioFileConverter
             if ("variantId".equals(line[COL_VARIANT_ID])) {
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_TAXON]) && !line[COL_GENE_ID].trim().isEmpty()) {
+                missingTaxon++;
+                continue;
+            }
             consequences += processRow(line);
             rows++;
+        }
+        LOG.info("variants: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " variants rows have no gene taxon; rerun fetch_variants.py");
         }
         LOG.info("Variants: emitted " + rows + " Variant items + " + consequences + " VariantConsequence items");
     }

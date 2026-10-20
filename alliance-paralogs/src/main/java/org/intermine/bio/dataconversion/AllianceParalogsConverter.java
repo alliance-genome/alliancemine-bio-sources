@@ -51,6 +51,10 @@ public class AllianceParalogsConverter extends BioFileConverter
     private static final int COL_METHODS_NOT_MATCHED  = 11;
     private static final int COL_METHODS_NOT_CALLED   = 12;
     private static final int MIN_COLUMNS              = 13;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
 
@@ -65,6 +69,7 @@ public class AllianceParalogsConverter extends BioFileConverter
         LOG.info("Processing Alliance paralogs...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -73,8 +78,17 @@ public class AllianceParalogsConverter extends BioFileConverter
             if ("subjectGeneId".equals(line[COL_SUBJECT_GENE_ID])) {
                 continue;  // TSV header
             }
+            if (StringUtils.isBlank(line[COL_SUBJECT_GENE_TAXON]) || StringUtils.isBlank(line[COL_PARALOG_GENE_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("paralogs: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " paralogs rows have no gene taxon; rerun fetch_paralogs.py");
         }
         LOG.info("Paralogs: processed " + rows + " rows");
     }
