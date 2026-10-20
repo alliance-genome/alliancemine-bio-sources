@@ -807,7 +807,7 @@
         <reference name="organism" referenced-type="Organism"/>
     </class>
     <class name="CRISPRScreenResult" is-interface="true">
-        <attribute name="screenId" type="java.lang.String"/>
+        <attribute name="screenIdentifier" type="java.lang.String"/>
         <attribute name="geneSymbol" type="java.lang.String"/>
         <attribute name="score1" type="java.lang.String"/>
         <attribute name="score2" type="java.lang.String"/>
