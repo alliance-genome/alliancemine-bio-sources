@@ -47,6 +47,20 @@ public class SgdConverterTest extends ItemsTestCase
         doTestProcess(orgId);
     }
 
+    public void testSegmentsOfOneLocusGetOwnSequence() throws Exception {
+        MockItemWriter itemWriter =
+            new MockItemWriter(new HashMap<String, org.intermine.model.fulldata.Item>());
+        SgdConverter converter = new SgdConverter(null, Model.getInstanceByName("genomic"),
+                                                  itemWriter);
+        String intron = converter.getSequence("S000001855_intron_54378_54686", "GTAAGT", "6");
+        String cds = converter.getSequence("S000001855_CDS_54687_54696", "ATGGCTAAAT", "10");
+        String cdsAgain = converter.getSequence("S000001855_CDS_54687_54696", "ATGGCTAAAT", "10");
+        assertNotNull(intron);
+        assertNotNull(cds);
+        assertFalse(intron.equals(cds));
+        assertEquals(cds, cdsAgain);
+    }
+
     private void doTestProcess(String orgId) throws Exception, IOException {
         MockItemWriter itemWriter =
             new MockItemWriter(new HashMap<String, org.intermine.model.fulldata.Item>());

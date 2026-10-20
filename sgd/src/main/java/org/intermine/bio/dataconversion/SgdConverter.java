@@ -1304,7 +1304,7 @@ public class SgdConverter extends BioDBConverter {
 				childItem.setReference(refname, parent.getIdentifier());
 			}
 			// ~~ add sequence
-			String seqRefId = getSequence(geneChildFeatureNo, seq, seqLen);
+			String seqRefId = getSequence(primaryIdentifier, seq, seqLen);
 			childItem.setReference("sequence", seqRefId);
 
 			// ~~~ chromosome and location ~~~
@@ -3159,7 +3159,7 @@ public class SgdConverter extends BioDBConverter {
 		return refId;
 	}
 
-	private String getSequence(String id, String residues, String length)
+	String getSequence(String id, String residues, String length)
 			throws ObjectStoreException {
 		if (StringUtils.isEmpty(id)) {
 			return null;
