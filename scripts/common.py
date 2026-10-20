@@ -540,15 +540,22 @@ def resolve_gene_ids(
     return gene_ids
 
 
-def _resolve_bgi_urls(mods: list[str]) -> dict[str, str]:
-    """BGI JSON URL per MOD for the pinned release. Different MODs carry
-    files from different upload releases (e.g. WB still on 8.3.0 in 9.x), so
-    the per-release manifest decides rather than a hardcoded path."""
-    bgi_by_mod: dict[str, str] = {}
-    for f in fms_list_files("BGI"):
-        if f["subType"] in mods and f["url"].endswith(".json.gz"):
-            bgi_by_mod[f["subType"]] = f["url"]
-    return bgi_by_mod
+# BGI files stay at each MOD's last upload (WB 8.3.0, FB 9.0.0 in the 9.2.0
+# manifest). Alliance regenerates GENE-DESCRIPTION-JSON from the release
+# database, so it lists genes added since: 760 WB, 1,875 FB and 22,985 RGD
+# genes in 9.2.0 that the stage API serves and BGI lacks.
+_GENE_LIST_DATATYPES = ("GENE-DESCRIPTION-JSON", "BGI")
+
+
+def _resolve_gene_list_urls(mods: list[str]) -> dict[str, list[str]]:
+    """Gene-list file URLs per MOD for the pinned release, newest upload of
+    each datatype in _GENE_LIST_DATATYPES order."""
+    urls: dict[str, list[str]] = {}
+    for datatype in _GENE_LIST_DATATYPES:
+        for f in fms_list_files(datatype):
+            if f["subType"] in mods and f["url"].endswith(".json.gz"):
+                urls.setdefault(f["subType"], []).append(f["url"])
+    return urls
 
 
 def _bgi_gene_ids(path: Path, prefix: str) -> list[str]:
@@ -567,13 +574,21 @@ def _bgi_gene_ids(path: Path, prefix: str) -> list[str]:
     return ids
 
 
+def _file_gene_ids(path: Path, prefix: str) -> list[str]:
+    """Gene CURIEs of a GENE-DESCRIPTION-JSON (gene_id) or BGI file."""
+    ids = [r["gene_id"] for r in fms_iter_json_records(path)
+           if str(r.get("gene_id", "")).startswith(prefix)]
+    return ids or _bgi_gene_ids(path, prefix)
+
+
 def _gene_list_path(release: str, mod: str) -> Path:
-    return CACHE_DIR / "gene-ids" / release / f"{mod}.txt"
+    return CACHE_DIR / "gene-ids" / release / f"{mod}.descriptions+bgi.txt"
 
 
-def _mod_gene_ids(mod: str, release: str, urls: dict[str, str]) -> list[str]:
-    """Gene CURIEs of one MOD from its BGI JSON, cached under
-    $ALLIANCE_FETCH_CACHE/gene-ids/<release>/ when the release is known."""
+def _mod_gene_ids(mod: str, release: str, urls: dict[str, list[str]]) -> list[str]:
+    """Gene CURIEs of one MOD: the union of its GENE-DESCRIPTION-JSON and BGI
+    files, cached under $ALLIANCE_FETCH_CACHE/gene-ids/<release>/ when the
+    release is known."""
     path = _gene_list_path(release, mod)
     cacheable = release != "unknown"
     if cacheable and path.exists():
@@ -581,13 +596,19 @@ def _mod_gene_ids(mod: str, release: str, urls: dict[str, str]) -> list[str]:
         log.info("Enumerated %d %s genes from %s", len(ids), mod, path)
         return ids
     if not urls:
-        urls.update(_resolve_bgi_urls(ALL_MODS))
+        urls.update(_resolve_gene_list_urls(ALL_MODS))
     if mod not in urls:
-        raise RuntimeError(f"No BGI file for {mod} in FMS release {release}")
-    ids = _bgi_gene_ids(fms_download_gz(urls[mod]), _MOD_PREFIX[mod])
-    if not ids:
-        raise RuntimeError(f"BGI file for {mod} yielded no gene IDs: {urls[mod]}")
-    log.info("Enumerated %d %s genes from FMS BGI %s", len(ids), mod, urls[mod])
+        raise RuntimeError(f"No gene-list file for {mod} in FMS release {release}")
+    ids: list[str] = []
+    seen: set[str] = set()
+    for url in urls[mod]:
+        file_ids = _file_gene_ids(fms_download_gz(url), _MOD_PREFIX[mod])
+        if not file_ids:
+            raise RuntimeError(f"{url} yielded no {mod} gene IDs")
+        added = [g for g in file_ids if g not in seen]
+        seen.update(added)
+        ids.extend(added)
+        log.info("Enumerated %d %s genes (%d new) from FMS %s", len(file_ids), mod, len(added), url)
     if cacheable:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
@@ -597,12 +618,11 @@ def _mod_gene_ids(mod: str, release: str, urls: dict[str, str]) -> list[str]:
 
 
 def enumerate_mod_genes(mods: list[str]) -> list[str]:
-    """Return gene CURIEs across one or more MODs by parsing each MOD's BGI
-    JSON for the pinned release. The per-MOD lists are cached so the
-    fetchers in one run enumerate once instead of re-downloading every BGI
-    file."""
+    """Return gene CURIEs across one or more MODs from each MOD's gene-list
+    files for the pinned release. The per-MOD lists are cached so the
+    fetchers in one run enumerate once instead of re-downloading the files."""
     release = get_current_release()
-    urls: dict[str, str] = {}
+    urls: dict[str, list[str]] = {}
     combined: list[str] = []
     seen: set[str] = set()
     for mod in mods:
@@ -615,11 +635,11 @@ def enumerate_mod_genes(mods: list[str]) -> list[str]:
 
 
 def mod_gene_taxa(mods: list[str] | None = None) -> dict[str, str]:
-    """Gene CURIE -> NCBITaxon CURIE from the per-MOD BGI gene lists. The
+    """Gene CURIE -> NCBITaxon CURIE from the per-MOD gene lists. The
     9.2.0 API dropped gene.taxon from several payloads (/gene/{id}/models),
     and the curie prefix alone cannot tell X. laevis from X. tropicalis."""
     release = get_current_release()
-    urls: dict[str, str] = {}
+    urls: dict[str, list[str]] = {}
     taxa: dict[str, str] = {}
     for mod in mods or ALL_MODS:
         for gid in _mod_gene_ids(mod, release, urls):

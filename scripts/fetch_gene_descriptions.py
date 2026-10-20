@@ -101,12 +101,11 @@ def main() -> None:
     mods = selected_mods(DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
-    # FMS descriptions also cover ids that are not BGI genes (22,985 RGD ids in 9.2.0).
-    # Loading them adds Genes that no other source knows.
-    bgi_genes = mod_gene_taxa(mods)
+    # Rows for ids outside the per-MOD gene lists would add Genes that no other fetcher covers.
+    known_genes = mod_gene_taxa(mods)
     seen: set = set()
     total = 0
-    not_bgi = 0
+    unlisted = 0
 
     with TsvWriter(
         out_dir / "gene-descriptions.tsv",
@@ -119,8 +118,8 @@ def main() -> None:
             for row in _iter_mod(mod):
                 if row["geneId"] in seen:
                     continue
-                if row["geneId"] not in bgi_genes:
-                    not_bgi += 1
+                if row["geneId"] not in known_genes:
+                    unlisted += 1
                     continue
                 seen.add(row["geneId"])
                 writer.write_row(**row)
@@ -130,7 +129,7 @@ def main() -> None:
                     log.info("Done. rows=%d", total)
                     return
 
-    log.info("Done. rows=%d  skipped_not_bgi=%d", total, not_bgi)
+    log.info("Done. rows=%d  skipped_unlisted=%d", total, unlisted)
 
 
 if __name__ == "__main__":
