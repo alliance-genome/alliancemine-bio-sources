@@ -883,7 +883,6 @@
         <attribute name="isFragment" type="java.lang.Boolean"/>
         <attribute name="length" type="java.lang.Integer"/>
         <attribute name="md5checksum" type="java.lang.String"/>
-        <attribute name="ecNumber" type="java.lang.String"/>
         <reference name="canonicalProtein" referenced-type="Protein" reverse-reference="isoforms"/>
         <reference name="sequence" referenced-type="Sequence"/>
         <collection name="proteinHalfLife" referenced-type="ProteinHalfLife" reverse-reference="proteins"/>
