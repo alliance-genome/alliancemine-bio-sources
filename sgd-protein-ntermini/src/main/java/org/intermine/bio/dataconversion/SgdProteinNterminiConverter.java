@@ -162,7 +162,7 @@ public class SgdProteinNterminiConverter extends BioFileConverter
 		if(!StringUtils.isEmpty(modType)) { item.setAttribute("modificationType", modType); }
 		if(!StringUtils.isEmpty(modSite)) {item.setAttribute("experimentalNterminalSite", modSite); }
 		if(!StringUtils.isEmpty(category)) { item.setAttribute("category", category); }
-		if(!StringUtils.isEmpty(category)) { item.setAttribute("experimentalNterminalSequence", seq); }
+		if(!StringUtils.isEmpty(seq)) { item.setAttribute("experimentalNterminalSequence", seq); }
 		
 		
 		Item publication = pubmedIdMap.get(pmid);
