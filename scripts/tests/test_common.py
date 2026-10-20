@@ -130,8 +130,7 @@ class RunParallelTest(unittest.TestCase):
         )
         expected = [g.lower() for g in ids if g not in ("G7", "G33", "G40")]
         self.assertEqual(consumed, expected)
-        self.assertEqual([f[0] for f in report.failures], ["G7", "G33"])
-        self.assertEqual([m[0] for m in report.missing], ["G40"])
+        self.assertEqual([f[0] for f in report.failures], ["G7", "G33", "G40"])
         self.assertEqual(report.done, 50)
         with common.open_cache("t") as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM cache").fetchone()[0], 50)
@@ -139,11 +138,11 @@ class RunParallelTest(unittest.TestCase):
     def test_finish_run_threshold(self) -> None:
         stats = common.FetchStats()
         ok = common.RunReport(label="genes", total=1000, done=1000, failures=[("G1", "x")])
-        common.finish_run(ok, stats, Path(self.tmp.name), 0.005)
+        common.finish_run(ok, stats, Path(self.tmp.name), 0.005, rows_written=1)
         self.assertTrue((Path(self.tmp.name) / f"{Path(sys.argv[0]).stem}.failures.tsv").exists())
         bad = common.RunReport(label="genes", total=100, done=100, failures=[("G1", "x")])
         with self.assertRaises(SystemExit):
-            common.finish_run(bad, stats, Path(self.tmp.name), 0.005)
+            common.finish_run(bad, stats, Path(self.tmp.name), 0.005, rows_written=1)
 
 
 class StatsTest(unittest.TestCase):

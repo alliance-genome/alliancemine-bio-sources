@@ -284,9 +284,10 @@ def main() -> None:
                               stats=stats, workers=args.workers, label="genes")
         totals["molecular"] += _flush_pending(mol_writer, pending_mol, seen_mol)
         totals["genetic"] += _flush_pending(gen_writer, pending_gen, seen_gen)
+        finish_run(report, stats, out_dir, args.max_failure_rate,
+                   rows_written=mol_writer.rows_written + gen_writer.rows_written)
 
     log.info("interactions: molecular rows=%d  genetic rows=%d", totals["molecular"], totals["genetic"])
-    finish_run(report, stats, out_dir, args.max_failure_rate)
 
 
 if __name__ == "__main__":

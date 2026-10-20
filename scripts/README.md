@@ -34,6 +34,10 @@ with `--out-dir`). HTTP responses cache in `scripts/.cache/<fetcher>.sqlite`;
 FMS gz payloads cache in `scripts/.fms_cache/`; STRING downloads cache in
 `scripts/.string_cache/`.
 
+Cache keys include the Alliance release and API base, so a new release never
+reads old responses. A run without `ALLIANCE_RELEASE` makes one extra
+`/releaseInfo` call to learn the release (cached per process).
+
 `fetch_all.py` is the Docker pipeline's pre-build step — it runs every fetcher
 in dependency order and exits non-zero if any fails.
 
@@ -62,10 +66,11 @@ COMBINED (6.7K). `--mods` / `ALLIANCE_MODS` narrow the MODs; `--ids` and
 They run `--workers` threads (default 6, `ALLIANCE_FETCH_WORKERS`); the AGR
 WAF answers HTTP 405 under heavier load and those are retried with backoff.
 Progress (done/total, entities/s, req/s, failures, throttled, ETA) is logged
-every 1000 entities or 60 s. A failed entity does not stop the run: failures
-and ids the API answers 400/404 for ("missing") are written to
-`<out-dir>/<fetcher>.failures.tsv`, and the fetcher exits non-zero only when
-failures exceed `--max-failure-rate` (default 0.5%). Successful responses are
+every 1000 entities or 60 s. A failed entity does not stop the run: failed
+ids (including HTTP 400/404) are written to
+`<out-dir>/<fetcher>.failures.tsv`, and the fetcher exits non-zero when
+failures exceed `--max-failure-rate` (default 0.5%) or no row was written;
+in both cases the TSV is not written. Successful responses are
 committed to the cache as they arrive, so a rerun resumes from it.
 
 ## Environment
@@ -80,6 +85,7 @@ committed to the cache as they arrive, so a rerun resumes from it.
 | `ALLIANCE_MAX_FAILURE_RATE` | default `--max-failure-rate` | `0.005` |
 | `ALLIANCE_FETCH_CACHE` | sqlite HTTP cache + gene-id lists | `scripts/.cache/` |
 | `ALLIANCE_FMS_CACHE` | FMS gz cache | `scripts/.fms_cache/` |
+| `ALLIANCE_PATHQUERY_MAX_AGE` | seconds a cached PathQuery page stays valid | `604800` |
 
 ## Fetchers
 
@@ -105,6 +111,8 @@ committed to the cache as they arrive, so a rerun resumes from it.
 
 These all accept `--source {fms,api}`. FMS path reads bulk JSON.gz dumps;
 API path is the per-entity fallback. FMS is faster + immune to the WAF.
+A MOD with no file in the release manifest fails the fetcher; narrow
+`--mods` or `ALLIANCE_MODS` to skip it.
 
 | Script | FMS datatype | Output | Notes |
 |---|---|---|---|
