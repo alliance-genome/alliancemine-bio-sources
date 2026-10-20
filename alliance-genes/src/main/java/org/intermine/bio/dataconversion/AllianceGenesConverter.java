@@ -403,9 +403,12 @@ public class AllianceGenesConverter extends BioFileConverter {
        String end = start.replace("]","");
        String[] vals = end.split(",");
        for(int i=0; i<vals.length; i++) {
+           if (StringUtils.isBlank(vals[i])) {
+               continue;
+           }
            Item syn = createItem("Synonym");
            syn.setReference("subject", subjectId);
-           if(StringUtils.isNotEmpty(vals[i]) && !vals[i].equals(" ")) syn.setAttribute("value", vals[i].trim());
+           syn.setAttribute("value", vals[i].trim());
            synonyms.put(syn, vals[i]);
        }
     }
