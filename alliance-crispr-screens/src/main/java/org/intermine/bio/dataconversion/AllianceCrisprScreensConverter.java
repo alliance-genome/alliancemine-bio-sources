@@ -27,7 +27,7 @@ import org.intermine.xml.full.Item;
  * Reads crispr-screens.tsv (emitted by
  * scripts/fetch_crispr_screens.py from the Alliance FMS BIOGRID-ORCS
  * tarballs, filtered to HIT=YES rows) and produces CRISPRScreenResult
- * items keyed on screenId + geneSymbol. Gene reference uses symbol +
+ * items keyed on screenIdentifier + geneSymbol. Gene reference uses symbol +
  * organism lookup since BIOGRID-ORCS rows do not carry MOD CURIEs.
  */
 public class AllianceCrisprScreensConverter extends BioFileConverter
@@ -80,7 +80,7 @@ public class AllianceCrisprScreensConverter extends BioFileConverter
             return;
         }
         Item r = createItem("CRISPRScreenResult");
-        r.setAttribute("screenId", screen);
+        r.setAttribute("screenIdentifier", screen);
         r.setReference("screen", getScreen(screen, line[COL_SOURCE].trim()));
         r.setAttribute("geneSymbol", sym);
         setIfPresent(r, "score1", line[COL_SCORE1]);
