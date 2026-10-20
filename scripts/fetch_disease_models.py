@@ -34,6 +34,7 @@ from common import (  # noqa: E402
     get_current_release,
     get_nested,
     join_pipe,
+    mod_gene_taxa,
     paginate,
     resolve_gene_ids,
     run_parallel,
@@ -63,13 +64,49 @@ COLUMNS = [
 ]
 
 
-def _rows_for_result(seed_id: str, result: dict) -> list[dict]:
+NOT_MODEL_PREFIX = "does not model "
+
+
+def load_do_names(obo_path: Path) -> dict[str, str]:
+    """Lower-cased DO term name and EXACT synonym -> DOID. The 9.2.0
+    /gene/{id}/models payload carries the disease name only (disease: {})."""
+    names: dict[str, str] = {}
+    term_id = None
+    with obo_path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.rstrip("\n")
+            if line.startswith("["):
+                term_id = None
+            elif line.startswith("id: DOID:"):
+                term_id = line[4:]
+            elif term_id and line.startswith("name: "):
+                names.setdefault(line[6:].lower(), term_id)
+            elif term_id and line.startswith('synonym: "') and " EXACT " in line:
+                names.setdefault(line.split('"')[1].lower(), term_id)
+    if not names:
+        raise RuntimeError(f"No DOID terms read from {obo_path}")
+    return names
+
+
+def disease_curie(dm: dict, do_names: dict[str, str]) -> str:
+    curie = get_nested(dm, "disease", "curie", default="")
+    if curie:
+        return curie
+    name = (get_nested(dm, "disease", "name", default="") or dm.get("diseaseModel", "")).lower()
+    if name.startswith(NOT_MODEL_PREFIX):
+        name = name[len(NOT_MODEL_PREFIX):]
+    return do_names.get(name, "")
+
+
+def _rows_for_result(seed_id: str, result: dict, gene_taxa: dict[str, str],
+                     do_names: dict[str, str]) -> list[dict]:
     """One API result wraps a single model but can carry multiple disease
     linkages via `diseaseModels`. Emit one row per (model, disease) pair."""
     gene = result.get("gene") or {}
     model = result.get("model") or {}
     gene_id = get_nested(gene, "primaryExternalId", default=seed_id) or seed_id
-    gene_taxon = get_nested(gene, "taxon", "curie", default="")
+    gene_taxon = (get_nested(gene, "taxon", "curie", default="")
+                  or gene_taxa.get(gene_id) or gene_taxa.get(seed_id, ""))
     model_id = get_nested(model, "primaryExternalId", default="")
     model_name = get_nested(model, "agmFullName", "displayText", default="")
     model_subtype = get_nested(model, "subtype", "name", default="")
@@ -110,7 +147,7 @@ def _rows_for_result(seed_id: str, result: dict) -> list[dict]:
             "modelName": model_name,
             "modelSubtype": model_subtype,
             "dataProvider": dp,
-            "diseaseId": disease.get("curie", ""),
+            "diseaseId": disease_curie(dm, do_names),
             "diseaseName": disease.get("name", "") or dm.get("diseaseModel", ""),
             "associationType": dm.get("associationType", ""),
             "associatedPhenotypes": join_pipe(phenotypes),
@@ -130,6 +167,10 @@ def main() -> None:
     )
     parser.add_argument("--limit", type=int, help="Process at most N genes")
     parser.add_argument(
+        "--do-obo",
+        help="DO ontology OBO for disease name lookup (default: <out-dir>/../fms/ONTOLOGY_DOID.obo)",
+    )
+    parser.add_argument(
         "--out-dir",
         default=str(Path(__file__).parent.parent / "data"),
         help="Directory for the emitted TSV",
@@ -143,6 +184,8 @@ def main() -> None:
     release = get_current_release()
     gene_ids = resolve_gene_ids(args.ids, args.mods, args.limit, default_mods=DEFAULT_MODS)
     out_dir = Path(args.out_dir)
+    do_names = load_do_names(Path(args.do_obo) if args.do_obo else out_dir.parent / "fms" / "ONTOLOGY_DOID.obo")
+    gene_taxa = mod_gene_taxa()
     stats = FetchStats()
     seen_keys: set = set()
     total_rows = 0
@@ -156,7 +199,7 @@ def main() -> None:
         if not results:
             genes_without_models += 1
         for result in results:
-            for row in _rows_for_result(gid, result):
+            for row in _rows_for_result(gid, result, gene_taxa, do_names):
                 key = (row["modelId"], row["diseaseId"], row["subjectGeneId"])
                 if key in seen_keys:
                     continue

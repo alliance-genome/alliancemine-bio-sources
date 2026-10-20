@@ -29,8 +29,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
     TsvWriter,
     configure_logging,
+    enumerate_allele_ids,
     get_current_release,
     iter_fms_datatype,
+    mod_gene_taxa,
     selected_mods,
 )
 
@@ -50,18 +52,25 @@ COLUMNS = [
 ]
 
 
-def _iter_mod(mod: str) -> Iterator[dict]:
+def _iter_mod(mod: str, genes: set[str], alleles: set[str]) -> Iterator[dict]:
+    """objectId is the annotated entity: a gene for FB/SGD/WB, a gene or an
+    allele for MGI/ZFIN. primaryGeneticEntityIDs mixes alleles with genotypes
+    and fish (AGMs). Only ids in the release's allele list become alleleId."""
     for _sub, rec in iter_fms_datatype("PHENOTYPE", sub_filter=mod):
-        gene_id = rec.get("objectId")
+        object_id = rec.get("objectId") or ""
         entities = rec.get("primaryGeneticEntityIDs") or []
-        if not gene_id or not entities:
+        if not object_id or not entities:
             continue
         terms = rec.get("phenotypeTermIdentifiers") or []
         if not terms:
             continue
+        gene_id = object_id if object_id in genes else ""
+        allele_ids = [e for e in entities if e in alleles]
+        if object_id in alleles and object_id not in allele_ids:
+            allele_ids.insert(0, object_id)
         statement = rec.get("phenotypeStatement") or ""
         pmid = (rec.get("evidence") or {}).get("publicationId", "")
-        for entity_id in entities:
+        for entity_id in allele_ids:
             for t in terms:
                 term_id = t.get("termId") if isinstance(t, dict) else ""
                 if not term_id:
@@ -96,6 +105,8 @@ def main() -> None:
     mods = selected_mods(DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
+    genes = set(mod_gene_taxa(mods))
+    alleles = set(enumerate_allele_ids(mods))
     seen: set = set()
     total = 0
 
@@ -107,7 +118,7 @@ def main() -> None:
     ) as writer:
         for mod in mods:
             log.info("Allele phenotypes FMS: %s", mod)
-            for row in _iter_mod(mod):
+            for row in _iter_mod(mod, genes, alleles):
                 key = (row["alleleId"], row["termId"])
                 if key in seen:
                     continue

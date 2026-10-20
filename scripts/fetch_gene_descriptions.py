@@ -30,6 +30,7 @@ from common import (  # noqa: E402
     configure_logging,
     get_current_release,
     iter_fms_datatype,
+    mod_gene_taxa,
     selected_mods,
 )
 
@@ -100,8 +101,12 @@ def main() -> None:
     mods = selected_mods(DEFAULT_MODS, args.mods)
     release = get_current_release()
     out_dir = Path(args.out_dir)
+    # FMS descriptions also cover ids that are not BGI genes (22,985 RGD ids in 9.2.0).
+    # Loading them adds Genes that no other source knows.
+    bgi_genes = mod_gene_taxa(mods)
     seen: set = set()
     total = 0
+    not_bgi = 0
 
     with TsvWriter(
         out_dir / "gene-descriptions.tsv",
@@ -114,6 +119,9 @@ def main() -> None:
             for row in _iter_mod(mod):
                 if row["geneId"] in seen:
                     continue
+                if row["geneId"] not in bgi_genes:
+                    not_bgi += 1
+                    continue
                 seen.add(row["geneId"])
                 writer.write_row(**row)
                 total += 1
@@ -122,7 +130,7 @@ def main() -> None:
                     log.info("Done. rows=%d", total)
                     return
 
-    log.info("Done. rows=%d", total)
+    log.info("Done. rows=%d  skipped_not_bgi=%d", total, not_bgi)
 
 
 if __name__ == "__main__":

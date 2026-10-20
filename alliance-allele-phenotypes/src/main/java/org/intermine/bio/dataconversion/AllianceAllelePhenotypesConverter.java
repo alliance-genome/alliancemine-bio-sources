@@ -49,6 +49,19 @@ public class AllianceAllelePhenotypesConverter extends BioFileConverter
     private static final int COL_DATA_PROVIDER = 5;
     private static final int MIN_COLUMNS       = 6;
 
+    // dataProvider column (FMS dataSubType) -> NCBI taxon id
+    private static final Map<String, String> MOD_TAXON = new HashMap<String, String>();
+    static {
+        MOD_TAXON.put("SGD", "559292");
+        MOD_TAXON.put("MGI", "10090");
+        MOD_TAXON.put("RGD", "10116");
+        MOD_TAXON.put("ZFIN", "7955");
+        MOD_TAXON.put("FB", "7227");
+        MOD_TAXON.put("WB", "6239");
+        MOD_TAXON.put("XBXL", "8355");
+        MOD_TAXON.put("XBXT", "8364");
+    }
+
     private final Map<String, String> alleles = new HashMap<String, String>();
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> terms = new HashMap<String, String>();
@@ -93,7 +106,12 @@ public class AllianceAllelePhenotypesConverter extends BioFileConverter
         // Subject = gene for downstream traversals.
         String geneId = line[COL_GENE_ID].trim();
         if (!geneId.isEmpty()) {
-            ann.setReference("subject", getGene(geneId));
+            String taxonId = MOD_TAXON.get(line[COL_DATA_PROVIDER].trim());
+            if (taxonId == null) {
+                throw new IllegalStateException("allele-phenotypes row for " + geneId
+                        + " has a dataProvider missing from MOD_TAXON: " + line[COL_DATA_PROVIDER]);
+            }
+            ann.setReference("subject", getGene(geneId, taxonId));
         }
 
         String pmid = line[COL_PMID].trim();
@@ -118,13 +136,14 @@ public class AllianceAllelePhenotypesConverter extends BioFileConverter
         return item.getIdentifier();
     }
 
-    private String getGene(String primaryId) throws ObjectStoreException {
+    private String getGene(String primaryId, String taxonId) throws ObjectStoreException {
         String ref = genes.get(primaryId);
         if (ref != null) {
             return ref;
         }
         Item item = createItem("Gene");
         item.setAttribute("primaryIdentifier", primaryId);
+        item.setReference("organism", getOrganism(taxonId));
         store(item);
         genes.put(primaryId, item.getIdentifier());
         return item.getIdentifier();

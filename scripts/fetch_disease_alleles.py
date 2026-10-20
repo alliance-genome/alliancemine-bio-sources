@@ -28,6 +28,7 @@ from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import (  # noqa: E402
+    MOD_TAXON,
     FetchStats,
     TsvWriter,
     add_parallel_args,
@@ -69,7 +70,7 @@ def _fms_rows(mods: list[str]) -> Iterator[dict]:
                 "diseaseName": "",                          # DAF lacks DOID name; converter keys by DOid alone
                 "alleleId": allele_id,
                 "alleleSymbol": rec.get("objectName", ""),  # DAF objectName == subject's symbol (allele here)
-                "alleleTaxon": "",                          # not in DAF; converter relies on integration merge
+                "alleleTaxon": normalize_taxon(MOD_TAXON[mod]),
                 "relationName": rel.get("associationType", ""),
                 "evidenceCodes": eco_codes,
                 "evidencePmids": pmid,
