@@ -110,11 +110,9 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
         }
         setIntIfPresent(ann, "viaOrthologyOrder", line[COL_VIA_ORTHOLOGY]);
         setIfPresent(ann, "uniqueId", line[COL_UNIQUE_ID]);
-        store(ann);
 
-        // Build a DiseaseEvidence carrying the ECO codes and publications.
-        // The evidence is associated with the annotation via OntologyAnnotation.evidence
-        // (collection); the integration engine wires this up at merge time.
+        // Build a DiseaseEvidence carrying the ECO codes and publications and
+        // attach it to the annotation before the annotation is stored.
         String ecoCsv = line[COL_EVIDENCE_CODES].trim();
         String pmidCsv = line[COL_PUBMED_IDS].trim();
         if (!ecoCsv.isEmpty() || !pmidCsv.isEmpty()) {
@@ -137,11 +135,8 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
             }
             store(ev);
             ann.addToCollection("evidence", ev);
-            // Re-emit the annotation item with the evidence collection populated.
-            // (InterMine items engine accepts repeated stores merging fields;
-            // simpler to leave annotation as already stored and let evidence
-            // hang independently - the merge engine reattaches via key.)
         }
+        store(ann);
     }
 
     private String getGene(String primaryId, String taxon) throws ObjectStoreException {
