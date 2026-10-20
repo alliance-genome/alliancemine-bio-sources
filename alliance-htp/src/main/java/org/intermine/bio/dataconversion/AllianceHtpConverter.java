@@ -129,8 +129,6 @@ public class AllianceHtpConverter extends BioFileConverter
                 : (summary.isEmpty() ? title : title + " — " + summary);
             ds.setAttribute("description", desc);
         }
-        store(ds);
-        datasets.put(id, ds.getIdentifier());
 
         // DataSet has a single `publication` reference (not a collection).
         // Use the first PMID; remaining PMIDs are reachable via Publication
@@ -148,6 +146,8 @@ public class AllianceHtpConverter extends BioFileConverter
                 getPublication(pmidCsv.split("\\|")[i].trim());
             }
         }
+        store(ds);
+        datasets.put(id, ds.getIdentifier());
     }
 
     private void processSampleRow(String[] line) throws ObjectStoreException {
@@ -187,8 +187,6 @@ public class AllianceHtpConverter extends BioFileConverter
                 sample.addToCollection("dataSets", dsRef);
             }
         }
-        store(sample);
-        samples.put(id, sample.getIdentifier());
 
         // Per-sample characteristics. Each is a SampleCharacteristic item with
         // type + value + optional ontologyTerm reference.
@@ -198,6 +196,8 @@ public class AllianceHtpConverter extends BioFileConverter
         addCharacteristic(sample, "assay", line[S_ASSAY], line[S_ASSAY]);
         addCharacteristic(sample, "assembly", line[S_ASSEMBLY], "");
         addCharacteristic(sample, "biosample", line[S_BIOSAMPLE], "");
+        store(sample);
+        samples.put(id, sample.getIdentifier());
     }
 
     private void addCharacteristic(Item sample, String type, String value, String termId)

@@ -122,7 +122,6 @@ public class AllianceVariantsConverter extends BioFileConverter
             String taxonId = taxon.contains(":") ? taxon.substring(taxon.indexOf(':') + 1) : taxon;
             variant.setReference("organism", getOrganism(taxonId));
         }
-        store(variant);
 
         // Coordinates / sequence go on a VariantDetails child if any are populated.
         boolean hasCoords = !line[COL_CHROMOSOME].trim().isEmpty()
@@ -138,6 +137,7 @@ public class AllianceVariantsConverter extends BioFileConverter
             store(details);
             variant.addToCollection("variantdetails", details);
         }
+        store(variant);
 
         // One VariantConsequence per consequence-name token.
         int emitted = 0;
