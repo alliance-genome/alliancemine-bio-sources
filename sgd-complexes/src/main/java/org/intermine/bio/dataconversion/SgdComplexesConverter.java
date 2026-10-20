@@ -34,7 +34,7 @@ public class SgdComplexesConverter extends BioDBConverter
 {
     // 
     private static final String DATASET_TITLE = "SGD Complexes";
-    private static final String DATA_SOURCE_NAME = "Add DataSource.name here";
+    private static final String DATA_SOURCE_NAME = "SGD";
     private static final SgdComplexesProcessor PROCESSOR = new SgdComplexesProcessor();
     private String licence;
 
