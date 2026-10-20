@@ -11,7 +11,9 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.io.Reader;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,8 +29,8 @@ import org.intermine.xml.full.Item;
  * three additional attributes: alterationType, apiCategory, apiCrossReference.
  *
  * The InterMine integration engine merges these partial Allele items into
- * those produced by alliance-alleles via the Allele.key_alleleid integration
- * key (alleleId). Order of source ingestion is decided by project.xml; both
+ * those produced by alliance-alleles via the Allele.key_primaryidentifier integration
+ * key (primaryIdentifier, set to the alleleId CURIE). Order of source ingestion is decided by project.xml; both
  * sources work whether this one runs before or after alliance-alleles.
  *
  * @author
@@ -46,6 +48,18 @@ public class AllianceAlleleDetailConverter extends BioFileConverter
     private static final int COL_API_CATEGORY      = 2;
     private static final int COL_API_CROSSREF      = 3;
     private static final int MIN_COLUMNS           = 4;
+
+    // Allele CURIE prefix -> NCBI taxon. The TSV carries no taxon column.
+    // Xenbase ids are shared by X. laevis and X. tropicalis, so they get no organism.
+    private static final Map<String, String> PREFIX_TAXON = new HashMap<String, String>();
+    static {
+        PREFIX_TAXON.put("SGD", "559292");
+        PREFIX_TAXON.put("MGI", "10090");
+        PREFIX_TAXON.put("RGD", "10116");
+        PREFIX_TAXON.put("ZFIN", "7955");
+        PREFIX_TAXON.put("FB", "7227");
+        PREFIX_TAXON.put("WB", "6239");
+    }
 
     public AllianceAlleleDetailConverter(ItemWriter writer, Model model) {
         super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
@@ -69,6 +83,11 @@ public class AllianceAlleleDetailConverter extends BioFileConverter
             }
             Item allele = createItem("Allele");
             allele.setAttribute("alleleId", alleleId);
+            allele.setAttribute("primaryIdentifier", alleleId);
+            String taxon = taxonForAlleleId(alleleId);
+            if (taxon != null) {
+                allele.setReference("organism", getOrganism(taxon));
+            }
             setIfPresent(allele, "alterationType", line[COL_ALTERATION_TYPE]);
             setIfPresent(allele, "apiCategory", line[COL_API_CATEGORY]);
             setIfPresent(allele, "apiCrossReference", line[COL_API_CROSSREF]);
@@ -76,6 +95,11 @@ public class AllianceAlleleDetailConverter extends BioFileConverter
             rows++;
         }
         LOG.info("AlleleDetail: emitted " + rows + " partial Allele items");
+    }
+
+    static String taxonForAlleleId(String alleleId) {
+        int colon = alleleId.indexOf(':');
+        return colon < 0 ? null : PREFIX_TAXON.get(alleleId.substring(0, colon));
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {
