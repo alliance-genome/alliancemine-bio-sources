@@ -93,7 +93,6 @@ public class AllianceDiseaseAllelesConverter extends BioFileConverter
         ann.setReference("alleleSubject", alleleRef);
         ann.setReference("ontologyTerm", doRef);
         setIfPresent(ann, "generatedRelationString", line[COL_RELATION]);
-        store(ann);
 
         String ecoCsv = line[COL_ECO_CODES].trim();
         String pmidCsv = line[COL_PMIDS].trim();
@@ -118,6 +117,7 @@ public class AllianceDiseaseAllelesConverter extends BioFileConverter
             store(ev);
             ann.addToCollection("evidence", ev);
         }
+        store(ann);
     }
 
     private String getAllele(String primaryId, String taxon, String symbol)

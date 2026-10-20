@@ -397,6 +397,7 @@ public class SgdConverter extends BioDBConverter {
 
 					allele = createItem("Allele");
 					allele.setAttribute("featureType", "Allele");
+					allele.setReference("organism", organism);
 					if (StringUtils.isNotEmpty(name)) allele.setAttribute("name", name);
 					if (StringUtils.isNotEmpty(description)) allele.setAttribute("description", description);
 					if (StringUtils.isNotEmpty(aclass)) allele.setAttribute("alleleClass", aclass);
@@ -1304,7 +1305,7 @@ public class SgdConverter extends BioDBConverter {
 				childItem.setReference(refname, parent.getIdentifier());
 			}
 			// ~~ add sequence
-			String seqRefId = getSequence(geneChildFeatureNo, seq, seqLen);
+			String seqRefId = getSequence(primaryIdentifier, seq, seqLen);
 			childItem.setReference("sequence", seqRefId);
 
 			// ~~~ chromosome and location ~~~
@@ -3159,7 +3160,7 @@ public class SgdConverter extends BioDBConverter {
 		return refId;
 	}
 
-	private String getSequence(String id, String residues, String length)
+	String getSequence(String id, String residues, String length)
 			throws ObjectStoreException {
 		if (StringUtils.isEmpty(id)) {
 			return null;

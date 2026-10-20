@@ -47,6 +47,10 @@ public class AlliancePhenotypesConverter extends BioFileConverter
     private static final int COL_PUBMED_IDS          = 6;
     private static final int COL_REFERENCE_IDS       = 7;
     private static final int MIN_COLUMNS             = 8;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> publications = new HashMap<String, String>();
@@ -62,6 +66,7 @@ public class AlliancePhenotypesConverter extends BioFileConverter
         LOG.info("Processing Alliance phenotypes...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -70,8 +75,17 @@ public class AlliancePhenotypesConverter extends BioFileConverter
             if ("subjectGeneId".equals(line[COL_SUBJECT_GENE_ID])) {
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_SUBJECT_GENE_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("phenotypes: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " phenotypes rows have no gene taxon; rerun fetch_phenotypes.py");
         }
         LOG.info("Phenotypes: processed " + rows + " rows");
     }

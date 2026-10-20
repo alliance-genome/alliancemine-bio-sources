@@ -60,6 +60,7 @@ public class AllianceAllelePhenotypesConverter extends BioFileConverter
         MOD_TAXON.put("WB", "6239");
         MOD_TAXON.put("XBXL", "8355");
         MOD_TAXON.put("XBXT", "8364");
+        MOD_TAXON.put("HUMAN", "9606");
     }
 
     private final Map<String, String> alleles = new HashMap<String, String>();

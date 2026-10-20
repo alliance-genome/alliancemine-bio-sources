@@ -57,6 +57,10 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
     private static final int COL_REFERENCE_IDS      = 10;
     private static final int COL_UNIQUE_ID          = 11;
     private static final int MIN_COLUMNS            = 12;
+    // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
+    // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
+    // InterMine drops one id, leaving every reference to it dangling.
+    private static final double MAX_MISSING_TAXON_FRACTION = 0.01;
 
     private final Map<String, String> genes = new HashMap<String, String>();
     private final Map<String, String> doTerms = new HashMap<String, String>();
@@ -74,6 +78,7 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
         LOG.info("Processing Alliance disease annotation detail...");
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
+        int missingTaxon = 0;
         while (lineIter.hasNext()) {
             String[] line = (String[]) lineIter.next();
             if (line.length < MIN_COLUMNS) {
@@ -82,8 +87,17 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
             if ("diseaseId".equals(line[COL_DISEASE_ID])) {
                 continue;
             }
+            if (StringUtils.isBlank(line[COL_SUBJECT_GENE_TAXON])) {
+                missingTaxon++;
+                continue;
+            }
             processRow(line);
             rows++;
+        }
+        LOG.info("disease-detail: skipped " + missingTaxon + " rows with no gene taxon");
+        if (missingTaxon > (rows + missingTaxon) * MAX_MISSING_TAXON_FRACTION) {
+            throw new IllegalStateException(missingTaxon + " of " + (rows + missingTaxon)
+                    + " disease-detail rows have no gene taxon; rerun fetch_disease_annotations.py");
         }
         LOG.info("DiseaseAnnotationDetail: emitted " + rows + " partial DiseaseAnnotation items");
     }
@@ -110,11 +124,9 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
         }
         setIntIfPresent(ann, "viaOrthologyOrder", line[COL_VIA_ORTHOLOGY]);
         setIfPresent(ann, "uniqueId", line[COL_UNIQUE_ID]);
-        store(ann);
 
-        // Build a DiseaseEvidence carrying the ECO codes and publications.
-        // The evidence is associated with the annotation via OntologyAnnotation.evidence
-        // (collection); the integration engine wires this up at merge time.
+        // Build a DiseaseEvidence carrying the ECO codes and publications and
+        // attach it to the annotation before the annotation is stored.
         String ecoCsv = line[COL_EVIDENCE_CODES].trim();
         String pmidCsv = line[COL_PUBMED_IDS].trim();
         if (!ecoCsv.isEmpty() || !pmidCsv.isEmpty()) {
@@ -137,11 +149,8 @@ public class AllianceDiseaseDetailConverter extends BioFileConverter
             }
             store(ev);
             ann.addToCollection("evidence", ev);
-            // Re-emit the annotation item with the evidence collection populated.
-            // (InterMine items engine accepts repeated stores merging fields;
-            // simpler to leave annotation as already stored and let evidence
-            // hang independently - the merge engine reattaches via key.)
         }
+        store(ann);
     }
 
     private String getGene(String primaryId, String taxon) throws ObjectStoreException {

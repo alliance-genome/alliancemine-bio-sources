@@ -139,7 +139,16 @@ public class AllianceWormRnaiConverter extends BioFileConverter
         return organismRef;
     }
 
-    private String getGene(String primaryId) throws ObjectStoreException {
+    private static String withWbPrefix(String id) {
+        String primaryId = id.startsWith("WBGene") || id.startsWith("WBStrain") ? "WB:" + id : id;
+        if (primaryId.indexOf(':') < 0) {
+            throw new IllegalArgumentException("primaryIdentifier without a colon: " + id);
+        }
+        return primaryId;
+    }
+
+    private String getGene(String id) throws ObjectStoreException {
+        String primaryId = withWbPrefix(id);
         String ref = genes.get(primaryId);
         if (ref != null) {
             return ref;
@@ -152,7 +161,8 @@ public class AllianceWormRnaiConverter extends BioFileConverter
         return gene.getIdentifier();
     }
 
-    private String getStrain(String primaryId) throws ObjectStoreException {
+    private String getStrain(String id) throws ObjectStoreException {
+        String primaryId = withWbPrefix(id);
         String ref = strains.get(primaryId);
         if (ref != null) {
             return ref;
@@ -170,6 +180,11 @@ public class AllianceWormRnaiConverter extends BioFileConverter
             return null;
         }
         String p = pubToken.trim();
+        // Only bare WBPaper ids get the WB: prefix. Any other token without a PMID: prefix
+        // (MGI:..., ZFIN:..., FB:...) is stored unchanged in pubXrefId.
+        if (p.startsWith("WBPaper")) {
+            p = "WB:" + p;
+        }
         String ref = publications.get(p);
         if (ref != null) {
             return ref;
