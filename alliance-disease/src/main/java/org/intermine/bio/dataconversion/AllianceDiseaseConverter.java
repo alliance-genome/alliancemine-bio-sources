@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.io.Reader;
 
@@ -105,6 +106,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
          */
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int count = 0;
+        int skippedNoEvidence = 0;
         LOG.info("Processing DiseaseCombined.tsv...");
         while (lineIter.hasNext()) {
             count++;
@@ -125,7 +127,6 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             String expCondition = line[11].trim();
             String modifier = line[12].trim();
             String strEvidence = line[13].trim();
-            String annotType = "manually curated";
             String pub = line[15].trim();
             String date_assigned = line[16].trim();
             String created_by = "alliance";
@@ -134,12 +135,11 @@ public class AllianceDiseaseConverter extends BioFileConverter {
             //String qualifier = "";
             String annotationExtension = "";
 
-            if (StringUtils.isNotEmpty(strEvidence)) {
-                storeEvidenceCode(strEvidence, inferredFrom, withText, expCondition, modifier);
-            } else {
-                throw new IllegalArgumentException("Evidence is a required column but not "
-                        + "found for doterm " + doId + " and productId " + productId);
+            if (StringUtils.isEmpty(strEvidence)) {
+                skippedNoEvidence++;
+                continue;
             }
+            storeEvidenceCode(strEvidence, expCondition, modifier);
 
 
             // create unique key for do annotation
@@ -162,7 +162,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
 
                 if (allEvidenceForAnnotation == null ) { //|| !StringUtils.isEmpty(withText)
                     String goTermIdentifier = newDoTerm(doId, dataSource, dataSourceCode);
-                    Evidence evidence = new Evidence(strEvidence, pubRefId, withText, annotType, organism,
+                    Evidence evidence = new Evidence(strEvidence, pubRefId, withText, inferredFrom, organism,
                             dataSource, dataSourceCode, date_assigned);
                     allEvidenceForAnnotation = new LinkedHashSet<Evidence>();
                     allEvidenceForAnnotation.add(evidence);
@@ -185,7 +185,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                         }
                     }
                     if (!seenEvidenceCode) {
-                        Evidence evidence = new Evidence(strEvidence, pubRefId, withText, annotType, organism,
+                        Evidence evidence = new Evidence(strEvidence, pubRefId, withText, inferredFrom, organism,
                                 dataSource, dataSourceCode, date_assigned);   //was strEvidence
                         evidence.storedAnnotationId = storedAnnotationId;
                         allEvidenceForAnnotation.add(evidence);
@@ -193,6 +193,7 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                 }
             }
         }
+        LOG.info("Skipped " + skippedNoEvidence + " rows with empty evidence code");
         storeProductCollections();
         storeEvidence();
 
@@ -419,13 +420,11 @@ public class AllianceDiseaseConverter extends BioFileConverter {
         return doTermIdentifier;
     }
 
-    private void storeEvidenceCode(String code, String inferredFrom, String withText, String expCondition, String modifier) throws ObjectStoreException {
+    private void storeEvidenceCode(String code, String expCondition, String modifier) throws ObjectStoreException {
 
         if (evidenceCodes.get(code) == null) {
             Item item = createItem("DiseaseEvidenceCode");
             item.setAttribute("code", code);
-            if(StringUtils.isNotEmpty(withText)) item.setAttribute("withText", withText);
-            if(StringUtils.isNotEmpty(inferredFrom)) item.setAttribute("inferredFrom", inferredFrom);
             if(StringUtils.isNotEmpty(expCondition)) item.setAttribute("experimentCondition", expCondition);
             if(StringUtils.isNotEmpty(modifier)) item.setAttribute("modifier", modifier);
 
@@ -671,6 +670,14 @@ public class AllianceDiseaseConverter extends BioFileConverter {
                 }
             }
             return false;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public int hashCode() {
+            return Objects.hash(productId, goId, qualifier, withText, pub);
         }
 
     }
