@@ -10,25 +10,36 @@ package org.intermine.bio.dataconversion;
  *
  */
 
-public class AllianceOrthologsConverterTest extends ItemsTestCase
+import java.io.StringReader;
+import java.util.HashMap;
+
+import junit.framework.TestCase;
+
+import org.intermine.dataconversion.MockItemWriter;
+import org.intermine.metadata.Model;
+import org.intermine.xml.full.Item;
+
+public class AllianceOrthologsConverterTest extends TestCase
 {
-    Model model = Model.getInstanceByName("genomic");
-    AllianceOrthologsConverter converter;
-    MockItemWriter itemWriter;
-
-    public AllianceOrthologsConverterTest(String arg) {
-        super(arg);
-    }
-
-    public void setUp() throws Exception {
-        super.setUp();
-        // if you need to do some preprocessing and set up, do that here
-    }
-
-    public void testProcess() throws Exception {
-        // read in a test file (place in test/resources so it's on the classpath)
-        // process using your converter
-        // compare results to expected results
-        // look at the other intermine unit tests for help!
+    public void testHomologueTypeIsOrthologue() throws Exception {
+        StringBuilder tsv = new StringBuilder();
+        for (int i = 0; i < 16; i++) {
+            tsv.append("header line ").append(i).append('\n');
+        }
+        tsv.append("FB:FBgn0000001\tsym1\tNCBITaxon:7227\tDrosophila melanogaster"
+                + "\tSGD:S000000001\tsym2\tNCBITaxon:559292\tSaccharomyces cerevisiae"
+                + "\tDIOPT\t5\t10\tYes\tNo\n");
+        MockItemWriter writer =
+                new MockItemWriter(new HashMap<String, org.intermine.model.fulldata.Item>());
+        new AllianceOrthologsConverter(writer, Model.getInstanceByName("genomic"))
+                .process(new StringReader(tsv.toString()));
+        int homologues = 0;
+        for (Item item : writer.getItems()) {
+            if ("Homologue".equals(item.getClassName())) {
+                homologues++;
+                assertEquals("orthologue", item.getAttribute("type").getValue());
+            }
+        }
+        assertEquals(1, homologues);
     }
 }

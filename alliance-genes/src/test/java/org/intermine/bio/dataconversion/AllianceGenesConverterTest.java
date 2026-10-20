@@ -1,9 +1,5 @@
 package org.intermine.bio.dataconversion;
 
-import org.intermine.dataconversion.ItemsTestCase;
-import org.intermine.dataconversion.MockItemWriter;
-import org.intermine.metadata.Model;
-
 /*
  * Copyright (C) 2002-2026 AllianceMine
  *
@@ -13,6 +9,10 @@ import org.intermine.metadata.Model;
  * information or http://www.gnu.org/copyleft/lesser.html.
  *
  */
+
+import org.intermine.dataconversion.ItemsTestCase;
+import org.intermine.dataconversion.MockItemWriter;
+import org.intermine.metadata.Model;
 
 public class AllianceGenesConverterTest extends ItemsTestCase
 {
