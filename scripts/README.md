@@ -107,6 +107,23 @@ committed to the cache as they arrive, so a rerun resumes from it.
 | `fetch_disease_models.py` | API `/gene/{id}/models` | `data/disease-models.tsv` | |
 | `fetch_phenotypes.py` | API `/gene/{id}/phenotypes` | `data/phenotypes.tsv` | |
 
+### Curation DB extractors (`fetch_all.py --source db`)
+
+`extract_orthologs.py` and `extract_paralogs.py` write the same
+`orthologs.tsv` and `paralogs.tsv` from SQL against a restored curation dump
+(`CURATION_PSQL`, see `curation_db.py`). Each runs one query over the whole
+table and keeps the rows whose subject is a seed gene.
+
+- Orthologs: `genetogeneorthologygenerated.strictfilter` rows (the API labels
+  them `stringent`); obsolete genes dropped.
+- Paralogs: one row per unordered pair, the direction whose subject is the
+  earliest seed (identity, similarity, length and rank are per subject).
+- Method lists keep the join-table row order, the order the API returns.
+- The 9.2.0 dump has no SGD orthology or paralogy rows. Seeds of a species
+  with no database rows go to the API (fetcher row mapping and cache); SGD
+  ortholog rows are mirrored for the other species. `--no-api-fallback`
+  skips this.
+
 ### FMS bulk (default `--source fms`)
 
 These all accept `--source {fms,api}`. FMS path reads bulk JSON.gz dumps;
