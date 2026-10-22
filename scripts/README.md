@@ -146,6 +146,24 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 | `fetch_mousemine_strains.py` | MouseMine PathQuery | `data/mouse-strains.tsv` |
 | `fetch_wormmine_rnai.py` | WormMine PathQuery | `data/worm-rnai.tsv` |
 
+### Disease extractors (`--source db`)
+
+`extract_disease*.py` and `extract_experimental_disease.py` write the disease
+TSVs from the curation dump through `disease_db.py`. Publication curies come
+from `reference_crossreference` (PMID and MOD curies only).
+
+| Extractor | DB covers | Other part |
+|---|---|---|
+| `extract_disease_annotations.py` | direct rows (viaOrthologyOrder 0) | via-orthology rows from `/disease/{id}/genes` (`--orthology api`, default; `none` skips them) |
+| `extract_disease.py` | MOD-curated rows | Source=Alliance orthology rows from FMS DISEASE-ALLIANCE COMBINED (`--orthology fms`, default) |
+| `extract_disease_models.py` | all rows | none |
+| `extract_disease_alleles.py` | all rows | none |
+| `extract_experimental_disease.py` | all rows | none |
+
+The Alliance indexer computes the via-orthology annotations; the curation
+database does not store them. `uniqueId` in the detail TSV is the lowest
+AGRKB annotation curie of the row; the API reports an Elasticsearch id.
+
 ## Enrichment-merge pattern
 
 Many bio-source modules (the `-detail` suffix is a tell, but not all

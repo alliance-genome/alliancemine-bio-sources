@@ -16,6 +16,7 @@ Environment variables:
 from __future__ import annotations
 
 import csv
+import io
 import logging
 import os
 import shlex
@@ -42,11 +43,12 @@ def copy_rows(sql: str) -> Iterator[list[str]]:
     """Yield each result row of sql as a list of strings; NULL becomes ''."""
     copy = f"COPY ({sql.strip().rstrip(';')}) TO STDOUT WITH (FORMAT csv)"
     cmd = psql_command() + ["-v", "ON_ERROR_STOP=1", "-c", copy]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, encoding="utf-8", newline="")
+    # Popen takes no newline argument; csv needs newline="" so quoted fields
+    # keep their embedded line breaks.
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert proc.stdout is not None and proc.stderr is not None
     try:
-        yield from csv.reader(proc.stdout)
+        yield from csv.reader(io.TextIOWrapper(proc.stdout, encoding="utf-8", newline=""))
     except GeneratorExit:
         # Caller stopped early (--limit): drop the rest of the result.
         proc.kill()
