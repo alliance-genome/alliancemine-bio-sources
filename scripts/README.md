@@ -159,6 +159,9 @@ templates) and `reference_crossreference` (publication ids).
 | `extract_gene_crossrefs.py` | `fetch_gene_crossrefs.py` | crossReferences + gcrpCrossReference per listed gene; page names mapped to the FMS `xrefType` spelling. Own id on `default` becomes `gene`; PANTHER families get the MOD tree page. |
 | `extract_expression.py` | `fetch_expression.py` | `geneexpressionannotation`, `expressionpattern`, `anatomicalsite` and their crossreference links. SourceURL lists every MGI assay and WB expression pattern of a row (FMS keeps one). FB rows carry FBcv anatomy qualifiers. |
 | `extract_htp.py` | `fetch_htp.py` | `htpexpressiondatasetannotation*`, `htpexpressiondatasetsampleannotation*`. anatomyStatement is the anatomy term name (the DB keeps no statement). dateAssigned is blank. MGI samples have no sample id and are skipped. |
+| `extract_phenotypes.py` | gene/allele/AGM phenotype annotations grouped per (gene, statement); allele and AGM rows join on `inferredgene_id`; `reference_crossreference` for publications | `uniqueId` is `<gene>\|<statement>` (the API value is a random index id). 3,161 sampled rows (MGI, ZFIN, FB, WB, SGD, RGD, Xenbase, HGNC genes) match on every other column. |
+| `extract_allele_phenotypes.py` | allele annotations (gene = inferred gene, else the allele's only gene) and AGM annotations (inferred allele, no gene) | FB, WB, ZFIN annotations have no phenotype terms in the curation DB, so those MODs still read FMS through `fetch_allele_phenotypes._iter_mod`. AGM asserted-allele links are empty (244 MGI rows lost). |
+| `extract_agms.py` | `affectedgenomicmodel`, AGM full-name slot annotation (display text), subtype term | ZFIN subtype is `fish` (FMS: empty). The DB holds 566K AGMs vs 159K in FMS, including 49.6K more strains (WB 47.6K, FB 1.8K, RGD 184). |
 
 ## Enrichment-merge pattern
 
