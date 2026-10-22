@@ -146,6 +146,34 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 | `fetch_mousemine_strains.py` | MouseMine PathQuery | `data/mouse-strains.tsv` |
 | `fetch_wormmine_rnai.py` | WormMine PathQuery | `data/worm-rnai.tsv` |
 
+### Curation DB extractors: alleles and variants
+
+`fetch_all.py --source db` runs these in place of the fetchers. They read a
+restored curation dump through `curation_db.py` (`CURATION_PSQL`) and write
+the same TSVs. Shared SQL and value mapping live in
+`extract_alleles_common.py`; it mirrors the curation API's allele summary
+document (`AlleleDAO`, `AlleleSummaryDocumentBuilder`), the source of both
+`/api/allele/{id}` and the FMS VARIANT-ALLELE files.
+
+| Script | Replaces | Output |
+|---|---|---|
+| `extract_allele_detail.py` | `fetch_allele_detail.py` | `data/allele-detail.tsv` |
+| `extract_alleles.py` | `fetch_alleles.py` | `data/alliance-alleles.tsv` |
+| `extract_variants.py` | `fetch_variants.py` | `data/variants.tsv` |
+| `extract_transgenic_alleles.py` | `fetch_transgenic_alleles.py` | `data/transgenic-alleles.tsv` |
+
+- Scope: alleles, detail and variants keep the fetchers' seed, the AlleleIds
+  of the release's FMS VARIANT-ALLELE files, minus alleles the DB marks
+  obsolete or internal (the API answers HTTP 400 for those).
+  `--all-alleles` takes every summary allele of the selected MODs instead
+  (3.2M against 294K in 9.2.0).
+- Transgenic alleles are live alleles with a live allele-construct
+  association; FlyBase now hangs constructs on FBti insertions, not FBal.
+- Each script runs set-based queries and joins in Python. The restored
+  tables carry no planner statistics, and single multi-join statements chose
+  nested loops that ran for hours.
+- 9.2.0 full runs take 1.5 to 3.5 minutes each.
+
 ## Enrichment-merge pattern
 
 Many bio-source modules (the `-detail` suffix is a tell, but not all
