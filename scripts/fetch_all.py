@@ -104,9 +104,13 @@ FETCHERS = [
 # With --source db these names run extract_<name>.py (SQL against a restored
 # curation dump, see curation_db.py) in place of fetch_<name>.py. Names absent
 # here, or whose extractor file does not exist yet, keep their fetcher.
+# htp keeps FMS: 39,176 RGD samples have no dataset link in the 9.2.0 curation DB.
+KEEP_FETCHER = {"htp"}
+
+
 def script_for(name: str, script: str, source: str) -> str:
     extractor = f"extract_{name}.py"
-    if source == "db" and (Path(__file__).parent / extractor).exists():
+    if source == "db" and name not in KEEP_FETCHER and (Path(__file__).parent / extractor).exists():
         return extractor
     return script
 
