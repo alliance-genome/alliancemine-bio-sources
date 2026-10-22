@@ -107,6 +107,21 @@ committed to the cache as they arrive, so a rerun resumes from it.
 | `fetch_disease_models.py` | API `/gene/{id}/models` | `data/disease-models.tsv` | |
 | `fetch_phenotypes.py` | API `/gene/{id}/phenotypes` | `data/phenotypes.tsv` | |
 
+#### `extract_interactions.py` (`--source db`)
+
+Writes the same two interaction TSVs from a restored curation dump
+(`genegeneticinteraction`, `genemolecularinteraction` and their
+`_crossreference`, `_informationcontententity` and `_phenotypesortraits`
+link tables). It seeds from the same gene list as the fetcher and keeps each
+`uniqueId` once, oriented on the smaller seeded gene id, so row counts match
+the fetcher's. Interactor A/B columns follow `geneId`, as the API returned
+them. Interactions with an obsolete or internal participant gene are
+dropped, as the API dropped them. `pubmedId` is the publication's PMID (else
+its MOD reference id) from `reference_crossreference`. The dump has no
+citation text, so `shortCitation` comes from API `/reference/{curie}`, one
+cached call per publication (75.5K in 9.2.0, about 1 h cold, cache
+`references.sqlite`). `--no-reference-lookup` leaves `shortCitation` empty.
+
 ### FMS bulk (default `--source fms`)
 
 These all accept `--source {fms,api}`. FMS path reads bulk JSON.gz dumps;
