@@ -10,13 +10,13 @@ output keeps the FMS block of 14 comment lines plus the column header.
 One row per distinct (gene, location, stage, assay, anatomical site) over
 the non-obsolete, non-internal gene expression annotations. SourceURL holds
 the comma-joined annotation (ZFIN figure) and expression experiment (MGI
-assay, WB expression pattern) cross references; a stage of "N/A" is
+assay, WB expression pattern) cross references, each filled into its
+resourcedescriptorpage urlTemplate; a stage of "N/A" is
 written blank, as FMS does. Reference holds the
 comma-joined publications, a PMID where the reference has one, else the MOD
 publication id.
 
-Publications resolve through reference_crossreference, which must be
-restored from the dump.
+Publications resolve through reference_crossreference.
 
 Usage:
     python3 extract_expression.py
@@ -71,30 +71,12 @@ SPECIES_NAME = {
     "XBXT": "Xenopus tropicalis",
 }
 
-# urlTemplate of the "gene/expression/annotation/detail" resource descriptor
-# pages that expression cross references point at. resourcedescriptorpage is
-# not part of the restore, so the three templates in use are fixed here.
-SOURCE_URL_TEMPLATE = {
-    "MGI": "http://www.informatics.jax.org/assay/MGI:[%s]",
-    "ZFIN": "https://zfin.org/[%s]",
-    "WB": "https://www.wormbase.org/species/all/expr_pattern/[%s]",
-}
-
 # Publication id prefix each data provider uses for papers without a PMID.
 PUB_PREFIX = {
     "SGD": "SGD:", "MGI": "MGI:", "RGD": "RGD:", "ZFIN": "ZFIN:", "FB": "FB:",
     "WB": "WB:", "XBXL": "Xenbase:", "XBXT": "Xenbase:", "HUMAN": "PMID:",
 }
 PUB_PREFIX_PATTERN = "^(PMID|SGD|MGI|RGD|ZFIN|FB|WB|Xenbase):"
-
-
-def source_url(curie: str) -> str:
-    """Page URL of an expression cross reference curie, '' when no template applies."""
-    prefix, _, local = curie.partition(":")
-    template = SOURCE_URL_TEMPLATE.get(prefix)
-    if not template or not local:
-        return ""
-    return template.replace("[%s]", local)
 
 
 def pick_reference(curies: Iterable[str], mod: str) -> str:
@@ -159,15 +141,21 @@ def expression_sql(taxa: list[str], limit: int | None) -> str:
     return f"""
         WITH ann AS ({annotation_filter_sql(taxa)}),
         xref AS (
-            SELECT ax.geneexpressionannotation_id AS aid, c.referencedcurie
+            SELECT ax.geneexpressionannotation_id AS aid, ax.crossreferences_id AS xid
             FROM geneexpressionannotation_crossreference ax
-            JOIN crossreference c ON c.id = ax.crossreferences_id
             UNION
-            SELECT a.id, c.referencedcurie
+            SELECT a.id, ex.crossreferences_id
             FROM ann a
             JOIN geneexpressionexperiment_crossreference ex
               ON ex.geneexpressionexperiment_id = a.expressionexperiment_id
-            JOIN crossreference c ON c.id = ex.crossreferences_id
+        ),
+        url AS (
+            SELECT x.aid,
+                   replace(p.urltemplate, '[%s]', regexp_replace(c.referencedcurie, '^[^:]*:', '')) AS url
+            FROM xref x
+            JOIN crossreference c ON c.id = x.xid
+            JOIN resourcedescriptorpage p ON p.id = c.resourcedescriptorpage_id
+            WHERE p.urltemplate IS NOT NULL
         ),
         symbol AS (
             SELECT singlegene_id AS gid, min(displaytext) AS symbol
@@ -185,7 +173,7 @@ def expression_sql(taxa: list[str], limit: int | None) -> str:
                coalesce(cc.curie, ''), coalesce(cc.name, ''), coalesce(ccq.ids, ''), coalesce(ccq.names, ''),
                coalesce(sub.curie, ''), coalesce(sub.name, ''), coalesce(subq.ids, ''), coalesce(subq.names, ''),
                coalesce(an.curie, ''), coalesce(an.name, ''), coalesce(anq.ids, ''), coalesce(anq.names, ''),
-               string_agg(DISTINCT x.referencedcurie, '|'),
+               string_agg(DISTINCT u.url, '|'),
                string_agg(DISTINCT a.evidenceitem_id::text, '|')
         FROM ann a
         LEFT JOIN symbol sy ON sy.gid = a.expressionannotationsubject_id
@@ -198,7 +186,7 @@ def expression_sql(taxa: list[str], limit: int | None) -> str:
         LEFT JOIN ccq ON ccq.sid = s.id
         LEFT JOIN subq ON subq.sid = s.id
         LEFT JOIN anq ON anq.sid = s.id
-        LEFT JOIN xref x ON x.aid = a.id
+        LEFT JOIN url u ON u.aid = a.id
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
         ORDER BY 1, 2
         {limit_sql}"""
@@ -206,15 +194,14 @@ def expression_sql(taxa: list[str], limit: int | None) -> str:
 
 def build_row(rec: list[str], mod: str, refs: dict[str, list[str]]) -> list[str]:
     """One TSV row from an expression_sql result row."""
-    taxon, gene_id, symbol, *middle, xrefs, ref_ids = rec
-    urls = [u for u in (source_url(c) for c in sorted(xrefs.split("|")) if c) if u]
+    taxon, gene_id, symbol, *middle, urls, ref_ids = rec
     pubs: list[str] = []
     for ref_id in sorted(r for r in ref_ids.split("|") if r):
         pub = pick_reference(refs.get(ref_id, []), mod)
         if pub and pub not in pubs:
             pubs.append(pub)
     return [SPECIES_NAME.get(mod, ""), taxon, gene_id, symbol, *middle,
-            ",".join(urls), mod, ",".join(sorted(pubs))]
+            ",".join(sorted(u for u in urls.split("|") if u)), mod, ",".join(sorted(pubs))]
 
 
 def header_lines(mods: list[str], release: str) -> list[str]:

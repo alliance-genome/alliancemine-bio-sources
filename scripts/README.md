@@ -149,8 +149,8 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 ### Curation DB extractors: expression and HTP
 
 `fetch_all.py --source db` runs these in place of `fetch_expression.py` and `fetch_htp.py`.
-Both need the `reference_crossreference` table restored from the dump; publication ids
-resolve through it.
+Publication ids resolve through `reference_crossreference`; SourceURLs through
+`resourcedescriptorpage`. Both tables must be in the restore.
 
 | Script | Tables | Output | Differences from the FMS files |
 |---|---|---|---|

@@ -18,8 +18,7 @@ only for SampleCharacteristic values:
 Samples without a sample id (all MGI samples in the 9.2.0 dump) are
 skipped, as the fetcher skips FMS records without sampleId.primaryId.
 
-Publication ids resolve through reference_crossreference, which must be
-restored from the dump.
+Publication ids resolve through reference_crossreference.
 
 Usage:
     python3 extract_htp.py

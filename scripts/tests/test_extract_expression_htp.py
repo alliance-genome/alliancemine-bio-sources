@@ -13,18 +13,6 @@ import extract_htp as eh  # noqa: E402
 from fetch_htp import DATASET_COLUMNS, SAMPLE_COLUMNS  # noqa: E402
 
 
-class SourceUrlTest(unittest.TestCase):
-    def test_templates(self) -> None:
-        self.assertEqual(ee.source_url("MGI:5290078"), "http://www.informatics.jax.org/assay/MGI:5290078")
-        self.assertEqual(ee.source_url("ZFIN:ZDB-FIG-170119-12"), "https://zfin.org/ZDB-FIG-170119-12")
-        self.assertEqual(ee.source_url("WB:Expr15314"),
-                         "https://www.wormbase.org/species/all/expr_pattern/Expr15314")
-
-    def test_unknown_prefix_or_empty(self) -> None:
-        self.assertEqual(ee.source_url("FB:FBrf0000001"), "")
-        self.assertEqual(ee.source_url(""), "")
-
-
 class PickReferenceTest(unittest.TestCase):
     def test_pmid_wins(self) -> None:
         self.assertEqual(ee.pick_reference(["FB:FBrf0219073", "PMID:7600985"], "FB"), "PMID:7600985")
@@ -44,7 +32,7 @@ class ExpressionRowTest(unittest.TestCase):
                   "", "", "", "", "", "", "", "",
                   "ZFA:0001058", "caudal fin", "BSPO:0000077", "proximal region"]
         rec = ["NCBITaxon:7955", "ZFIN:ZDB-GENE-100519-4", "aldh1l1", *middle,
-               "ZFIN:ZDB-FIG-170119-12|ZFIN:ZDB-FIG-170119-11", "11|10|12"]
+               "https://zfin.org/ZDB-FIG-170119-12|https://zfin.org/ZDB-FIG-170119-11", "11|10|12"]
         refs = {"10": ["PMID:28096348", "ZFIN:ZDB-PUB-1"], "11": ["PMID:28096348"], "12": ["ZFIN:ZDB-PUB-2"]}
         row = ee.build_row(rec, "ZFIN", refs)
         self.assertEqual(len(row), len(ee.COLUMNS))
