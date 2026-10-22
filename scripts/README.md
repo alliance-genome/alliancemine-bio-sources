@@ -146,6 +146,17 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 | `fetch_mousemine_strains.py` | MouseMine PathQuery | `data/mouse-strains.tsv` |
 | `fetch_wormmine_rnai.py` | WormMine PathQuery | `data/worm-rnai.tsv` |
 
+### Curation DB extractors: expression and HTP
+
+`fetch_all.py --source db` runs these in place of `fetch_expression.py` and `fetch_htp.py`.
+Both need the `reference_crossreference` table restored from the dump; publication ids
+resolve through it.
+
+| Script | Tables | Output | Differences from the FMS files |
+|---|---|---|---|
+| `extract_expression.py` | `geneexpressionannotation`, `expressionpattern`, `anatomicalsite` (+ qualifier links), `geneexpressionannotation_crossreference`, `geneexpressionexperiment_crossreference` | `data/expression-alliance.tsv` | SourceURL lists every MGI assay and WB expression pattern of a row (FMS keeps one). FB rows carry FBcv anatomy qualifiers. |
+| `extract_htp.py` | `htpexpressiondatasetannotation*`, `htpexpressiondatasetsampleannotation*`, `biosampleage`, `biosamplegenomicinformation` | `data/htp-datasets.tsv`, `data/htp-samples.tsv` | anatomyStatement is the anatomy term name (the DB keeps no statement). dateAssigned is blank. MGI samples have no sample id and are skipped. |
+
 ## Enrichment-merge pattern
 
 Many bio-source modules (the `-detail` suffix is a tell, but not all
