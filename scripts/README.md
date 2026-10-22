@@ -184,6 +184,10 @@ templates) and `reference_crossreference` (publication ids).
 | `extract_disease_models.py` | all rows | none |
 | `extract_disease_alleles.py` | all rows | none |
 | `extract_experimental_disease.py` | all rows | none |
+| `extract_allele_detail.py` | `fetch_allele_detail.py` | `data/allele-detail.tsv` |
+| `extract_alleles.py` | `fetch_alleles.py` | `data/alliance-alleles.tsv` |
+| `extract_variants.py` | `fetch_variants.py` | `data/variants.tsv` |
+| `extract_transgenic_alleles.py` | `fetch_transgenic_alleles.py` | `data/transgenic-alleles.tsv` |
 
 ## Enrichment-merge pattern
 
