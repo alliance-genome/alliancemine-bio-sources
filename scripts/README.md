@@ -146,6 +146,18 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 | `fetch_mousemine_strains.py` | MouseMine PathQuery | `data/mouse-strains.tsv` |
 | `fetch_wormmine_rnai.py` | WormMine PathQuery | `data/worm-rnai.tsv` |
 
+### Curation DB extractors (`fetch_all.py --source db`)
+
+`extract_<name>.py` writes the same TSV as `fetch_<name>.py` from SQL against
+a restored curation dump (`CURATION_PSQL` or `CURATION_DB_URL`, see
+`curation_db.py`). Both need `resourcedescriptor` and `resourcedescriptorpage`
+in the restore for URL templates.
+
+| Script | Replaces | Notes |
+|---|---|---|
+| `extract_genes.py` | `fetch_genes.py` | One query for all MODs; gene set = per-MOD gene lists; listed ids the DB lacks go through the API. `automatedDescription` comes from FMS GENE-DESCRIPTION-JSON (the dump has no automated_gene_description notes). `dateProduced` is filled from dateUpdated (the API leaves it empty). |
+| `extract_gene_crossrefs.py` | `fetch_gene_crossrefs.py` | crossReferences + gcrpCrossReference per listed gene; page names mapped to the FMS `xrefType` spelling. Own id on `default` becomes `gene`; PANTHER families get the MOD tree page. |
+
 ## Enrichment-merge pattern
 
 Many bio-source modules (the `-detail` suffix is a tell, but not all
