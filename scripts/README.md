@@ -150,13 +150,15 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 
 `extract_<name>.py` writes the same TSV as `fetch_<name>.py` from SQL against
 a restored curation dump (`CURATION_PSQL` or `CURATION_DB_URL`, see
-`curation_db.py`). Both need `resourcedescriptor` and `resourcedescriptorpage`
-in the restore for URL templates.
+`curation_db.py`). The restore must include `resourcedescriptor`, `resourcedescriptorpage` (URL
+templates) and `reference_crossreference` (publication ids).
 
 | Script | Replaces | Notes |
 |---|---|---|
 | `extract_genes.py` | `fetch_genes.py` | One query for all MODs; gene set = per-MOD gene lists; listed ids the DB lacks go through the API. `automatedDescription` comes from FMS GENE-DESCRIPTION-JSON (the dump has no automated_gene_description notes). `dateProduced` is filled from dateUpdated (the API leaves it empty). |
 | `extract_gene_crossrefs.py` | `fetch_gene_crossrefs.py` | crossReferences + gcrpCrossReference per listed gene; page names mapped to the FMS `xrefType` spelling. Own id on `default` becomes `gene`; PANTHER families get the MOD tree page. |
+| `extract_expression.py` | `fetch_expression.py` | `geneexpressionannotation`, `expressionpattern`, `anatomicalsite` and their crossreference links. SourceURL lists every MGI assay and WB expression pattern of a row (FMS keeps one). FB rows carry FBcv anatomy qualifiers. |
+| `extract_htp.py` | `fetch_htp.py` | `htpexpressiondatasetannotation*`, `htpexpressiondatasetsampleannotation*`. anatomyStatement is the anatomy term name (the DB keeps no statement). dateAssigned is blank. MGI samples have no sample id and are skipped. |
 
 ## Enrichment-merge pattern
 
