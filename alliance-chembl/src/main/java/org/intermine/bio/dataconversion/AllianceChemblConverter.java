@@ -53,10 +53,9 @@ public class AllianceChemblConverter extends BioFileConverter
     public void process(Reader reader) throws Exception {
         LOG.info("Processing ChEMBL target → UniProt cross-references...");
         if (chemblSourceRef == null) {
-            Item ds = createItem("DataSource");
-            ds.setAttribute("name", "ChEMBL");
-            store(ds);
-            chemblSourceRef = ds.getIdentifier();
+            // The constructor already registered DataSource "ChEMBL"; a second item with that name
+            // fails integration with "Duplicate objects found for pk DataSource.key_name".
+            chemblSourceRef = getDataSource(DATA_SOURCE_NAME);
         }
         Iterator<?> lineIter = FormattedTextParser.parseTabDelimitedReader(reader);
         int rows = 0;
