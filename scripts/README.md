@@ -107,6 +107,23 @@ committed to the cache as they arrive, so a rerun resumes from it.
 | `fetch_disease_models.py` | API `/gene/{id}/models` | `data/disease-models.tsv` | |
 | `fetch_phenotypes.py` | API `/gene/{id}/phenotypes` | `data/phenotypes.tsv` | |
 
+### Curation DB extractors (`fetch_all.py --source db`)
+
+`extract_orthologs.py` and `extract_paralogs.py` write the same
+`orthologs.tsv` and `paralogs.tsv` from SQL against a restored curation dump
+(`CURATION_PSQL`, see `curation_db.py`). Each runs one query over the whole
+table and keeps the rows whose subject is a seed gene.
+
+- Orthologs: `genetogeneorthologygenerated.strictfilter` rows (the API labels
+  them `stringent`); obsolete genes dropped.
+- Paralogs: one row per unordered pair, the direction whose subject is the
+  earliest seed (identity, similarity, length and rank are per subject).
+- Method lists keep the join-table row order, the order the API returns.
+- The 9.2.0 dump has no SGD orthology or paralogy rows. Seeds of a species
+  with no database rows go to the API (fetcher row mapping and cache); SGD
+  ortholog rows are mirrored for the other species. `--no-api-fallback`
+  skips this.
+
 ### FMS bulk (default `--source fms`)
 
 These all accept `--source {fms,api}`. FMS path reads bulk JSON.gz dumps;
@@ -145,6 +162,32 @@ A MOD with no file in the release manifest fails the fetcher; narrow
 |---|---|---|
 | `fetch_mousemine_strains.py` | MouseMine PathQuery | `data/mouse-strains.tsv` |
 | `fetch_wormmine_rnai.py` | WormMine PathQuery | `data/worm-rnai.tsv` |
+
+### Curation DB extractors (`fetch_all.py --source db`)
+
+`extract_<name>.py` writes the same TSV as `fetch_<name>.py` from SQL against
+a restored curation dump (`CURATION_PSQL` or `CURATION_DB_URL`, see
+`curation_db.py`). The restore must include `resourcedescriptor`, `resourcedescriptorpage` (URL
+templates) and `reference_crossreference` (publication ids).
+
+| Script | Replaces | Notes |
+|---|---|---|
+| `extract_genes.py` | `fetch_genes.py` | One query for all MODs; gene set = per-MOD gene lists; listed ids the DB lacks go through the API. `automatedDescription` comes from FMS GENE-DESCRIPTION-JSON (the dump has no automated_gene_description notes). `dateProduced` is filled from dateUpdated (the API leaves it empty). |
+| `extract_gene_crossrefs.py` | `fetch_gene_crossrefs.py` | crossReferences + gcrpCrossReference per listed gene; page names mapped to the FMS `xrefType` spelling. Own id on `default` becomes `gene`; PANTHER families get the MOD tree page. |
+| `extract_expression.py` | `fetch_expression.py` | `geneexpressionannotation`, `expressionpattern`, `anatomicalsite` and their crossreference links. SourceURL lists every MGI assay and WB expression pattern of a row (FMS keeps one). FB rows carry FBcv anatomy qualifiers. |
+| `extract_htp.py` | `fetch_htp.py` | `htpexpressiondatasetannotation*`, `htpexpressiondatasetsampleannotation*`. anatomyStatement is the anatomy term name (the DB keeps no statement). dateAssigned is blank. MGI samples have no sample id and are skipped. |
+| `extract_phenotypes.py` | gene/allele/AGM phenotype annotations grouped per (gene, statement); allele and AGM rows join on `inferredgene_id`; `reference_crossreference` for publications | `uniqueId` is `<gene>\|<statement>` (the API value is a random index id). 3,161 sampled rows (MGI, ZFIN, FB, WB, SGD, RGD, Xenbase, HGNC genes) match on every other column. |
+| `extract_allele_phenotypes.py` | allele annotations (gene = inferred gene, else the allele's only gene) and AGM annotations (inferred allele, no gene) | FB, WB, ZFIN annotations have no phenotype terms in the curation DB, so those MODs still read FMS through `fetch_allele_phenotypes._iter_mod`. AGM asserted-allele links are empty (244 MGI rows lost). |
+| `extract_agms.py` | `affectedgenomicmodel`, AGM full-name slot annotation (display text), subtype term | ZFIN subtype is `fish` (FMS: empty). The DB holds 566K AGMs vs 159K in FMS, including 49.6K more strains (WB 47.6K, FB 1.8K, RGD 184). |
+| `extract_disease_annotations.py` | direct rows (viaOrthologyOrder 0) | via-orthology rows from `/disease/{id}/genes` (`--orthology api`, default; `none` skips them) |
+| `extract_disease.py` | MOD-curated rows | Source=Alliance orthology rows from FMS DISEASE-ALLIANCE COMBINED (`--orthology fms`, default) |
+| `extract_disease_models.py` | all rows | none |
+| `extract_disease_alleles.py` | all rows | none |
+| `extract_experimental_disease.py` | all rows | none |
+| `extract_allele_detail.py` | `fetch_allele_detail.py` | `data/allele-detail.tsv` |
+| `extract_alleles.py` | `fetch_alleles.py` | `data/alliance-alleles.tsv` |
+| `extract_variants.py` | `fetch_variants.py` | `data/variants.tsv` |
+| `extract_transgenic_alleles.py` | `fetch_transgenic_alleles.py` | `data/transgenic-alleles.tsv` |
 
 ## Enrichment-merge pattern
 

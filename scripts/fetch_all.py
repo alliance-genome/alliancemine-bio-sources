@@ -101,6 +101,20 @@ FETCHERS = [
     ("wormmine_rnai",        "fetch_wormmine_rnai.py"),
 ]
 
+# With --source db these names run extract_<name>.py (SQL against a restored
+# curation dump, see curation_db.py) in place of fetch_<name>.py. Names absent
+# here, or whose extractor file does not exist yet, keep their fetcher.
+# htp keeps FMS: 39,176 RGD samples have no dataset link in the 9.2.0 curation DB.
+KEEP_FETCHER = {"htp"}
+
+
+def script_for(name: str, script: str, source: str) -> str:
+    extractor = f"extract_{name}.py"
+    if source == "db" and name not in KEEP_FETCHER and (Path(__file__).parent / extractor).exists():
+        return extractor
+    return script
+
+
 # Fetchers whose --ids takes gene CURIEs (allele_detail takes allele ids,
 # disease_annotations / disease_alleles take DOIDs).
 GENE_ID_FETCHERS = {
@@ -182,6 +196,8 @@ def main() -> None:
     parser.add_argument("--workers", type=int, help="Pass --workers N through to the API fan-out fetchers")
     parser.add_argument("--max-failure-rate", type=float,
                         help="Pass --max-failure-rate through to the API fan-out fetchers")
+    parser.add_argument("--source", choices=("api", "db"), default="api",
+                        help="db: run extract_<name>.py against the curation dump where one exists")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--stop-on-error", action="store_true",
                         help="Abort immediately on any fetcher failure")
@@ -224,6 +240,7 @@ def main() -> None:
         if name in skip:
             log.info("-- skipping %s", name)
             continue
+        script = script_for(name, script, args.source)
         result = run_one(name, script, args_for(name, script, passthrough), env)
         results.append(result)
         if args.stop_on_error and result[1] != 0:
