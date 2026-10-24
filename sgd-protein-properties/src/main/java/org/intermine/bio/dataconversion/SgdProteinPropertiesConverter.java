@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2011 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -80,7 +80,7 @@ public class SgdProteinPropertiesConverter extends BioFileConverter
          * location
          * Reference
 		 */   	 
-		System.out.println("Processing Protien Properties Data file....");    
+		LOG.info("Processing Protein Properties Data file....");
 
 		Iterator<?> tsvIter;
 		try {

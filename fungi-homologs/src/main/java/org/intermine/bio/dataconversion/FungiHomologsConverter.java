@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2011 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -29,10 +29,9 @@ import org.intermine.xml.full.Item;
  */
 public class FungiHomologsConverter extends BioFileConverter
 {
-    //
     private static final String DATASET_TITLE = "Orthologs from FungiDB using OrthoMCL";
     private static final String DATA_SOURCE_NAME = "FungiDB";
-    private static HashMap taxonIds = new HashMap();
+    private static HashMap<String, String> taxonIds = new HashMap<String, String>();
     private Map<String, String> genes = new HashMap<String, String>();
     
     /**
@@ -65,15 +64,13 @@ public class FungiHomologsConverter extends BioFileConverter
     		String gene1 = line[1];       //yeast gene - systematic name
     		String organism = line [2];   //homolog Organism
     		
-    		String taxonName = (String) taxonIds.get(organism);
-    		
-    		if(taxonName != null) {
-    		
-    			String refId1 = null;
-    			String refId2 = refId2 = parseGene(gene2, organism, "primaryIdentifier");
+    		String taxonName = taxonIds.get(organism);
 
-    			//System.out.println("gene1...: "+ gene1);
-    			
+    		if(taxonName != null) {
+
+    			String refId1 = null;
+    			String refId2 = parseGene(gene2, organism, "primaryIdentifier");
+
     			String geneIds[] = gene1.split(",");
     			if(geneIds.length > 0){
 
@@ -123,7 +120,7 @@ public class FungiHomologsConverter extends BioFileConverter
         if (refId == null) {
             Item item = createItem("Gene");
             item.setAttribute(fieldName, identifier);
-            String taxonId = (String) taxonIds.get(taxonName);
+            String taxonId = taxonIds.get(taxonName);
             item.setReference("organism", getOrganism(taxonId));
             store(item);
             refId = item.getIdentifier();

@@ -1,7 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2011 FlyMine
+ * Copyright (C) 2002-2026 AllianceMine
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
@@ -15,12 +15,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.intermine.metadata.Model;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
+import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.util.FormattedTextParser;
-import org.intermine.metadata.Model;
 import org.intermine.xml.full.Item;
 
 
@@ -30,10 +30,19 @@ import org.intermine.xml.full.Item;
  */
 public class HomologGenesConverter extends BioFileConverter
 {
-    //
+    private static final Logger LOG = Logger.getLogger(HomologGenesConverter.class);
+
     private static final String DATASET_TITLE = "CGD and AspGD chromosomal_feature.tab files";
     private static final String DATA_SOURCE_NAME = "CGD and AspGD Download files";
-    private Map<String, Item> genes = new HashMap();
+
+    // Column layout of CGD/AspGD chromosomal_feature.tab
+    private static final int COL_PRIMARY_ID = 0;
+    private static final int COL_NAME = 1;
+    private static final int COL_ALIAS = 2;
+    private static final int COL_DESCRIPTION = 10;
+    private static final int MIN_COLUMNS = COL_DESCRIPTION + 1;
+
+    private Map<String, Item> genes = new HashMap<String, Item>();
 
     /**
      * Constructor
@@ -78,14 +87,17 @@ public class HomologGenesConverter extends BioFileConverter
 		while (lineIter.hasNext()) {
 
 			String[] line = (String[]) lineIter.next();
+			if (line.length < MIN_COLUMNS) {
+				continue;
+			}
 
-			String primaryIdentifier = line[0].trim();
-			String name = line[1].trim();
-			String alias = line[2].trim();
-			String description = line[10].trim();
-			
-			System.out.println("Processing line.." + primaryIdentifier);
-			
+			String primaryIdentifier = line[COL_PRIMARY_ID].trim();
+			String name = line[COL_NAME].trim();
+			String alias = line[COL_ALIAS].trim();
+			String description = line[COL_DESCRIPTION].trim();
+
+			LOG.debug("Processing line.." + primaryIdentifier);
+
 			Item gene = createItem("Gene");
 			gene.setAttribute("primaryIdentifier", primaryIdentifier);
 			if(StringUtils.isNotEmpty(name)) { gene.setAttribute("symbol", name); }

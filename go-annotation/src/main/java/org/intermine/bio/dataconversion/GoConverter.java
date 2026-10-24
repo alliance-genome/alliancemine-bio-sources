@@ -59,6 +59,40 @@ public class GoConverter extends BioFileConverter
     private Map<String, Config> configs = new HashMap<String, Config>();
     private static final Map<String, String> WITH_TYPES = new LinkedHashMap<String, String>();
 
+    // PR5c: ECO/GO evidence code -> annotType category. Categories chosen to
+    // match what the GoSlimTerm_Gene template's annotType filter exposes
+    // (manually curated / high-throughput / computational analysis / curator
+    // inference / author statement). Without this, every GOEvidenceCode row
+    // emits with annotType=NULL and the template's annotType constraint
+    // silently filters every row out.
+    private static final Map<String, String> ANNOT_TYPE_BY_CODE;
+    static {
+        Map<String, String> m = new HashMap<String, String>();
+        // Experimental — manually curated by direct experimental evidence
+        for (String c : new String[] {"EXP", "IDA", "IPI", "IMP", "IGI", "IEP"}) {
+            m.put(c, "manually curated");
+        }
+        // High-throughput experimental evidence
+        for (String c : new String[] {"HTP", "HDA", "HMP", "HGI", "HEP"}) {
+            m.put(c, "high-throughput");
+        }
+        // Phylogenetic / computational analysis
+        for (String c : new String[] {"ISS", "ISO", "ISA", "ISM", "IGC",
+                "IBA", "IBD", "IKR", "IRD", "RCA"}) {
+            m.put(c, "computational analysis");
+        }
+        // Author / curator statements
+        for (String c : new String[] {"TAS", "NAS"}) {
+            m.put(c, "author statement");
+        }
+        for (String c : new String[] {"IC", "ND"}) {
+            m.put(c, "curator inference");
+        }
+        // Electronic annotation — always inferred from sequence-similarity pipelines
+        m.put("IEA", "electronic");
+        ANNOT_TYPE_BY_CODE = m;
+    }
+
     // maps retained across all files
     protected Map<String, String> goTerms = new LinkedHashMap<String, String>();
     private Map<String, String> evidenceCodes = new LinkedHashMap<String, String>();
@@ -229,6 +263,10 @@ public class GoConverter extends BioFileConverter
             item.setAttribute("code", code);
             item.setAttribute("name", name);
             item.setAttribute("url", url);
+            String annotType = ANNOT_TYPE_BY_CODE.get(code);
+            if (annotType != null) {
+                item.setAttribute("annotType", annotType);
+            }
             evidenceCodes.put(code, item.getIdentifier());
             store(item);
         }
@@ -604,7 +642,10 @@ public class GoConverter extends BioFileConverter
         if (evidenceCodes.get(combinationcode) == null) {
             Item item = createItem("GOEvidenceCode");
             item.setAttribute("code", code);
-            //if(!annotType.isEmpty()) {item.setAttribute("annotType", annotType); }
+            String annotType = ANNOT_TYPE_BY_CODE.get(code);
+            if (annotType != null) {
+                item.setAttribute("annotType", annotType);
+            }
             if(!withText.isEmpty()) { item.setAttribute("withText", withText); }
             store(item);
             evidenceCodes.put(combinationcode, item.getIdentifier());
