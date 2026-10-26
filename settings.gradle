@@ -7,6 +7,8 @@ include ':bio-source-mpo'
 project(':bio-source-mpo').projectDir = new File(settingsDir, './mpo')
 include ':bio-source-hpo'
 project(':bio-source-hpo').projectDir = new File(settingsDir, './hpo')
+include ':bio-source-update-publications'
+project(':bio-source-update-publications').projectDir = new File(settingsDir, './update-publications')
 include ':bio-source-pato'
 project(':bio-source-pato').projectDir = new File(settingsDir, './pato')
 include ':bio-source-go-annotation'
