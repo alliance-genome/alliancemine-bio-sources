@@ -51,6 +51,8 @@ include ':bio-source-alliance-variants'
 project(':bio-source-alliance-variants').projectDir = new File(settingsDir, './alliance-variants')
 include ':bio-source-alliance-gene-descriptions'
 project(':bio-source-alliance-gene-descriptions').projectDir = new File(settingsDir, './alliance-gene-descriptions')
+include ':bio-source-alliance-chromosome-lengths'
+project(':bio-source-alliance-chromosome-lengths').projectDir = new File(settingsDir, './alliance-chromosome-lengths')
 include ':bio-source-alliance-agms'
 project(':bio-source-alliance-agms').projectDir = new File(settingsDir, './alliance-agms')
 include ':bio-source-alliance-allele-phenotypes'

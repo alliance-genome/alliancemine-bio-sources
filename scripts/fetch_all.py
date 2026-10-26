@@ -63,6 +63,8 @@ log = logging.getLogger("alliance.fetch.orchestrator")
 FETCHERS = [
     # Primary
     ("genes",                "fetch_genes.py"),
+    # reads alliance-genes.tsv, so it runs right after genes
+    ("chromosome_lengths",   "fetch_chromosome_lengths.py"),
 
     # API-driven per-gene enrichment
     ("interactions",         "fetch_interactions.py"),
