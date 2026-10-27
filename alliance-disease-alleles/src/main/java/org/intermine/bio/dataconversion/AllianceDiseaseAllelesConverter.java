@@ -91,6 +91,8 @@ public class AllianceDiseaseAllelesConverter extends BioFileConverter
 
         Item ann = createItem("DiseaseAnnotation");
         ann.setReference("alleleSubject", alleleRef);
+        // report pages read OntologyAnnotation.subject; without it 13,814 rc3 rows had no subject
+        ann.setReference("subject", alleleRef);
         ann.setReference("ontologyTerm", doRef);
         setIfPresent(ann, "generatedRelationString", line[COL_RELATION]);
 
