@@ -133,9 +133,11 @@ class Rows(unittest.TestCase):
         self.assertTrue(set(row) <= set(extract_alleles.COLUMNS))
 
     def test_variant_row(self):
-        row = extract_variants.variant_row(VARIANT, "FB:FBal0218094", "NCBITaxon:7227")
+        row = extract_variants.variant_row(VARIANT, "FB:FBal0218094", "NCBITaxon:7227", "FB", False, True)
         self.assertEqual(row["geneId"], "FB:FBgn1|FB:FBgn2")
         self.assertEqual(row["dataProvider"], "FB")
+        self.assertEqual(row["variantInformationReference"], "PMID:1")
+        self.assertEqual((row["hasDiseaseAnnotations"], row["hasPhenotypeAnnotations"]), ("-", "yes"))
         self.assertEqual(list(row), extract_variants.COLUMNS)
 
     def test_variant_order_follows_fetcher_taxa(self):

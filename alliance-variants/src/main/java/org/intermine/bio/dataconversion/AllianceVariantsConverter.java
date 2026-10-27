@@ -55,6 +55,10 @@ public class AllianceVariantsConverter extends BioFileConverter
     private static final int COL_TAXON         = 13;
     private static final int COL_DATA_PROVIDER = 14;
     private static final int MIN_COLUMNS       = 15;
+    // Optional: variants.tsv files written before these columns existed stop at COL_DATA_PROVIDER.
+    private static final int COL_INFO_REF      = 15;
+    private static final int COL_HAS_DISEASE   = 16;
+    private static final int COL_HAS_PHENOTYPE = 17;
     // A Gene stored without organism cannot use the primaryIdentifier+organism key, so it
     // becomes a second Gene; a later primaryIdentifier-only source then merges the pair and
     // InterMine drops one id, leaving every reference to it dangling.
@@ -148,6 +152,12 @@ public class AllianceVariantsConverter extends BioFileConverter
             setIntIfPresent(details, "chrEndPosition", line[COL_END]);
             setIfPresent(details, "sequenceOfReference", line[COL_REF_SEQ]);
             setIfPresent(details, "sequenceOfVariant", line[COL_VAR_SEQ]);
+            setIfPresent(details, "mostSevereConsequenceName", mostSevere(line[COL_CONSEQUENCES]));
+            if (line.length > COL_HAS_PHENOTYPE) {
+                setIfPresent(details, "variantInformationReference", line[COL_INFO_REF]);
+                details.setAttribute("hasDiseaseAnnotations", isYes(line[COL_HAS_DISEASE]));
+                details.setAttribute("hasPhenotypeAnnotations", isYes(line[COL_HAS_PHENOTYPE]));
+            }
             store(details);
             variant.addToCollection("variantdetails", details);
         }
@@ -218,6 +228,21 @@ public class AllianceVariantsConverter extends BioFileConverter
         store(item);
         genes.put(primaryId, item.getIdentifier());
         return item.getIdentifier();
+    }
+
+    /**
+     * The first VEP term of the first gene-level consequence. Each pipe-separated entry lists
+     * its terms comma-joined, most severe first.
+     */
+    static String mostSevere(String consequences) {
+        String first = consequences.trim().split("\\|", 2)[0];
+        return first.split(",", 2)[0].trim();
+    }
+
+    /** "yes" or "true" mark a flag set; "-", "false" and empty mark it unset. */
+    static String isYes(String flag) {
+        String v = flag.trim();
+        return String.valueOf("yes".equalsIgnoreCase(v) || "true".equalsIgnoreCase(v));
     }
 
     private static void setIfPresent(Item item, String attrName, String value) {

@@ -9,8 +9,9 @@ use the VARIANT-ALLELE formats (extract_alleles_common.load_variants):
 variantSymbol is chromosome plus the HGVS change, sequences carry the padded
 base, consequenceNames has one entry per gene-level predicted consequence
 (its VEP terms comma-joined, most severe first), geneId the genes of those
-consequences, and dataProvider the prefix of the variant's first cross
-reference.
+consequences, dataProvider the prefix of the variant's first cross
+reference, variantInformationReference one curie per variant reference, and
+the two has*Annotations flags those of the allele that keeps the variant.
 
 Scope: alleles of the release's FMS VARIANT-ALLELE files that the curation DB
 still serves; --all-alleles takes every summary allele.
@@ -34,13 +35,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from common import MOD_TAXON, TsvWriter, configure_logging, get_current_release, normalize_taxon, selected_mods  # noqa: E402
 from curation_db import copy_rows  # noqa: E402
+from extract_alleles import DISEASE_SQL, PHENOTYPE_SQL  # noqa: E402
 from extract_alleles_common import (  # noqa: E402
     VARIANT_ALLELE_MODS,
     allele_variant_links,
+    information_references,
     load_variants,
     mod_for,
     seed_allele_ids,
     summary_alleles,
+    yes_dash,
 )
 from fetch_variants import COLUMNS, DEFAULT_TAXONS  # noqa: E402
 
@@ -51,7 +55,8 @@ _TAXON_ORDER = [t.replace("NCBITaxon", "NCBITaxon:") for t in DEFAULT_TAXONS]
 MOD_ORDER = sorted(MOD_TAXON, key=lambda m: _TAXON_ORDER.index(MOD_TAXON[m]))
 
 
-def variant_row(v: dict, allele_id: str, taxon: str) -> dict:
+def variant_row(v: dict, allele_id: str, taxon: str, provider: str,
+                has_disease: bool, has_phenotype: bool) -> dict:
     return {
         "variantId": v["hgvs"],
         "variantSymbol": v["symbol"],
@@ -68,20 +73,24 @@ def variant_row(v: dict, allele_id: str, taxon: str) -> dict:
         "geneId": "|".join(v["gene_ids"]),
         "taxon": normalize_taxon(taxon),
         "dataProvider": v["xrefs"][0].split(":")[0] if v["xrefs"] else "",
+        "variantInformationReference": "|".join(information_references(v["references"], provider)),
+        "hasDiseaseAnnotations": yes_dash(has_disease),
+        "hasPhenotypeAnnotations": yes_dash(has_phenotype),
     }
 
 
-def iter_rows(mods, by_mod, links, variants):
+def iter_rows(mods, by_mod, links, variants, with_disease, with_phenotype):
     """(MOD, row) per distinct variant HGVS name, first allele first."""
     seen: set[str] = set()
     for mod in [m for m in MOD_ORDER if m in mods]:
-        for db_id, pid, taxon in by_mod.get(mod, []):
+        for db_id, pid, taxon, provider in by_mod.get(mod, []):
             for variant_id in links.get(db_id, []):
                 v = variants.get(variant_id)
                 if v is None or not v["hgvs"] or v["hgvs"] in seen:
                     continue
                 seen.add(v["hgvs"])
-                yield mod, variant_row(v, pid, taxon)
+                yield mod, variant_row(v, pid, taxon, provider,
+                                       db_id in with_disease, db_id in with_phenotype)
 
 
 def main() -> None:
@@ -104,11 +113,13 @@ def main() -> None:
     wanted = seed_allele_ids(mods, args.all_alleles)
     variants = load_variants(copy_rows)
     links = allele_variant_links(copy_rows)
+    with_phenotype = {r[0] for r in copy_rows(PHENOTYPE_SQL) if r}
+    with_disease = {r[0] for r in copy_rows(DISEASE_SQL) if r}
 
-    by_mod: dict[str, list[tuple[str, str, str]]] = collections.defaultdict(list)
+    by_mod: dict[str, list[tuple[str, str, str, str]]] = collections.defaultdict(list)
     for db_id, pid, provider, taxon, _symbol, _fmt, _xref in summary_alleles(copy_rows, mods):
         if db_id in links and (wanted is None or pid in wanted):
-            by_mod[mod_for(provider, taxon)].append((db_id, pid, taxon))
+            by_mod[mod_for(provider, taxon)].append((db_id, pid, taxon, provider))
 
     per_mod: collections.Counter = collections.Counter()
     with TsvWriter(
@@ -117,7 +128,7 @@ def main() -> None:
         release=release,
         source=f"curation DB allele-variant associations ({','.join(mods)})",
     ) as writer:
-        for mod, row in iter_rows(mods, by_mod, links, variants):
+        for mod, row in iter_rows(mods, by_mod, links, variants, with_disease, with_phenotype):
             writer.write_row(**row)
             per_mod[mod] += 1
             if args.limit and writer.rows_written >= args.limit:

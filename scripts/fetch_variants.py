@@ -69,6 +69,9 @@ COLUMNS = [
     "geneId",            # pipe-joined affected gene ids
     "taxon",
     "dataProvider",
+    "variantInformationReference",  # pipe-joined reference curies
+    "hasDiseaseAnnotations",        # "yes" or "-" for the allele
+    "hasPhenotypeAnnotations",      # "yes" or "-" for the allele
 ]
 
 
@@ -93,6 +96,9 @@ def _row(record: dict) -> dict | None:
         "taxon": normalize_taxon(record.get("Taxon") or ""),
         "dataProvider": (record.get("VariantCrossReferences") or [""])[0].split(":")[0]
                        if record.get("VariantCrossReferences") else "",
+        "variantInformationReference": join_pipe(record.get("VariantInformationReference") or []),
+        "hasDiseaseAnnotations": record.get("HasDiseaseAnnotations") or "",
+        "hasPhenotypeAnnotations": record.get("HasPhenotypeAnnotations") or "",
     }
 
 
