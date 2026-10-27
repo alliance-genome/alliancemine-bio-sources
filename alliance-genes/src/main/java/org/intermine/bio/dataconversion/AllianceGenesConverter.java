@@ -122,6 +122,10 @@ public class AllianceGenesConverter extends BioFileConverter {
             if (species.equals("559292") && !chromosome.isEmpty()) {
                 if (chromosome.equals("Mito")) {
                     chr = "chrmt";
+                } else if (chromosome.startsWith("chr")) {
+                    // extract_genes.py already writes the SGD names (chrI, chrmt); prefixing
+                    // again made 17 length-less chrchrI-style Chromosomes beside sgd's in rc3
+                    chr = chromosome;
                 } else {
                     chr = "chr" + chromosome;
                 }

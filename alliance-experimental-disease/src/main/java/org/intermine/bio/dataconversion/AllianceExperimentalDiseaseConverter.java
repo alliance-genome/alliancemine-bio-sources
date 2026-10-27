@@ -107,6 +107,8 @@ public class AllianceExperimentalDiseaseConverter extends BioFileConverter
 
         Item ann = createItem("DiseaseAnnotation");
         ann.setReference("experimentalGene", geneRef);
+        // report pages read OntologyAnnotation.subject; without it 7,920 rc3 rows had no subject
+        ann.setReference("subject", geneRef);
         ann.setReference("ontologyTerm", doRef);
         ann.setAttribute("evidenceType", EVIDENCE_TYPE);
         setIfPresent(ann, "generatedRelationString", line[COL_RELATION]);

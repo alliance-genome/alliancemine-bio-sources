@@ -53,6 +53,8 @@ include ':bio-source-alliance-gene-descriptions'
 project(':bio-source-alliance-gene-descriptions').projectDir = new File(settingsDir, './alliance-gene-descriptions')
 include ':bio-source-uniprot'
 project(':bio-source-uniprot').projectDir = new File(settingsDir, './uniprot')
+include ':bio-source-alliance-chromosome-lengths'
+project(':bio-source-alliance-chromosome-lengths').projectDir = new File(settingsDir, './alliance-chromosome-lengths')
 include ':bio-source-alliance-agms'
 project(':bio-source-alliance-agms').projectDir = new File(settingsDir, './alliance-agms')
 include ':bio-source-alliance-allele-phenotypes'
