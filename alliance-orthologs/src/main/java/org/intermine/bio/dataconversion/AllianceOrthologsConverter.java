@@ -116,6 +116,7 @@ public class AllianceOrthologsConverter extends BioFileConverter {
         homologue.setReference("gene", gene1);
         homologue.setReference("homologue", gene2);
         homologue.setAttribute("type", "orthologue");
+        homologue.setAttribute("source", DATA_SOURCE_NAME);
         homologue.setAttribute("algorithms", algorithm);
         homologue.setAttribute("algorithmsMatch", match);
         homologue.setAttribute("algorithmsAttempted", total);
