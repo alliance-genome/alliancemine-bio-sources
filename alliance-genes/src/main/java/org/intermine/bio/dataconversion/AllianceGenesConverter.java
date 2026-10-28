@@ -35,6 +35,9 @@ public class AllianceGenesConverter extends BioFileConverter {
 
     private static final String DATASET_TITLE = "Alliance Gene data set";
     private static final String DATA_SOURCE_NAME = "AGR";
+    // The sgd source loads yeast gene locations; a second Location from here overlaps it on
+    // the same chrI..chrmt and cuts IntergenicRegions from 6,386 to 3,852 (rc4).
+    private static final String SGD_TAXON = "559292";
 
     // TSV column layout (first 14 columns are the legacy schema; columns 14-16
     // are appended by scripts/fetch_genes.py and stay optional so legacy
@@ -136,6 +139,8 @@ public class AllianceGenesConverter extends BioFileConverter {
             // ~~~ MOD and Chromosome ~~~
             String organism = getOrganism(species);
             String chrId = getChromosome(chr, organism);
+            boolean locate = chrId != null && !start.isEmpty() && !end.isEmpty()
+                    && !SGD_TAXON.equals(species);
 
             Item g = genes.get(primaryIdentifier);
             if (g != null) {
@@ -144,7 +149,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                     g.setReference("chromosome", mcm);
                 }
                 // ~~~ location ~~~
-                if (chrId != null && !start.isEmpty() && !end.isEmpty()) {
+                if (locate) {
                     String locationRefId = getLocation(g, chrId, start, end, strand);
                     g.setReference("chromosomeLocation", locationRefId);
                 }
@@ -328,7 +333,7 @@ public class AllianceGenesConverter extends BioFileConverter {
                 item.setReference("chromosome", chrId);
             }
             // ~~~ location ~~~
-            if (chrId != null && !start.isEmpty() && !end.isEmpty()) {
+            if (locate) {
                 String locationRefId = getLocation(item, chrId, start, end, strand);
                 item.setReference("chromosomeLocation", locationRefId);
             }
